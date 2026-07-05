@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-pretendard: "Pretendard Variable", Pretendard, -apple-system,
+    BlinkMacSystemFont, system-ui, sans-serif;
+  color-scheme: light;
+}
+
+:root.dark,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  background: #f8fafc;
+}
+
+html.dark,
+html[data-theme="dark"] {
+  background: #05080c;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: #f8fafc;
+  color: #111827;
+}
+
+.dark body,
+html[data-theme="dark"] body {
+  background: #05080c;
+  color: #f6f8fb;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+::selection {
+  background: rgb(32 232 137 / 0.28);
+}
