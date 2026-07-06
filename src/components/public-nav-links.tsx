@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 export const publicNavItems = [
-  { href: "/schools", label: "학교 검색", aliases: ["/"] },
+  { href: "/schools/1/meals", label: "급식 확인" },
+  { href: "/schools", label: "학교 검색" },
   { href: "/allergens", label: "알레르기 안내" },
 ];
 
@@ -12,8 +13,16 @@ export function isPublicNavItemActive(
   pathname: string,
   item: (typeof publicNavItems)[number],
 ) {
-  if (pathname === item.href || item.aliases?.includes(pathname)) {
+  if (pathname === item.href) {
     return true;
+  }
+
+  if (item.href === "/schools/1/meals") {
+    return pathname.startsWith("/schools/") && pathname.endsWith("/meals");
+  }
+
+  if (item.href === "/schools" && pathname.endsWith("/meals")) {
+    return false;
   }
 
   return item.href === "/schools" && pathname.startsWith("/schools/");

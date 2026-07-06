@@ -4,6 +4,7 @@ import {
   Info,
   LogIn,
   Menu,
+  Utensils,
   Search,
   X,
 } from "lucide-react";
@@ -18,8 +19,9 @@ import {
 import { ThemeToggle } from "@/components/theme-toggle";
 
 const mobileNavItems = [
-  { ...publicNavItems[0], icon: Search },
-  { ...publicNavItems[1], icon: Info },
+  { ...publicNavItems[0], icon: Utensils },
+  { ...publicNavItems[1], icon: Search },
+  { ...publicNavItems[2], icon: Info },
 ];
 
 export function PublicMobileMenu() {

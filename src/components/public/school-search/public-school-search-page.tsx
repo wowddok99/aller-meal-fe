@@ -7,58 +7,11 @@ import {
   Search,
 } from "lucide-react";
 import Link from "next/link";
-import { AllerMealLogo } from "@/components/allermeal-logo";
-import { PublicMobileMenu } from "@/components/public-mobile-menu";
-import { PublicNavLinks } from "@/components/public-nav-links";
-import { ThemeToggle } from "@/components/theme-toggle";
-
-type SchoolResponse = {
-  id: number;
-  name: string;
-  address: string;
-  region: string;
-  neisSchoolCode: string;
-  educationOfficeCode: string;
-};
-
-type SchoolSearchResponse = {
-  schools: SchoolResponse[];
-  page: number;
-  pageSize: number;
-  totalCount: number;
-};
-
-const schoolSearchResponse: SchoolSearchResponse = {
-  page: 1,
-  pageSize: 3,
-  totalCount: 24,
-  schools: [
-    {
-      id: 1,
-      name: "서울하늘초등학교",
-      address: "서울특별시 마포구 월드컵북로 00",
-      region: "서울",
-      neisSchoolCode: "B100000001",
-      educationOfficeCode: "B10",
-    },
-    {
-      id: 2,
-      name: "서울푸른중학교",
-      address: "서울특별시 성동구 왕십리로 00",
-      region: "서울",
-      neisSchoolCode: "B100000002",
-      educationOfficeCode: "B10",
-    },
-    {
-      id: 3,
-      name: "경기별빛고등학교",
-      address: "경기도 성남시 분당구 판교로 00",
-      region: "경기",
-      neisSchoolCode: "J100000003",
-      educationOfficeCode: "J10",
-    },
-  ],
-};
+import { PublicPageShell } from "@/components/public/public-page-shell";
+import {
+  schoolSearchResponse,
+  type SchoolResponse,
+} from "@/components/public/school-data";
 
 const recentSchools = schoolSearchResponse.schools.slice(0, 2);
 
@@ -121,34 +74,7 @@ export function PublicSchoolSearchPage() {
   const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
-    <main className="min-h-[100dvh] bg-zinc-50 text-zinc-950 dark:bg-canvas dark:text-zinc-50">
-      <header className="border-b border-zinc-200 bg-white dark:border-zinc-900 dark:bg-[#06080b]">
-        <nav className="mx-auto flex h-[50px] w-full max-w-[1220px] items-center justify-between px-5">
-          <div className="flex h-full items-center gap-8">
-            <Link
-              href="/"
-              className="flex shrink-0 items-center transition-opacity hover:opacity-90 active:opacity-80"
-              aria-label="AllerMeal 홈"
-            >
-              <AllerMealLogo variant="full" />
-            </Link>
-
-            <PublicNavLinks />
-          </div>
-
-          <div className="hidden items-center gap-4 text-[15px] font-medium md:flex">
-            <Link
-              className="text-zinc-600 transition-colors hover:text-zinc-950 active:text-mint-600 dark:text-zinc-300 dark:hover:text-zinc-50 dark:active:text-mint-400"
-              href="/login"
-            >
-              로그인
-            </Link>
-            <ThemeToggle />
-          </div>
-          <PublicMobileMenu />
-        </nav>
-      </header>
-
+    <PublicPageShell>
       <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-3 px-5 pb-12 pt-5">
         <p className="text-base font-medium leading-6 text-zinc-500 dark:text-zinc-400">
           학교 급식 메뉴와 알레르기 유발 성분을 쉽고 빠르게 확인하세요.
@@ -298,6 +224,6 @@ export function PublicSchoolSearchPage() {
           </div>
         </Card>
       </div>
-    </main>
+    </PublicPageShell>
   );
 }
