@@ -1,4 +1,4 @@
-import { ArrowUpRight, CheckCircle2, CircleDashed } from "lucide-react";
+import { ArrowUpRight, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { AllerMealLogo } from "@/components/allermeal-logo";
 
@@ -16,10 +16,19 @@ const pageLinks = [
     id: "01",
     title: "01_01_public_school_meals",
     label: "급식 확인",
-    description: "이제 구현을 시작할 급식 상세 화면입니다.",
+    description: "구현 완료된 급식 상세 화면입니다.",
     href: "/schools/1/meals",
-    status: "진행 예정",
-    icon: CircleDashed,
+    status: "완료",
+    icon: CheckCircle2,
+  },
+  {
+    id: "02",
+    title: "02_02_allergen_guide",
+    label: "알레르기 안내",
+    description: "구현 완료된 알레르기 코드 안내 화면입니다.",
+    href: "/allergens",
+    status: "완료",
+    icon: CheckCircle2,
   },
 ] as const;
 
