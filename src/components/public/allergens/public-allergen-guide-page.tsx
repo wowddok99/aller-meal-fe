@@ -1,7 +1,7 @@
 "use client";
 
-import { CheckCircle2, Info, Search, ShieldCheck } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Search } from "lucide-react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { PublicPageShell } from "@/components/public/public-page-shell";
 
 type AllergenCode = {
@@ -55,9 +55,13 @@ function CodeBadge({ code }: { code: number }) {
   );
 }
 
-function AllergenRow({ allergen }: { allergen: AllergenCode }) {
+function AllergenRow({ allergen, isMatch }: { allergen: AllergenCode; isMatch: boolean }) {
   return (
-    <div className="grid min-h-12 grid-cols-[56px_minmax(0,1fr)_minmax(120px,0.8fr)] items-center gap-3 border-b border-zinc-200 px-4 last:border-b-0 dark:border-zinc-800">
+    <div
+      id={`allergen-code-${allergen.code}`}
+      aria-label={isMatch ? `${allergen.name}, 코드 ${allergen.code}, 검색 일치` : undefined}
+      className={`relative grid min-h-12 grid-cols-[56px_minmax(0,1fr)_minmax(120px,0.8fr)] items-center gap-3 border-b border-zinc-200 px-4 transition-colors last:border-b-0 dark:border-zinc-800 ${isMatch ? "bg-mint-500/[0.07] before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-mint-500 dark:bg-mint-500/10" : ""}`}
+    >
       <CodeBadge code={allergen.code} />
       <p className="truncate text-sm font-extrabold text-zinc-900 dark:text-zinc-100">
         {allergen.name}
@@ -71,26 +75,44 @@ function AllergenRow({ allergen }: { allergen: AllergenCode }) {
 
 export function PublicAllergenGuidePage() {
   const [query, setQuery] = useState("");
+  const [activeQuery, setActiveQuery] = useState("");
 
-  const filteredAllergens = useMemo(() => {
-    const keyword = query.trim().toLowerCase();
+  const matchingCodes = useMemo(() => {
+    const keyword = activeQuery.toLowerCase();
 
     if (!keyword) {
-      return allergenCodes;
+      return new Set<number>();
     }
 
-    return allergenCodes.filter(
-      (allergen) =>
+    return new Set(
+      allergenCodes.filter(
+        (allergen) =>
         allergen.name.toLowerCase().includes(keyword) ||
         String(allergen.code).includes(keyword),
+      ).map((allergen) => allergen.code),
     );
-  }, [query]);
+  }, [activeQuery]);
 
   const columns = [
-    filteredAllergens.slice(0, 7),
-    filteredAllergens.slice(7, 14),
-    filteredAllergens.slice(14),
+    allergenCodes.slice(0, 7),
+    allergenCodes.slice(7, 14),
+    allergenCodes.slice(14),
   ];
+
+  useEffect(() => {
+    const firstMatchedCode = matchingCodes.values().next().value;
+    if (typeof firstMatchedCode !== "number") return;
+
+    document.getElementById(`allergen-code-${firstMatchedCode}`)?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  }, [matchingCodes]);
+
+  const handleSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setActiveQuery(query.trim());
+  };
 
   return (
     <PublicPageShell>
@@ -99,49 +121,42 @@ export function PublicAllergenGuidePage() {
           급식 메뉴에 표시되는 알레르기 코드를 확인하세요.
         </p>
 
-        <Card className="p-5 md:p-7">
-          <div className="grid gap-5 lg:grid-cols-[minmax(280px,0.9fr)_minmax(0,1.5fr)] lg:items-start">
-            <div className="flex min-w-0 flex-col gap-4">
-              <div className="flex items-center gap-3">
-                <Info className="h-5 w-5 text-mint-600 dark:text-mint-400" strokeWidth={2.2} />
-                <h1 className="text-2xl font-extrabold tracking-[-0.02em]">
-                  알레르기 코드 안내
-                </h1>
-              </div>
-              <p className="text-base font-semibold leading-6 text-zinc-500 dark:text-zinc-400">
-                학교 급식 알레르기 표시에 사용되는 기준 코드입니다.
-              </p>
-            </div>
+        <Card className="flex flex-col gap-3 p-5 md:p-7">
+          <h1 className="text-2xl font-extrabold tracking-[-0.02em]">알레르기 코드 검색</h1>
 
-            <form className="flex flex-col gap-3" action="/allergens">
-              <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_112px]">
-                <label
-                  className="flex h-12 items-center gap-3 rounded-[10px] border border-zinc-200 bg-white px-4 transition-colors focus-within:border-mint-500 dark:border-zinc-700 dark:bg-[#0f1318] dark:focus-within:border-mint-400"
-                  htmlFor="allergen-search"
-                >
-                  <Search className="h-5 w-5 shrink-0 text-zinc-500 dark:text-zinc-400" strokeWidth={2} />
-                  <span className="sr-only">알레르기명 검색</span>
-                  <input
-                    id="allergen-search"
-                    type="search"
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="알레르기명을 입력해 주세요"
-                    className="h-full min-w-0 flex-1 bg-transparent text-base font-semibold text-zinc-950 outline-none placeholder:text-zinc-400 dark:text-zinc-50 dark:placeholder:text-zinc-500"
-                  />
-                </label>
-                <button
-                  type="submit"
-                  className="inline-flex h-12 items-center justify-center rounded-[10px] bg-mint-500 px-6 text-base font-extrabold text-white transition-colors hover:bg-mint-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-canvas"
-                >
-                  검색
-                </button>
-              </div>
-              <p className="text-[13px] font-semibold text-zinc-500 dark:text-zinc-500">
-                목록은 코드 번호순으로 정렬돼요.
-              </p>
-            </form>
-          </div>
+          <form className="flex w-full flex-col gap-3" action="/allergens" onSubmit={handleSearch}>
+            <div className="flex flex-col gap-4 md:flex-row">
+              <label
+                className="flex h-12 w-full items-center gap-3 rounded-[10px] border border-zinc-200 bg-white px-4 transition-colors focus-within:border-mint-500 dark:border-zinc-700 dark:bg-[#0f1318] dark:focus-within:border-mint-400 md:flex-1"
+                htmlFor="allergen-search"
+              >
+                <Search className="h-5 w-5 shrink-0 text-zinc-500 dark:text-zinc-400" strokeWidth={2} />
+                <span className="sr-only">알레르기명 또는 코드 검색</span>
+                <input
+                  id="allergen-search"
+                  type="search"
+                  value={query}
+                  onChange={(event) => {
+                    setQuery(event.target.value);
+                    if (!event.target.value.trim()) setActiveQuery("");
+                  }}
+                  placeholder="알레르기명 또는 코드를 입력해 주세요"
+                  className="h-full min-w-0 flex-1 bg-transparent text-base font-semibold text-zinc-950 outline-none placeholder:text-zinc-400 dark:text-zinc-50 dark:placeholder:text-zinc-500"
+                />
+              </label>
+              <button
+                type="submit"
+                className="flex h-12 w-full min-w-[112px] items-center justify-center rounded-[10px] bg-mint-500 px-7 text-base font-extrabold text-white transition-colors hover:bg-mint-600 active:bg-mint-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-50 dark:focus-visible:ring-zinc-700 dark:focus-visible:ring-offset-canvas md:w-auto"
+              >
+                검색
+              </button>
+            </div>
+            <p aria-live="polite" className="text-[13px] font-medium leading-5 text-zinc-500 dark:text-zinc-500">
+              {activeQuery && matchingCodes.size === 0
+                ? "일치하는 알레르기 코드가 없어요."
+                : "알레르기명이나 코드 번호로 목록을 빠르게 찾을 수 있어요."}
+            </p>
+          </form>
         </Card>
 
         <Card className="p-5 md:p-7">
@@ -149,55 +164,40 @@ export function PublicAllergenGuidePage() {
             알레르기 코드 목록
           </h2>
 
-          {filteredAllergens.length > 0 ? (
-            <div className="grid overflow-hidden lg:grid-cols-3">
-              {columns.map((column, columnIndex) => (
-                <div
-                  key={columnIndex}
-                  className="border-b border-zinc-200 last:border-b-0 dark:border-zinc-800 lg:border-b-0 lg:border-r lg:last:border-r-0"
-                >
-                  <div className="grid h-10 grid-cols-[56px_minmax(0,1fr)_minmax(120px,0.8fr)] items-center gap-3 border-b border-zinc-200 px-4 text-xs font-extrabold text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-                    <span>{columnIndex === 0 ? "코드" : ""}</span>
-                    <span />
-                    <span>표시 예시</span>
-                  </div>
-                  {column.map((allergen) => (
-                    <AllergenRow key={allergen.code} allergen={allergen} />
-                  ))}
+          <div className="grid overflow-hidden lg:grid-cols-3">
+            {columns.map((column, columnIndex) => (
+              <div
+                key={columnIndex}
+                className="border-b border-zinc-200 last:border-b-0 dark:border-zinc-800 lg:border-b-0 lg:border-r lg:last:border-r-0"
+              >
+                <div className="grid h-10 grid-cols-[56px_minmax(0,1fr)_minmax(120px,0.8fr)] items-center gap-3 border-b border-zinc-200 px-4 text-xs font-extrabold text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+                  <span>{columnIndex === 0 ? "코드" : ""}</span>
+                  <span />
+                  <span>표시 예시</span>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-xl border border-dashed border-zinc-300 px-5 py-10 text-center dark:border-zinc-700">
-              <p className="text-base font-extrabold text-zinc-900 dark:text-zinc-100">
-                일치하는 알레르기 코드가 없어요
-              </p>
-              <p className="mt-2 text-sm font-semibold text-zinc-500 dark:text-zinc-400">
-                다른 이름이나 코드 번호로 다시 검색해 주세요.
-              </p>
-            </div>
-          )}
+                {column.map((allergen) => (
+                  <AllergenRow key={allergen.code} allergen={allergen} isMatch={matchingCodes.has(allergen.code)} />
+                ))}
+              </div>
+            ))}
+          </div>
         </Card>
 
-        <Card className="p-5 md:p-7">
-          <div className="mb-4 flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-mint-600 dark:text-mint-400" strokeWidth={2.2} />
-            <h2 className="text-xl font-extrabold tracking-[-0.02em]">표시 기준</h2>
-          </div>
-          <div className="flex flex-col gap-3">
+        <Card className="p-5 md:px-7 md:py-6">
+          <h2 className="mb-2 text-xl font-extrabold tracking-[-0.02em]">표시 기준</h2>
+          <ol className="space-y-0">
             {[
               "메뉴명 옆에 코드 또는 이름으로 표시될 수 있어요.",
               "개인 알레르기 설정 화면에서도 같은 코드를 사용해요.",
-            ].map((item) => (
-              <p
+            ].map((item, index) => (
+              <li
                 key={item}
-                className="flex items-start gap-2 text-sm font-semibold leading-6 text-zinc-600 dark:text-zinc-300"
+                className="text-sm font-semibold leading-6 tabular-nums text-zinc-600 dark:text-zinc-300"
               >
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-mint-600 dark:text-mint-400" strokeWidth={2.2} />
-                {item}
-              </p>
+                {index + 1}) {item}
+              </li>
             ))}
-          </div>
+          </ol>
         </Card>
       </div>
     </PublicPageShell>

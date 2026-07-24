@@ -45,6 +45,26 @@ input {
   font: inherit;
 }
 
+/* Table action controls must stay readable even when wide admin tables scroll. */
+table th:last-child,
+table td:last-child,
+table td:last-child > button {
+  white-space: nowrap;
+}
+
+table td:last-child > button {
+  min-width: 4rem;
+}
+
+/* A localized status badge is sufficient in tables; hide the duplicated enum. */
+table td > span + p.font-mono {
+  display: none;
+}
+
+table td > p + p.font-mono {
+  display: none;
+}
+
 ::selection {
   background: rgb(32 232 137 / 0.28);
 }

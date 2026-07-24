@@ -127,7 +127,7 @@ export function PublicMobileMenu() {
 
             <div className="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
               <Link
-                href="/login"
+                href="/auth/login"
                 className="flex h-[52px] items-center gap-3 rounded-[10px] px-3 text-[16px] font-bold text-zinc-700 transition-colors hover:bg-zinc-50 hover:text-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white"
                 onClick={closeMenu}
               >
