@@ -1,6 +1,6 @@
 "use client";
 
-import { Info, LogOut, Menu, Search, UserRound, UsersRound, X } from "lucide-react";
+import { Info, LogOut, Menu, Search, UsersRound, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -33,7 +33,7 @@ export function MemberShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <main className="min-h-[100dvh] bg-zinc-50 text-zinc-950 dark:bg-canvas dark:text-zinc-50">
+    <main className="min-h-[100dvh] overflow-x-hidden bg-zinc-50 text-zinc-950 dark:bg-canvas dark:text-zinc-50">
       <header className="border-b border-zinc-200 bg-white dark:border-zinc-900 dark:bg-[#06080b]">
         <nav className="mx-auto flex h-[50px] w-full max-w-[1220px] items-center justify-between px-5">
           <div className="flex h-full items-center gap-8">
@@ -54,14 +54,13 @@ export function MemberShell({ children }: { children: React.ReactNode }) {
               })}
             </div>
           </div>
-          <div className="hidden items-center gap-3 md:flex">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-300 text-zinc-500 dark:border-zinc-700 dark:text-zinc-300"><UserRound className="h-4 w-4" /></span>
-            <button type="button" onClick={handleLogout} className="flex items-center gap-1 text-sm font-semibold text-zinc-500 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white"><LogOut className="h-4 w-4" />로그아웃</button>
+          <div className="hidden items-center gap-2 md:flex">
+            <button type="button" onClick={handleLogout} className="inline-flex h-9 items-center gap-1.5 rounded-[10px] px-2.5 text-sm font-semibold text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white dark:focus-visible:ring-zinc-700"><LogOut className="h-4 w-4" />로그아웃</button>
             <ThemeToggle />
           </div>
           <button type="button" onClick={() => setOpen(true)} className="inline-flex h-10 w-10 items-center justify-center rounded-[10px] text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 dark:text-zinc-200 dark:focus-visible:ring-zinc-700 md:hidden" aria-label="메뉴 열기" aria-expanded={open}><Menu className="h-6 w-6" /></button>
         </nav>
-        <div className={`fixed inset-0 z-50 overflow-hidden transition-[background-color,opacity] duration-200 md:hidden ${open ? "pointer-events-auto bg-black/20 opacity-100 dark:bg-black/35" : "pointer-events-none bg-transparent opacity-0"}`} aria-hidden={!open}>
+        <div className={`fixed inset-0 z-50 overflow-clip transition-[background-color,opacity] duration-200 md:hidden ${open ? "pointer-events-auto bg-black/20 opacity-100 dark:bg-black/35" : "pointer-events-none bg-transparent opacity-0"}`} aria-hidden={!open}>
           <button type="button" className="absolute inset-0 h-full w-full cursor-default" aria-label="메뉴 닫기" onClick={() => setOpen(false)} tabIndex={open ? 0 : -1} />
           <div className={`relative ml-auto h-[100dvh] w-screen bg-white transition-transform duration-300 ease-out dark:bg-[#06080b] sm:max-w-[420px] ${open ? "translate-x-0" : "translate-x-full"}`}>
             <div className="flex h-14 items-center justify-between border-b border-zinc-100 px-4 dark:border-zinc-900">
