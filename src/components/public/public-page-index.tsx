@@ -83,10 +83,10 @@ const pageLinks = [
     id: "07",
     title: "07_07_children_list",
     label: "자녀 목록",
-    description: "등록한 자녀와 관련 설정을 관리하는 화면입니다.",
+    description: "상세 리뷰를 마치고 확정된 자녀 목록 화면입니다.",
     href: "/children",
-    status: "리뷰 필요",
-    icon: ClipboardCheck,
+    status: "완료",
+    icon: CheckCircle2,
   },
   {
     id: "08",

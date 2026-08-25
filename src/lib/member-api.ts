@@ -21,11 +21,16 @@ export class MemberApiError extends Error {
 
 export const REVIEW_CHILD_ID = "preview";
 const now = "2026-07-13T09:00:00+09:00";
-const reviewChild: ChildProfile = { id: REVIEW_CHILD_ID, name: "김민준", grade: 3, classNumber: 2, schoolId: "preview-school", createdAt: "2026-03-02T09:00:00+09:00", updatedAt: now };
+const reviewChildren: ChildProfile[] = [
+  { id: REVIEW_CHILD_ID, name: "김민준", grade: 3, classNumber: 2, schoolId: "preview-school", createdAt: "2026-03-02T09:00:00+09:00", updatedAt: now },
+  { id: "preview-child-2", name: "이서준", grade: 1, classNumber: 4, schoolId: "preview-school", createdAt: "2026-04-14T09:00:00+09:00", updatedAt: now },
+  { id: "preview-child-3", name: "박하은", grade: 5, classNumber: 1, schoolId: "preview-school", createdAt: "2026-05-20T09:00:00+09:00", updatedAt: now },
+];
+const reviewChild = reviewChildren[0];
 const reviewSchool: School = { id: "preview-school", neisSchoolCode: "B100000658", educationOfficeCode: "B10", name: "서울가람초등학교", address: "서울특별시 마포구 월드컵북로 123", region: "서울" };
 const reviewAllergens: Allergen[] = ["난류", "우유", "메밀", "땅콩", "대두", "밀", "고등어", "게", "새우", "돼지고기", "복숭아", "토마토", "아황산류", "호두", "닭고기", "쇠고기", "오징어", "조개류", "잣"].map((name, index) => ({ code: index + 1, name }));
 
-function childFor(id: string): ChildProfile { return { ...reviewChild, id: id || REVIEW_CHILD_ID }; }
+function childFor(id: string): ChildProfile { return { ...(reviewChildren.find((child) => child.id === id) ?? reviewChild) }; }
 
 function reviewMeals(childId: string, date: string): PersonalizedMealQuery {
   return { childId, schoolId: reviewSchool.id, rangeStart: date, rangeEnd: date, collectionStatus: "COMPLETED", retryAfterSeconds: 0, pendingTargets: [], meals: [{ mealId: "review-meal", mealDate: date, mealType: "LUNCH", sourceReceivedAt: `${date}T11:30:00+09:00`, labelingStatus: "LABELED", nutritionInfo: "에너지 612 kcal · 단백질 24.1 g · 칼슘 238 mg", originInfo: "쌀·돼지고기 국내산, 고등어 노르웨이산", riskLevel: "RISKY", riskVersion: "review", items: [{ name: "현미밥", rawText: "현미밥", displayOrder: 1, labelingStatus: "LABELED", riskLevel: "SAFE", matchedAllergenCodes: [] }, { name: "된장국", rawText: "두부된장국(5.6)", displayOrder: 2, labelingStatus: "LABELED", riskLevel: "RISKY", matchedAllergenCodes: [5, 6] }, { name: "고등어구이", rawText: "고등어구이(7)", displayOrder: 3, labelingStatus: "LABELED", riskLevel: "RISKY", matchedAllergenCodes: [7] }, { name: "배추김치", rawText: "배추김치", displayOrder: 4, labelingStatus: "LABELED", riskLevel: "SAFE", matchedAllergenCodes: [] }] }] };
@@ -41,7 +46,7 @@ function reviewNotifications(page: number, pageSize: number): NotificationHistor
   return { notifications: notifications.slice(start, start + pageSize), page, pageSize, totalCount: notifications.length };
 }
 
-export async function getChildren(): Promise<ChildProfile[]> { return [reviewChild]; }
+export async function getChildren(): Promise<ChildProfile[]> { return reviewChildren.map((child) => ({ ...child })); }
 export async function getChild(childId: string): Promise<ChildProfile> { return childFor(childId); }
 export async function getSchool(schoolId: string): Promise<School> { return { ...reviewSchool, id: schoolId || reviewSchool.id }; }
 export async function getAllergens(review = false): Promise<Allergen[]> { void review; return reviewAllergens; }
