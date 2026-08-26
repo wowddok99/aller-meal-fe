@@ -3,7 +3,6 @@ import { ChildNotificationHistory } from "@/components/member/child-notification
 import { MemberShell } from "@/components/member/member-shell";
 
 export const metadata: Metadata = {
-  title: "알림 이력 | AllerMeal",
   description: "자녀별 급식 알림 발송 이력을 확인합니다.",
 };
 

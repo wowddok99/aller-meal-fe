@@ -3,7 +3,6 @@ import { ChildPersonalizedMeals } from "@/components/member/child-personalized-m
 import { MemberShell } from "@/components/member/member-shell";
 
 export const metadata: Metadata = {
-  title: "개인화 급식 | AllerMeal",
   description: "자녀의 알레르기 기준으로 급식 메뉴 위험도를 확인합니다.",
 };
 

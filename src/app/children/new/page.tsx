@@ -3,7 +3,6 @@ import { ChildRegistrationForm } from "@/components/member/child-registration-fo
 import { MemberShell } from "@/components/member/member-shell";
 
 export const metadata: Metadata = {
-  title: "자녀 등록 | AllerMeal",
   description: "자녀 기본 정보와 학교를 등록합니다.",
 };
 

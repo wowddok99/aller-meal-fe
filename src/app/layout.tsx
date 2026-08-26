@@ -3,8 +3,12 @@ import "pretendard/dist/web/variable/pretendardvariable.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AllerMeal | 학교 급식 검색",
+  title: "AllerMeal",
   description: "학교 급식 메뉴와 알레르기 유발 성분을 쉽고 빠르게 확인하세요.",
+  icons: {
+    icon: [{ url: "/brand/allermeal-logo.png", type: "image/png" }],
+    apple: [{ url: "/brand/allermeal-logo.png", type: "image/png" }],
+  },
 };
 
 const themeScript = `

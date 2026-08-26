@@ -3,7 +3,6 @@ import { ChildNotificationPreferenceForm } from "@/components/member/child-notif
 import { MemberShell } from "@/components/member/member-shell";
 
 export const metadata: Metadata = {
-  title: "알림 설정 | AllerMeal",
   description: "자녀의 이메일 급식 알림 사용 여부와 발송 시간을 설정합니다.",
 };
 

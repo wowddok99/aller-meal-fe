@@ -3,7 +3,6 @@ import { AuthShell } from "@/components/auth/auth-shell";
 import { EmailVerificationResult } from "@/components/auth/email-verification-result";
 
 export const metadata: Metadata = {
-  title: "이메일 인증 결과 | AllerMeal",
   description: "AllerMeal 이메일 인증 결과를 확인하세요.",
 };
 
