@@ -101,10 +101,10 @@ const pageLinks = [
     id: "09",
     title: "09_09_child_detail_edit",
     label: "자녀 상세/수정",
-    description: "등록한 자녀의 기본 정보를 확인하고 수정하는 화면입니다.",
+    description: "상세 리뷰를 마치고 확정된 자녀 상세·수정 화면입니다.",
     href: "/children/preview",
-    status: "리뷰 필요",
-    icon: ClipboardCheck,
+    status: "완료",
+    icon: CheckCircle2,
   },
   {
     id: "10",

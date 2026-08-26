@@ -36,7 +36,7 @@ function NumberStepper({
         aria-label={`${label} 줄이기`}
         disabled={value <= min}
         onClick={() => onChange(Math.max(min, value - 1))}
-        className="flex w-12 shrink-0 items-center justify-center border-r border-zinc-300 text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-950 disabled:cursor-not-allowed disabled:opacity-35 dark:border-zinc-700 dark:hover:bg-zinc-900 dark:hover:text-zinc-50"
+        className="flex w-10 shrink-0 items-center justify-center border-r border-zinc-300 text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-950 disabled:cursor-not-allowed disabled:opacity-35 sm:w-12 dark:border-zinc-700 dark:hover:bg-zinc-900 dark:hover:text-zinc-50"
       >
         <Minus className="h-4 w-4" />
       </button>
@@ -46,7 +46,7 @@ function NumberStepper({
           aria-label={label}
           value={value}
           onChange={(event) => onChange(Number(event.target.value))}
-          className="h-full w-full appearance-none bg-transparent pl-9 pr-10 text-center font-extrabold outline-none [text-align-last:center]"
+          className="h-full w-full appearance-none bg-transparent px-8 text-center font-extrabold outline-none [text-align-last:center] sm:pl-9 sm:pr-10"
         >
           {Array.from({ length: max - min + 1 }, (_, index) => {
             const optionValue = min + index;
@@ -60,7 +60,7 @@ function NumberStepper({
         aria-label={`${label} 늘리기`}
         disabled={value >= max}
         onClick={() => onChange(Math.min(max, value + 1))}
-        className="flex w-12 shrink-0 items-center justify-center border-l border-zinc-300 text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-950 disabled:cursor-not-allowed disabled:opacity-35 dark:border-zinc-700 dark:hover:bg-zinc-900 dark:hover:text-zinc-50"
+        className="flex w-10 shrink-0 items-center justify-center border-l border-zinc-300 text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-950 disabled:cursor-not-allowed disabled:opacity-35 sm:w-12 dark:border-zinc-700 dark:hover:bg-zinc-900 dark:hover:text-zinc-50"
       >
         <Plus className="h-4 w-4" />
       </button>
