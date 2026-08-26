@@ -122,17 +122,17 @@ export function ChildRegistrationForm() {
         <StepTitle step={1}>자녀 등록</StepTitle>
         <div className="mt-5 grid gap-5 md:grid-cols-3">
           <label className="font-bold">이름 <span className="text-red-500">*</span><input className={`${inputClass} mt-2`} value={name} maxLength={100} onChange={(event) => setName(event.target.value)} placeholder="자녀 이름" autoComplete="off" /><span className="mt-2 block text-xs font-medium text-zinc-500">1자 이상 100자 이하로 입력해 주세요.</span></label>
-          <div className="font-bold"><label htmlFor="child-grade">학년 <span className="text-red-500">*</span></label><NumberStepper id="child-grade" label="학년" value={grade} min={1} max={6} suffix="학년" onChange={setGrade} /><span className="mt-2 block text-xs font-medium text-zinc-500">현재 학년을 선택해 주세요.</span></div>
-          <div className="font-bold"><label htmlFor="child-class-number">반 <span className="text-red-500">*</span></label><NumberStepper id="child-class-number" label="반" value={classNumber} min={1} max={20} suffix="반" onChange={setClassNumber} /><span className="mt-2 block text-xs font-medium text-zinc-500">현재 반을 선택해 주세요.</span></div>
+          <div className="font-bold"><label htmlFor="child-grade">학년 <span className="text-red-500">*</span></label><NumberStepper id="child-grade" label="학년" value={grade} min={1} max={6} suffix="학년" onChange={setGrade} /></div>
+          <div className="font-bold"><label htmlFor="child-class-number">반 <span className="text-red-500">*</span></label><NumberStepper id="child-class-number" label="반" value={classNumber} min={1} max={20} suffix="반" onChange={setClassNumber} /></div>
         </div>
       </section>
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 md:p-7 dark:border-zinc-800 dark:bg-[#101419]">
         <StepTitle step={2}>학교 선택</StepTitle>
         <div className="mt-5 flex flex-col gap-3">
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <label className="flex h-12 flex-1 items-center gap-3 rounded-[10px] border border-zinc-300 px-4 transition focus-within:border-mint-500 focus-within:ring-2 focus-within:ring-mint-500/20 dark:border-zinc-700"><Search className="h-4 w-4 shrink-0 text-zinc-400" /><span className="sr-only">학교명</span><input type="search" className="h-full w-full bg-transparent font-semibold outline-none" value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="학교명을 입력해 주세요" /></label>
-            <button type="button" onClick={(event) => void handleSearch(event)} disabled={searching} className="h-12 min-w-24 rounded-[10px] bg-mint-500 px-5 text-sm font-bold text-white transition-colors hover:bg-mint-600 disabled:opacity-50">{searching ? "검색 중" : "검색"}</button>
+          <div className="flex gap-2">
+            <label className="flex h-12 min-w-0 flex-1 items-center gap-2 rounded-[10px] border border-zinc-300 px-4 transition focus-within:border-mint-500 focus-within:ring-2 focus-within:ring-mint-500/20 dark:border-zinc-700"><Search className="h-4 w-4 shrink-0 text-zinc-400" /><span className="sr-only">학교명</span><input type="search" className="h-full min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none" value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="학교명을 입력해 주세요" /></label>
+            <button type="button" onClick={(event) => void handleSearch(event)} disabled={searching} className="h-12 w-20 shrink-0 rounded-[10px] bg-mint-500 px-3 text-sm font-bold text-white transition-colors hover:bg-mint-600 disabled:opacity-50">{searching ? "검색 중" : "검색"}</button>
           </div>
           {searchError && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700 dark:bg-red-950/30 dark:text-red-300"><AlertTriangle className="mr-2 inline h-4 w-4" />{searchError}</p>}
           {searching && <div className="flex h-28 items-center justify-center text-sm font-bold text-zinc-500"><LoaderCircle className="mr-2 h-5 w-5 animate-spin" />학교를 검색하고 있습니다.</div>}
@@ -144,7 +144,7 @@ export function ChildRegistrationForm() {
 
       <section className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-5 md:p-7 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800 dark:bg-[#101419]">
         <div><StepTitle step={3}>저장</StepTitle><p className="mt-2 grid grid-cols-[1.5rem_minmax(0,1fr)] items-center gap-x-1 text-sm font-medium text-zinc-500"><Info className="h-4 w-4 justify-self-center" /><span>저장 후 알레르기 설정으로 이어서 진행할 수 있어요.</span></p></div>
-        <div className="flex gap-3"><Link href="/children" className="inline-flex h-12 min-w-28 items-center justify-center rounded-[10px] border border-zinc-300 px-6 font-bold dark:border-zinc-700">취소</Link><button type="submit" disabled={saving || !name.trim() || !selected} className="h-12 min-w-32 rounded-[10px] bg-mint-500 px-7 font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50">{saving ? "저장 중" : "저장"}</button></div>
+        <div className="grid w-full grid-cols-2 gap-3 sm:flex sm:w-auto"><Link href="/children" className="inline-flex h-12 w-full items-center justify-center rounded-[10px] border border-zinc-300 px-5 font-bold sm:w-28 dark:border-zinc-700">취소</Link><button type="submit" disabled={saving || !name.trim() || !selected} className="h-12 w-full rounded-[10px] bg-mint-500 px-5 font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50 sm:w-28">{saving ? "저장 중" : "저장"}</button></div>
       </section>
       {formError && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300"><AlertTriangle className="mr-2 inline h-4 w-4" />{formError}{(formError === "로그인이 필요합니다." || formError.includes("인증")) && <Link href="/auth/login" className="ml-3 underline">로그인</Link>}</div>}
     </form>
