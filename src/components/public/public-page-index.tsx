@@ -92,10 +92,10 @@ const pageLinks = [
     id: "08",
     title: "08_08_child_registration",
     label: "자녀 등록",
-    description: "학교와 학년·반 정보를 입력해 자녀를 등록하는 화면입니다.",
+    description: "상세 리뷰를 마치고 확정된 자녀 등록 화면입니다.",
     href: "/children/new",
-    status: "리뷰 필요",
-    icon: ClipboardCheck,
+    status: "완료",
+    icon: CheckCircle2,
   },
   {
     id: "09",
