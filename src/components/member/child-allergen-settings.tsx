@@ -4,20 +4,19 @@ import {
   AlertTriangle,
   Check,
   CheckCircle2,
-  ChevronRight,
   HelpCircle,
-  Info,
   LoaderCircle,
   RefreshCw,
-  Utensils,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Allergen,
   ChildProfile,
+  School,
   getAllergens,
   getChild,
+  getSchool,
   MemberApiError,
   replaceChildAllergens,
 } from "@/lib/member-api";
@@ -38,6 +37,7 @@ function sameCodes(left: number[], right: number[]) {
 
 export function ChildAllergenSettings({ childId }: { childId: string }) {
   const [child, setChild] = useState<ChildProfile | null>(null);
+  const [school, setSchool] = useState<School | null>(null);
   const [allergens, setAllergens] = useState<Allergen[]>([]);
   const [selectedCodes, setSelectedCodes] = useState<number[]>([]);
   const [savedCodes, setSavedCodes] = useState<number[] | null>(null);
@@ -51,11 +51,13 @@ export function ChildAllergenSettings({ childId }: { childId: string }) {
     setLoading(true);
     setLoadError(null);
     try {
-      const [profile, allergenList] = await Promise.all([
-        getChild(childId),
+      const profile = await getChild(childId);
+      const [allergenList, schoolInfo] = await Promise.all([
         getAllergens(childId === "preview"),
+        getSchool(profile.schoolId).catch(() => null),
       ]);
       setChild(profile);
+      setSchool(schoolInfo);
       setAllergens([...allergenList].sort((a, b) => a.code - b.code));
       setSelectedCodes([]);
       setSavedCodes(null);
@@ -90,8 +92,8 @@ export function ChildAllergenSettings({ childId }: { childId: string }) {
     setNotice("");
   }
 
-  function resetSelection() {
-    setSelectedCodes(savedCodes ?? []);
+  function clearSelection() {
+    setSelectedCodes([]);
     setSaveError("");
     setNotice("");
   }
@@ -162,33 +164,11 @@ export function ChildAllergenSettings({ childId }: { childId: string }) {
         자녀의 알레르기 코드를 선택해 급식 위험 확인 기준으로 저장하세요.
       </p>
 
-      <section className="flex flex-col gap-5 rounded-2xl border border-zinc-200 bg-white p-5 md:p-7 lg:flex-row lg:items-center lg:justify-between dark:border-zinc-800 dark:bg-[#101419]">
-        <div className="flex items-center gap-4">
-          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-mint-50 text-xl font-extrabold text-mint-700 dark:bg-mint-950/30 dark:text-mint-300">
-            {child.name.slice(0, 1)}
-          </span>
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-extrabold">{child.name}</h1>
-              <span className="rounded-full border border-zinc-200 px-3 py-1 text-xs font-bold dark:border-zinc-700">
-                {child.grade}학년 {child.classNumber}반
-              </span>
-            </div>
-          </div>
-        </div>
-        <Link href={`/children/${childId}/meals`} className="inline-flex h-12 items-center justify-center gap-2 rounded-[10px] border border-zinc-300 px-5 font-bold text-mint-600 dark:border-zinc-700 dark:text-mint-400">
-          <Utensils className="h-4 w-4" /> 개인 급식 보기 <ChevronRight className="h-4 w-4" />
-        </Link>
-      </section>
-
-      <section className="flex gap-4 rounded-2xl border border-blue-200 bg-blue-50 p-5 md:p-6 dark:border-blue-900 dark:bg-blue-950/20">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-blue-300 text-blue-600 dark:border-blue-800 dark:text-blue-300">
-          <Info className="h-5 w-5" />
-        </span>
-        <div>
-          <h2 className="font-extrabold">알레르기 설정 안내</h2>
-          <p className="mt-1 text-sm font-medium leading-6 text-zinc-600 dark:text-zinc-300">
-            자녀에게 해당하는 알레르기 유발 성분을 선택해 주세요.
+      <section className="rounded-2xl border border-zinc-200 bg-white p-5 md:px-7 dark:border-zinc-800 dark:bg-[#101419]">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-extrabold tracking-[-0.02em]">{child.name}</h1>
+          <p className="mt-1 truncate text-sm font-semibold text-zinc-500 dark:text-zinc-400">
+            {school ? `${school.name} · ` : ""}{child.grade}학년 {child.classNumber}반
           </p>
         </div>
       </section>
@@ -205,9 +185,11 @@ export function ChildAllergenSettings({ childId }: { childId: string }) {
             <h2 className="text-xl font-extrabold">알레르기 코드 선택</h2>
             <p className="mt-1 text-sm font-medium text-zinc-500">해당하는 알레르기 코드를 선택해 주세요. 복수 선택할 수 있습니다.</p>
           </div>
-          <Link href="/allergens" className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-[10px] border border-zinc-300 px-4 text-sm font-bold dark:border-zinc-700">
-            알레르기 코드 안내 <HelpCircle className="h-4 w-4" />
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/allergens" className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-[10px] border border-zinc-300 px-4 text-sm font-bold transition-colors hover:border-mint-500 dark:border-zinc-700">
+              코드 안내 <HelpCircle className="h-4 w-4" />
+            </Link>
+          </div>
         </div>
 
         {allergens.length === 0 ? (
@@ -219,16 +201,16 @@ export function ChildAllergenSettings({ childId }: { childId: string }) {
             </button>
           </div>
         ) : (
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="mt-5 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
             {allergens.map((allergen) => {
               const checked = selectedCodes.includes(allergen.code);
               return (
-                <label key={allergen.code} className={`flex min-h-14 cursor-pointer items-center gap-3 rounded-[10px] border px-4 transition-colors ${checked ? "border-mint-500 bg-mint-50 text-mint-800 dark:bg-mint-950/30 dark:text-mint-200" : "border-zinc-200 hover:border-zinc-400 dark:border-zinc-700"}`}>
+                <label key={allergen.code} className={`flex min-h-14 cursor-pointer items-center gap-3 rounded-[10px] border px-4 transition-colors focus-within:ring-2 focus-within:ring-mint-500/20 ${checked ? "border-mint-500 bg-mint-50 text-mint-800 dark:bg-mint-950/30 dark:text-mint-200" : "border-zinc-200 hover:border-mint-400 dark:border-zinc-700"}`}>
                   <input type="checkbox" checked={checked} onChange={() => toggleCode(allergen.code)} className="sr-only" />
                   <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${checked ? "border-mint-500 bg-mint-500 text-white" : "border-zinc-400"}`} aria-hidden="true">
                     {checked && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
                   </span>
-                  <span className="inline-flex min-w-7 justify-center rounded-md border border-zinc-300 px-1.5 py-0.5 text-xs font-extrabold dark:border-zinc-600">{allergen.code}</span>
+                  <span className={`inline-flex min-w-6 justify-center rounded-md px-1.5 py-0.5 text-xs font-extrabold ${checked ? "bg-mint-500/15 text-mint-800 dark:text-mint-200" : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-300"}`}>{allergen.code}</span>
                   <span className="truncate text-sm font-extrabold">{allergen.name}</span>
                 </label>
               );
@@ -239,22 +221,23 @@ export function ChildAllergenSettings({ childId }: { childId: string }) {
         <div className="mt-5 flex flex-col gap-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 lg:flex-row lg:items-center lg:justify-between dark:border-zinc-800 dark:bg-zinc-950/50">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-bold text-zinc-500">선택 코드</span>
               {selectedAllergens.length === 0 ? (
-                <span className="text-sm font-semibold text-zinc-400">선택 없음</span>
+                <span className="text-sm font-semibold text-zinc-400">선택한 성분 없음</span>
               ) : (
-                selectedAllergens.map((allergen) => (
-                  <span key={allergen.code} className="rounded-full border border-mint-200 bg-mint-50 px-3 py-1 text-xs font-bold text-mint-700 dark:border-mint-900 dark:bg-mint-950/30 dark:text-mint-300">
-                    {allergen.code} {allergen.name}
-                  </span>
-                ))
+                <>
+                  <span className="text-sm font-bold text-zinc-500">선택한 성분 ({selectedCodes.length}개)</span>
+                  {selectedAllergens.map((allergen) => (
+                    <span key={allergen.code} className="rounded-full border border-mint-200 bg-mint-50 px-3 py-1 text-xs font-bold text-mint-700 dark:border-mint-900 dark:bg-mint-950/30 dark:text-mint-300">
+                      {allergen.code} {allergen.name}
+                    </span>
+                  ))}
+                </>
               )}
-              <span className="text-sm font-bold text-mint-600 dark:text-mint-400">총 {selectedCodes.length}개</span>
             </div>
             {saveError && <p role="alert" className="mt-2 text-sm font-bold text-red-600 dark:text-red-400"><AlertTriangle className="mr-1 inline h-4 w-4" />{saveError}</p>}
           </div>
           <div className="grid shrink-0 grid-cols-2 gap-2">
-            <button type="button" onClick={resetSelection} disabled={saving || !dirty} className="h-12 rounded-[10px] border border-zinc-300 px-6 font-bold disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700">취소</button>
+            <button type="button" onClick={clearSelection} disabled={saving || selectedCodes.length === 0} className="h-12 rounded-[10px] border border-zinc-300 px-6 font-bold disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700">선택 해제</button>
             <button type="button" onClick={() => void save()} disabled={saving || !dirty || allergens.length === 0} className="h-12 rounded-[10px] bg-mint-500 px-8 font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50">{saving ? "저장 중" : "저장"}</button>
           </div>
         </div>

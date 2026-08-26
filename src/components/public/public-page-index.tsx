@@ -112,8 +112,8 @@ const pageLinks = [
     label: "자녀 알레르기 설정",
     description: "자녀별 알레르기 유발 성분을 선택하는 화면입니다.",
     href: "/children/preview/allergens",
-    status: "리뷰 필요",
-    icon: ClipboardCheck,
+    status: "완료",
+    icon: CheckCircle2,
   },
   {
     id: "11",
