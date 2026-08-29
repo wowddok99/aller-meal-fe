@@ -3,8 +3,9 @@
 import { AlertTriangle, Check, ChevronDown, Info, LoaderCircle, Minus, Plus, School as SchoolIcon, Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { createChild, MemberApiError, School, searchSchools } from "@/lib/member-api";
+import { UnsavedChangesDialog } from "@/components/member/unsaved-changes-dialog";
 
 const inputClass = "h-12 w-full rounded-[10px] border border-zinc-300 bg-white px-4 font-semibold outline-none transition focus:border-mint-500 focus:ring-2 focus:ring-mint-500/20 dark:border-zinc-700 dark:bg-[#0b0f13]";
 
@@ -90,6 +91,19 @@ export function ChildRegistrationForm() {
   const [searchError, setSearchError] = useState("");
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
+
+  const dirty = Boolean(name.trim() || keyword.trim() || selected || grade !== 1 || classNumber !== 1);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const preventUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", preventUnload);
+    return () => window.removeEventListener("beforeunload", preventUnload);
+  }, [dirty]);
 
   async function handleSearch(event: FormEvent) {
     event.preventDefault();
@@ -112,6 +126,19 @@ export function ChildRegistrationForm() {
       router.push(`/children/${child.id}/allergens`);
       router.refresh();
     } catch (reason) { setFormError(reason instanceof MemberApiError ? messageFor(reason) : "자녀를 등록하지 못했습니다."); setSaving(false); }
+  }
+
+  function requestLeave() {
+    if (dirty) {
+      setLeaveConfirmOpen(true);
+      return;
+    }
+    router.push("/children");
+  }
+
+  function leaveWithoutSaving() {
+    setLeaveConfirmOpen(false);
+    router.push("/children");
   }
 
   return (
@@ -144,9 +171,10 @@ export function ChildRegistrationForm() {
 
       <section className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-5 md:p-7 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800 dark:bg-[#101419]">
         <div><StepTitle step={3}>저장</StepTitle><p className="mt-2 grid grid-cols-[1.5rem_minmax(0,1fr)] items-center gap-x-1 text-sm font-medium text-zinc-500"><Info className="h-4 w-4 justify-self-center" /><span>저장 후 알레르기 설정으로 이어서 진행할 수 있어요.</span></p></div>
-        <div className="grid w-full grid-cols-2 gap-3 sm:flex sm:w-auto"><Link href="/children" className="inline-flex h-12 w-full items-center justify-center rounded-[10px] border border-zinc-300 px-5 font-bold sm:w-28 dark:border-zinc-700">취소</Link><button type="submit" disabled={saving || !name.trim() || !selected} className="h-12 w-full rounded-[10px] bg-mint-500 px-5 font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50 sm:w-28">{saving ? "저장 중" : "저장"}</button></div>
+        <div className="grid w-full grid-cols-2 gap-3 sm:flex sm:w-auto"><button type="button" onClick={requestLeave} disabled={saving} className="inline-flex h-12 w-full items-center justify-center rounded-[10px] border border-zinc-300 bg-white px-5 font-bold text-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-28 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-200">취소</button><button type="submit" disabled={saving || !name.trim() || !selected} className="h-12 w-full rounded-[10px] bg-mint-500 px-5 font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50 sm:w-28">{saving ? "저장 중" : "저장"}</button></div>
       </section>
       {formError && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300"><AlertTriangle className="mr-2 inline h-4 w-4" />{formError}{(formError === "로그인이 필요합니다." || formError.includes("인증")) && <Link href="/auth/login" className="ml-3 underline">로그인</Link>}</div>}
+      <UnsavedChangesDialog open={leaveConfirmOpen} onStay={() => setLeaveConfirmOpen(false)} onLeave={leaveWithoutSaving} />
     </form>
   );
 }
