@@ -20,7 +20,7 @@ export function PublicPageShell({ children, showHeader = true }: PublicPageShell
               className="flex shrink-0 items-center transition-opacity hover:opacity-90 active:opacity-80"
               aria-label="AllerMeal 홈"
             >
-              <AllerMealLogo variant="full" />
+              <AllerMealLogo variant="full" className="relative top-[2px]" />
             </Link>
 
             <PublicNavLinks />

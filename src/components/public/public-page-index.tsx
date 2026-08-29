@@ -119,10 +119,10 @@ const pageLinks = [
     id: "11",
     title: "11_11_notification_preference",
     label: "알림 설정",
-    description: "자녀별 급식 알림 시간과 수신 여부를 설정하는 화면입니다.",
+    description: "상세 리뷰를 마치고 확정된 알림 설정 화면입니다.",
     href: "/children/preview/notification-preference",
-    status: "리뷰 필요",
-    icon: ClipboardCheck,
+    status: "완료",
+    icon: CheckCircle2,
   },
   {
     id: "12",

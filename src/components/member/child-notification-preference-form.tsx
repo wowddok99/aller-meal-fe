@@ -2,25 +2,22 @@
 
 import {
   AlertTriangle,
-  Bell,
   CheckCircle2,
-  ChevronRight,
   Clock3,
   Info,
   LoaderCircle,
   LockKeyhole,
   RefreshCw,
-  Save,
-  ShieldCheck,
-  Utensils,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ChildNotificationPreference,
   ChildProfile,
   getChild,
   getChildNotificationPreference,
+  getSchool,
   MemberApiError,
   updateChildNotificationPreference,
 } from "@/lib/member-api";
@@ -60,7 +57,9 @@ function formatDateTime(value?: string) {
 }
 
 export function ChildNotificationPreferenceForm({ childId }: { childId: string }) {
+  const router = useRouter();
   const [child, setChild] = useState<ChildProfile | null>(null);
+  const [schoolName, setSchoolName] = useState("");
   const [preference, setPreference] = useState<ChildNotificationPreference | null>(null);
   const [form, setForm] = useState<FormValue>({ emailEnabled: false, notificationTime: DEFAULT_TIME });
   const [saved, setSaved] = useState<FormValue>({ emailEnabled: false, notificationTime: DEFAULT_TIME });
@@ -69,6 +68,7 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [notice, setNotice] = useState("");
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -76,6 +76,12 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
     try {
       const profile = await getChild(childId);
       setChild(profile);
+      try {
+        const school = await getSchool(profile.schoolId);
+        setSchoolName(school.name);
+      } catch {
+        setSchoolName("");
+      }
       try {
         const result = await getChildNotificationPreference(childId);
         const next = {
@@ -112,14 +118,18 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
     [form, saved],
   );
 
+  useEffect(() => {
+    if (!dirty) return;
+    const preventUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", preventUnload);
+    return () => window.removeEventListener("beforeunload", preventUnload);
+  }, [dirty]);
+
   function updateForm(next: Partial<FormValue>) {
     setForm((current) => ({ ...current, ...next }));
-    setSaveError("");
-    setNotice("");
-  }
-
-  function reset() {
-    setForm(saved);
     setSaveError("");
     setNotice("");
   }
@@ -156,6 +166,27 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
     }
   }
 
+  function requestLeave() {
+    if (dirty) {
+      setLeaveConfirmOpen(true);
+      return;
+    }
+    navigateAway();
+  }
+
+  function leaveWithoutSaving() {
+    setLeaveConfirmOpen(false);
+    navigateAway();
+  }
+
+  function navigateAway() {
+    if (window.history.length > 1) {
+      router.back();
+      return;
+    }
+    router.push(`/children/${childId}`);
+  }
+
   if (loading) {
     return (
       <div className="mx-auto flex min-h-80 max-w-[1220px] items-center justify-center px-5 text-sm font-bold text-zinc-500">
@@ -186,59 +217,73 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
 
   if (!child) return null;
 
+  const notificationSummary = form.emailEnabled
+    ? `매일 ${form.notificationTime}에 위험 메뉴가 있을 때 이메일로 알려드려요.`
+    : "이메일 알림이 꺼져 있어요. 켜면 위험 메뉴를 미리 알려드릴게요.";
+
   return (
     <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">
+      <h1 className="sr-only">알림 설정</h1>
       <p className="text-base font-medium leading-6 text-zinc-500 dark:text-zinc-400">급식 알림을 받을 시간과 사용 여부를 설정하세요.</p>
 
-      <section className="flex flex-col gap-5 rounded-2xl border border-zinc-200 bg-white p-5 md:p-7 lg:flex-row lg:items-center lg:justify-between dark:border-zinc-800 dark:bg-[#101419]">
-        <div className="flex items-center gap-4">
-          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-mint-50 text-xl font-extrabold text-mint-700 dark:bg-mint-950/30 dark:text-mint-300">{child.name.slice(0, 1)}</span>
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-extrabold">{child.name}</h1>
-              <span className="rounded-full border border-zinc-200 px-3 py-1 text-xs font-bold dark:border-zinc-700">{child.grade}학년 {child.classNumber}반</span>
-            </div>
+      <section className="rounded-2xl border border-zinc-200 bg-white p-5 md:p-6 dark:border-zinc-800 dark:bg-[#101419]">
+        <div>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h2 className="text-2xl font-extrabold tracking-[-0.02em]">{child.name}</h2>
+            <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-bold text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">{child.grade}학년 {child.classNumber}반</span>
           </div>
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Link href={`/children/${childId}/meals`} className="inline-flex h-11 items-center justify-center gap-2 rounded-[10px] border border-zinc-300 px-4 text-sm font-bold dark:border-zinc-700"><Utensils className="h-4 w-4" /> 개인 급식 <ChevronRight className="h-4 w-4" /></Link>
-          <Link href={`/children/${childId}/allergens`} className="inline-flex h-11 items-center justify-center gap-2 rounded-[10px] border border-zinc-300 px-4 text-sm font-bold dark:border-zinc-700"><ShieldCheck className="h-4 w-4" /> 알레르기 설정 <ChevronRight className="h-4 w-4" /></Link>
+          {schoolName && <p className="mt-1.5 text-sm font-medium text-zinc-500 dark:text-zinc-400">{schoolName}</p>}
         </div>
       </section>
 
       {notice && <div role="status" className="flex items-center gap-2 rounded-xl border border-mint-200 bg-mint-50 px-4 py-3 text-sm font-bold text-mint-700 dark:border-mint-900 dark:bg-mint-950/30 dark:text-mint-300"><CheckCircle2 className="h-4 w-4" /> {notice}</div>}
 
-      <section className="rounded-2xl border border-zinc-200 bg-white p-5 md:p-7 dark:border-zinc-800 dark:bg-[#101419]">
-        <div className="flex items-center gap-3 border-b border-zinc-200 pb-5 dark:border-zinc-800">
-          <Bell className="h-6 w-6 text-mint-500" /><h2 className="text-xl font-extrabold">알림 설정</h2>
+      <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-[#101419]">
+        <div className="border-b border-zinc-200 p-5 md:p-7 dark:border-zinc-800">
+          <div><h2 className="text-xl font-extrabold tracking-[-0.02em]">알림 설정</h2><p className="mt-0.5 text-sm font-medium text-zinc-500 dark:text-zinc-400">위험 메뉴를 미리 확인할 수 있도록 설정해요.</p></div>
         </div>
-        <div className="divide-y divide-zinc-200 rounded-xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+        <div className="p-5 md:p-7">
+        <div className="divide-y divide-zinc-200 overflow-hidden rounded-xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
           <div className="flex min-h-20 items-center justify-between gap-5 p-4 md:px-5">
             <div><h3 className="font-extrabold">이메일 알림</h3><p className="mt-1 text-sm font-medium text-zinc-500">이메일로 위험 메뉴 알림을 받아요.</p></div>
-            <button type="button" role="switch" aria-checked={form.emailEnabled} aria-label="이메일 알림 사용" onClick={() => updateForm({ emailEnabled: !form.emailEnabled })} disabled={saving} className={`relative h-8 w-14 shrink-0 rounded-full transition-colors ${form.emailEnabled ? "bg-mint-500" : "bg-zinc-300 dark:bg-zinc-700"}`}><span className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-transform ${form.emailEnabled ? "translate-x-7" : "translate-x-1"}`} /></button>
+            <button type="button" role="switch" aria-checked={form.emailEnabled} aria-label="이메일 알림 사용" onClick={() => updateForm({ emailEnabled: !form.emailEnabled })} disabled={saving} className={`relative h-7 w-12 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${form.emailEnabled ? "bg-mint-500" : "bg-zinc-300 dark:bg-zinc-700"}`}><span className={`absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${form.emailEnabled ? "translate-x-5" : "translate-x-0"}`} /></button>
           </div>
           <label className="flex min-h-20 flex-col justify-between gap-3 p-4 md:flex-row md:items-center md:px-5">
             <span><span className="block font-extrabold">알림 발송 시간</span><span className="mt-1 block text-sm font-medium text-zinc-500">위험 메뉴 알림을 받을 시간을 설정해요.</span></span>
-            <span className="relative block w-full md:w-52"><Clock3 className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" /><input type="time" value={form.notificationTime} onChange={(event) => updateForm({ notificationTime: event.target.value })} disabled={saving || !form.emailEnabled} required className="h-12 w-full rounded-[10px] border border-zinc-300 bg-transparent pl-12 pr-4 font-bold outline-none focus:border-mint-500 focus:ring-2 focus:ring-mint-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700" /></span>
+            <span className="relative block w-full md:w-52"><Clock3 className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" /><input type="time" value={form.notificationTime} onChange={(event) => updateForm({ notificationTime: event.target.value })} disabled={saving || !form.emailEnabled} required className="h-12 w-full appearance-none rounded-[10px] border border-zinc-300 bg-white pl-11 pr-4 text-sm font-bold text-zinc-700 outline-none focus:border-mint-500 focus:ring-2 focus:ring-mint-500/20 disabled:cursor-not-allowed disabled:opacity-50 [&::-webkit-calendar-picker-indicator]:opacity-0 dark:border-zinc-700 dark:bg-[#0b0f13] dark:text-zinc-200" /></span>
           </label>
           <div className="flex min-h-20 flex-col justify-between gap-3 p-4 md:flex-row md:items-center md:px-5">
             <div><h3 className="font-extrabold">시간대</h3><p className="mt-1 text-sm font-medium text-zinc-500">서비스 기본 시간대로 고정되어 있어요.</p></div>
-            <div className="flex h-12 w-full items-center gap-3 rounded-[10px] border border-zinc-300 bg-zinc-50 px-4 font-bold text-zinc-600 md:w-52 dark:border-zinc-700 dark:bg-zinc-950/50 dark:text-zinc-300"><LockKeyhole className="h-4 w-4" /> {FIXED_TIMEZONE}</div>
+            <div className="flex h-12 w-full items-center gap-3 rounded-[10px] border border-zinc-300 bg-white px-4 text-sm font-bold text-zinc-700 md:w-52 dark:border-zinc-700 dark:bg-[#0b0f13] dark:text-zinc-200"><LockKeyhole className="h-4 w-4 shrink-0" /> <span>{FIXED_TIMEZONE}</span></div>
           </div>
         </div>
-        <div className="mt-4 flex flex-col gap-3 text-sm font-medium text-zinc-500 md:flex-row md:items-center md:justify-between">
-          <p className="flex items-start gap-2"><Info className="mt-0.5 h-4 w-4 shrink-0" /> 매일 설정한 시간에 위험 메뉴가 있으면 이메일로 알려드려요.</p>
-          <p>마지막 수정 {formatDateTime(preference?.updatedAt)}</p>
+        <div className={`mt-4 flex flex-col gap-2 rounded-xl border px-4 py-3 text-sm font-semibold md:flex-row md:items-center md:justify-between ${form.emailEnabled ? "border-mint-500/30 bg-mint-500/[0.08] text-mint-600 dark:border-mint-500/30 dark:bg-mint-500/10 dark:text-mint-400" : "border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950/40 dark:text-zinc-300"}`}>
+          <p className="flex items-start gap-2"><Info className="mt-0.5 h-4 w-4 shrink-0" /> {notificationSummary}</p>
+          <p className="shrink-0 text-xs font-medium text-zinc-500 dark:text-zinc-400">마지막 수정 {formatDateTime(preference?.updatedAt)}</p>
+        </div>
         </div>
       </section>
 
-      <section className="flex flex-col gap-5 rounded-2xl border border-zinc-200 bg-white p-5 md:flex-row md:items-center md:justify-between md:p-7 dark:border-zinc-800 dark:bg-[#101419]">
-        <div><div className="flex items-center gap-3"><Save className="h-6 w-6 text-mint-500" /><h2 className="text-xl font-extrabold">설정 저장</h2></div><p className="mt-2 text-sm font-medium text-zinc-500">변경한 알림 설정을 저장합니다.</p>{saveError && <p role="alert" className="mt-2 flex items-center gap-2 text-sm font-bold text-red-600 dark:text-red-400"><AlertTriangle className="h-4 w-4" /> {saveError}</p>}</div>
-        <div className="grid grid-cols-2 gap-2 md:min-w-80">
-          <button type="button" onClick={reset} disabled={saving || !dirty} className="h-12 rounded-[10px] border border-zinc-300 px-6 font-bold disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700">취소</button>
-          <button type="button" onClick={() => void save()} disabled={saving || !dirty} className="inline-flex h-12 items-center justify-center gap-2 rounded-[10px] bg-mint-500 px-8 font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50">{saving && <LoaderCircle className="h-4 w-4 animate-spin" />}{saving ? "저장 중" : "저장"}</button>
+      {saveError && <p role="alert" className="flex items-center gap-2 text-sm font-bold text-red-600 dark:text-red-400"><AlertTriangle className="h-4 w-4" /> {saveError}</p>}
+      <div className="flex justify-end">
+        <div className="grid w-full grid-cols-2 gap-3 md:flex md:w-auto">
+          <button type="button" onClick={requestLeave} disabled={saving} className="inline-flex h-11 w-full items-center justify-center rounded-[10px] border border-zinc-300 bg-white px-5 text-sm font-bold text-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 md:w-24 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-200">취소</button>
+          <button type="button" onClick={() => void save()} disabled={saving || !dirty} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[10px] bg-mint-500 px-5 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50 md:w-24">{saving && <LoaderCircle className="h-4 w-4 animate-spin" />}{saving ? "저장 중" : "저장"}</button>
         </div>
-      </section>
+      </div>
+
+      {leaveConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-5" role="presentation">
+          <section role="alertdialog" aria-modal="true" aria-labelledby="leave-confirm-title" aria-describedby="leave-confirm-description" className="w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl shadow-black/10 dark:border-zinc-800 dark:bg-[#101419] dark:shadow-black/30">
+            <h2 id="leave-confirm-title" className="text-lg font-extrabold tracking-[-0.02em]">변경 사항을 저장하지 않고 나갈까요?</h2>
+            <p id="leave-confirm-description" className="mt-2 text-sm font-medium leading-6 text-zinc-500 dark:text-zinc-400">저장하지 않은 알림 설정은 반영되지 않습니다.</p>
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button type="button" onClick={leaveWithoutSaving} className="h-11 rounded-[10px] border border-zinc-300 bg-white px-4 text-sm font-bold text-zinc-700 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-200">나가기</button>
+              <button type="button" onClick={() => setLeaveConfirmOpen(false)} className="h-11 rounded-[10px] bg-mint-500 px-4 text-sm font-extrabold text-white">계속 편집</button>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

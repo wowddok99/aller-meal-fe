@@ -33,11 +33,11 @@ export function MemberShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <main className="min-h-[100dvh] overflow-x-hidden bg-zinc-50 text-zinc-950 dark:bg-canvas dark:text-zinc-50">
+    <main className="min-h-[100dvh] overflow-x-hidden bg-[#f4f6f8] text-zinc-950 dark:bg-canvas dark:text-zinc-50">
       <header className="border-b border-zinc-200 bg-white dark:border-zinc-900 dark:bg-[#06080b]">
         <nav className="mx-auto flex h-[50px] w-full max-w-[1220px] items-center justify-between px-5">
           <div className="flex h-full items-center gap-8">
-            <Link href="/" aria-label="AllerMeal 홈"><AllerMealLogo variant="full" /></Link>
+            <Link href="/" aria-label="AllerMeal 홈"><AllerMealLogo variant="full" className="relative top-[2px]" /></Link>
             <div className="hidden h-full items-center gap-8 md:flex">
               {links.map((link) => {
                 const active = link.href === "/children" ? pathname.startsWith("/children") : pathname === link.href;
