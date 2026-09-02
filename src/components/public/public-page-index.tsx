@@ -128,10 +128,10 @@ const pageLinks = [
     id: "12",
     title: "12_12_personalized_meals",
     label: "개인화 급식",
-    description: "자녀의 알레르기 설정을 반영한 급식 정보를 확인하는 화면입니다.",
+    description: "상세 리뷰를 마치고 확정된 개인화 급식 화면입니다.",
     href: "/children/preview/meals",
-    status: "리뷰 필요",
-    icon: ClipboardCheck,
+    status: "완료",
+    icon: CheckCircle2,
   },
   {
     id: "13",
