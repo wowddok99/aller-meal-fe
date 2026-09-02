@@ -1,3 +1,8 @@
+import type {
+  NotificationHistoryItemResponse as GeneratedNotificationHistoryItem,
+  NotificationHistoryResponse as GeneratedNotificationHistory,
+} from "@/generated/api/member/models";
+
 export type ChildProfile = { id: string; name: string; grade: number; classNumber: number; schoolId: string; createdAt: string; updatedAt: string };
 export type School = { id: string; neisSchoolCode: string; educationOfficeCode: string; name: string; address: string; region: string };
 export type SchoolSearchResult = { schools: School[]; page: number; pageSize: number; totalCount: number };
@@ -12,8 +17,8 @@ export type MealOrigin = { ingredients: string[]; origin: string };
 export type PersonalizedMeal = { mealId: string; mealDate: string; mealType: string; sourceReceivedAt: string; labelingStatus: string; nutritionInfo: string; originInfo: string; origins?: MealOrigin[]; riskLevel: string; riskVersion: string; items: PersonalizedMealItem[] };
 export type PersonalizedMealQuery = { childId: string; schoolId: string; rangeStart: string; rangeEnd: string; collectionStatus: string; retryAfterSeconds: number; meals: PersonalizedMeal[]; pendingTargets: Array<{ mealDate: string; mealType: string }> };
 export type PersonalizedMealMode = "today" | "daily" | "weekly";
-export type NotificationHistoryItem = { notificationId: string; notificationDate: string; channel: string; reason: string; status: string; attemptCount: number; sentAt: string | null; failureCode: string | null; createdAt: string; updatedAt: string };
-export type NotificationHistory = { notifications: NotificationHistoryItem[]; page: number; pageSize: number; totalCount: number };
+export type NotificationHistoryItem = Required<Pick<GeneratedNotificationHistoryItem, "notificationId" | "notificationDate" | "channel" | "reason" | "status" | "attemptCount" | "createdAt" | "updatedAt">> & Pick<GeneratedNotificationHistoryItem, "sentAt" | "failureCode">;
+export type NotificationHistory = Required<Pick<GeneratedNotificationHistory, "page" | "pageSize" | "totalCount">> & { notifications: NotificationHistoryItem[] };
 export type AccountWithdrawal = { userId: string; withdrawalRequestedAt: string; withdrawalDueAt: string; maskedNotificationCount: number };
 
 export class MemberApiError extends Error {
@@ -117,11 +122,32 @@ function reviewWeeklyMeals(childId: string, date: string): PersonalizedMealQuery
 }
 
 function reviewNotifications(page: number, pageSize: number): NotificationHistory {
-  const notifications: NotificationHistoryItem[] = [
-    { notificationId: "review-notification-1", notificationDate: "2026-07-04", channel: "EMAIL", reason: "RISK_DETECTED", status: "SENT", attemptCount: 1, sentAt: "2026-07-04T08:30:00+09:00", failureCode: null, createdAt: "2026-07-04T08:30:00+09:00", updatedAt: "2026-07-04T08:30:00+09:00" },
-    { notificationId: "review-notification-2", notificationDate: "2026-07-03", channel: "EMAIL", reason: "RISK_UNKNOWN", status: "RETRY_PENDING", attemptCount: 2, sentAt: null, failureCode: null, createdAt: "2026-07-03T06:05:00+09:00", updatedAt: "2026-07-03T06:05:00+09:00" },
-    { notificationId: "review-notification-3", notificationDate: "2026-07-02", channel: "EMAIL", reason: "RISK_DETECTED", status: "FAILED", attemptCount: 3, sentAt: "2026-07-02T17:25:00+09:00", failureCode: "SMTP_TIMEOUT", createdAt: "2026-07-02T17:20:00+09:00", updatedAt: "2026-07-02T17:25:00+09:00" },
-  ];
+  const patterns: Array<{ reason: string; status: string; attemptCount: number; sentTime?: string; failureCode?: string }> = [
+    { reason: "RISK_DETECTED", status: "SENT", attemptCount: 1, sentTime: "08:30" },
+    { reason: "NO_RISK", status: "SENT", attemptCount: 1, sentTime: "06:10" },
+    { reason: "RISK_DETECTED", status: "FAILED", attemptCount: 3, sentTime: "17:25", failureCode: "SMTP_TIMEOUT" },
+    { reason: "RISK_UNKNOWN", status: "RETRY_PENDING", attemptCount: 2 },
+    { reason: "RISK_PENDING", status: "PENDING", attemptCount: 0 },
+    { reason: "NO_MEAL", status: "CANCELED", attemptCount: 1 },
+    { reason: "RISK_LABELING_FAILED", status: "FAILED", attemptCount: 3, sentTime: "08:32", failureCode: "LABELING_FAILED" },
+  ] as const;
+  const notifications: NotificationHistoryItem[] = Array.from({ length: 27 }, (_, index) => {
+    const pattern = patterns[index % patterns.length];
+    const notificationDate = addDays("2026-07-04", -Math.floor(index / 3));
+    const createdTime = pattern.sentTime ?? "06:05";
+    return {
+      notificationId: `review-notification-${index + 1}`,
+      notificationDate,
+      channel: "EMAIL",
+      reason: pattern.reason,
+      status: pattern.status,
+      attemptCount: pattern.attemptCount,
+      ...(pattern.sentTime ? { sentAt: `${notificationDate}T${pattern.sentTime}:00+09:00` } : {}),
+      ...(pattern.failureCode ? { failureCode: pattern.failureCode } : {}),
+      createdAt: `${notificationDate}T${createdTime}:00+09:00`,
+      updatedAt: `${notificationDate}T${createdTime}:00+09:00`,
+    };
+  });
   const start = (page - 1) * pageSize;
   return { notifications: notifications.slice(start, start + pageSize), page, pageSize, totalCount: notifications.length };
 }

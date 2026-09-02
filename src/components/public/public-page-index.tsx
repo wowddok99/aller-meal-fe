@@ -137,10 +137,10 @@ const pageLinks = [
     id: "13",
     title: "13_13_notification_history",
     label: "알림 이력",
-    description: "자녀별 알림 발송 기록과 상태를 확인하는 화면입니다.",
+    description: "상세 리뷰를 마치고 확정된 알림 이력 화면입니다.",
     href: "/children/preview/notifications",
-    status: "리뷰 필요",
-    icon: ClipboardCheck,
+    status: "완료",
+    icon: CheckCircle2,
   },
   {
     id: "14",
