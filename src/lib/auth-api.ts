@@ -54,19 +54,38 @@ export async function signup(request: SignupRequest): Promise<SignupResponse> {
 
 export async function login(request: LoginRequest): Promise<LoginResponse> {
   void request;
-  return { userId: reviewUserId, emailVerificationStatus: "VERIFIED", accessTokenExpiresAt: reviewExpiry, refreshTokenExpiresAt: reviewExpiry };
+  return {
+    userId: reviewUserId,
+    emailVerificationStatus: "VERIFIED",
+    accessTokenExpiresAt: reviewExpiry,
+    refreshTokenExpiresAt: reviewExpiry,
+  };
 }
 
-export async function requestEmailVerification(email: string): Promise<EmailVerificationRequestResponse> {
+export async function logout(): Promise<void> {}
+
+export async function requestEmailVerification(
+  email: string,
+): Promise<EmailVerificationRequestResponse> {
   void email;
   return { emailVerificationStatus: "UNVERIFIED" };
 }
 
-export async function confirmEmailVerification(token: string): Promise<EmailVerificationConfirmResponse> {
+export async function confirmEmailVerification(
+  token: string,
+): Promise<EmailVerificationConfirmResponse> {
   void token;
   return { userId: reviewUserId, emailVerificationStatus: "VERIFIED" };
 }
 
-export async function requestPasswordReset(request: PasswordResetRequest): Promise<void> { void request; }
+export async function requestPasswordReset(
+  request: PasswordResetRequest,
+): Promise<void> {
+  void request;
+}
 
-export async function confirmPasswordReset(request: PasswordResetConfirmRequest): Promise<void> { void request; }
+export async function confirmPasswordReset(
+  request: PasswordResetConfirmRequest,
+): Promise<void> {
+  void request;
+}

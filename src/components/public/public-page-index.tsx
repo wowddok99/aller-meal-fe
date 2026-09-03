@@ -148,8 +148,8 @@ const pageLinks = [
     label: "회원 탈퇴",
     description: "계정 탈퇴를 예약하거나 예약을 취소하는 화면입니다.",
     href: "/account/withdrawal",
-    status: "리뷰 필요",
-    icon: ClipboardCheck,
+    status: "완료",
+    icon: CheckCircle2,
   },
   {
     id: "15",
