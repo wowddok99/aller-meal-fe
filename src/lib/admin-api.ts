@@ -1,34 +1,6 @@
-export type DashboardSummary = {
-  generatedAt: string;
-  collection: {
-    pendingCount: number;
-    runningCount: number;
-    succeededCount: number;
-    failedCount: number;
-  };
-  labeling: {
-    pendingCount: number;
-    labeledCount: number;
-    unknownCount: number;
-    labelingFailedCount: number;
-  };
-  outbox: {
-    pendingCount: number;
-    publishedCount: number;
-  };
-  dlq: {
-    pendingCount: number;
-    reprocessedCount: number;
-  };
-  notifications: {
-    pendingCount: number;
-    sendingCount: number;
-    retryPendingCount: number;
-    sentCount: number;
-    failedCount: number;
-    canceledCount: number;
-  };
-};
+import type { AdminDashboardSummaryResponse } from "@/generated/api/admin/models/adminDashboardSummaryResponse";
+
+export type DashboardSummary = AdminDashboardSummaryResponse;
 
 export type FailedCollectionJob = {
   collectionJobId: string;

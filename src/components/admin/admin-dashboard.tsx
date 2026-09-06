@@ -1,55 +1,86 @@
 "use client";
 
-import { AlertTriangle, ArrowRight, BellRing, DatabaseZap, Inbox, LoaderCircle, RefreshCw, Send, Tag, TriangleAlert } from "lucide-react";
+import { AlertTriangle, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AdminApiError, type DashboardSummary, getDashboardSummary } from "@/lib/admin-api";
 
-type Metric = { label: string; value: number; tone?: "success" | "warning" | "danger" };
-
 const numberFormatter = new Intl.NumberFormat("ko-KR");
+const panel = "rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-[#101419]";
+const focusRing = "focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#101419]";
+const buttonStyle = `inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-[10px] border border-zinc-300 bg-white px-4 text-sm font-extrabold text-zinc-700 transition-colors hover:bg-zinc-50 disabled:cursor-wait disabled:opacity-50 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-200 dark:hover:bg-zinc-800 ${focusRing}`;
 
-function formatTime(value: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short", hour12: false }).format(date);
+function Count({ value }: { value: number | undefined }) {
+  return value === undefined
+    ? <><span aria-hidden="true">-</span><span className="sr-only">미제공</span></>
+    : <>{numberFormatter.format(value)}<span className="ml-1.5 text-sm font-medium text-zinc-500 dark:text-zinc-400">건</span></>;
 }
 
-function MetricCard({ title, description, icon: Icon, metrics, href }: { title: string; description: string; icon: typeof DatabaseZap; metrics: Metric[]; href?: string }) {
-  const content = <><div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-mint-500/10 text-mint-600 dark:text-mint-400"><Icon className="h-6 w-6" /></span><h2 className="text-xl font-extrabold tracking-[-0.02em]">{title}</h2></div><div className="mt-7 grid grid-cols-2 divide-x divide-zinc-200 dark:divide-zinc-800 sm:grid-cols-4">{metrics.map((metric) => <div key={metric.label} className="min-w-0 px-3 first:pl-0 last:pr-0"><p className="truncate text-sm font-bold text-zinc-500 dark:text-zinc-400">{metric.label}</p><p className={`mt-3 text-2xl font-extrabold tabular-nums ${metric.tone === "success" ? "text-mint-600 dark:text-mint-400" : metric.tone === "warning" ? "text-amber-500" : metric.tone === "danger" ? "text-red-500" : ""}`}>{numberFormatter.format(metric.value ?? 0)}</p></div>)}</div><div className="mt-6 flex items-center justify-between border-t border-zinc-200 pt-4 text-sm font-semibold text-zinc-500 dark:border-zinc-800 dark:text-zinc-400"><span>{description}</span>{href ? <ArrowRight className="h-5 w-5" /> : null}</div></>;
-  const className = "rounded-2xl border border-zinc-200 bg-white p-5 transition-colors dark:border-zinc-800 dark:bg-[#101419] md:p-6";
-  return href ? <Link href={href} className={`${className} hover:border-mint-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500`}>{content}</Link> : <section className={className}>{content}</section>;
+function ActionRow({ title, description, primaryLabel, primaryCount, secondaryLabel, secondaryCount, href, linkLabel }: {
+  title: string;
+  description: string;
+  primaryLabel: string;
+  primaryCount: number | undefined;
+  secondaryLabel: string;
+  secondaryCount: number | undefined;
+  href: string;
+  linkLabel: string;
+}) {
+  return (
+    <article className="grid gap-3 py-4 lg:grid-cols-[minmax(0,1fr)_260px_152px] lg:items-center lg:gap-8">
+      <div className="min-w-0">
+        <h3 className="text-lg font-extrabold tracking-[-0.02em]">{title}</h3>
+        <p className="mt-1 text-sm font-medium leading-6 text-zinc-500 dark:text-zinc-400">{description}</p>
+      </div>
+      <dl className="grid w-full grid-cols-2 divide-x divide-zinc-200 dark:divide-zinc-800">
+        <div className="min-w-0 pr-6 text-left lg:text-right">
+          <dt className="text-sm font-semibold text-zinc-600 dark:text-zinc-400">{primaryLabel}</dt>
+          <dd className="mt-1.5 break-all text-2xl font-bold tracking-[-0.03em] text-zinc-950 tabular-nums dark:text-zinc-50"><Count value={primaryCount} /></dd>
+        </div>
+        <div className="min-w-0 pl-6">
+          <dt className="text-sm font-semibold text-zinc-600 dark:text-zinc-400">{secondaryLabel}</dt>
+          <dd className="mt-1.5 break-all text-2xl font-bold tracking-[-0.03em] text-zinc-950 tabular-nums dark:text-zinc-50"><Count value={secondaryCount} /></dd>
+        </div>
+      </dl>
+      <Link href={href} className={`inline-flex min-h-11 shrink-0 items-center justify-start gap-1 whitespace-nowrap rounded-[10px] px-0 text-sm font-extrabold text-mint-700 transition-colors hover:text-mint-800 focus-visible:text-mint-800 dark:text-mint-400 dark:hover:text-mint-300 dark:focus-visible:text-mint-300 justify-self-start lg:justify-self-end ${focusRing}`}>
+        {linkLabel}<ChevronRight aria-hidden="true" className="h-4 w-4" strokeWidth={2.4} />
+      </Link>
+    </article>
+  );
 }
-
-const shortcuts = [
-  { href: "/admin/collection-failures", title: "수집 실패 보기", description: "수집 실패 내역을 확인하고 재시도할 수 있어요.", icon: TriangleAlert, tone: "text-red-500 bg-red-500/10" },
-  { href: "/admin/external-api-logs", title: "외부 API 로그", description: "외부 연계 API 호출 이력과 응답을 확인할 수 있어요.", icon: DatabaseZap, tone: "text-blue-500 bg-blue-500/10" },
-  { href: "/admin/notification-failures", title: "실패 알림", description: "실패한 알림 메시지 목록과 상세 정보를 확인할 수 있어요.", icon: BellRing, tone: "text-amber-500 bg-amber-500/10" },
-  { href: "/admin/notification-dlq-events", title: "DLQ 이벤트", description: "DLQ 이벤트 목록과 재처리 이력을 확인할 수 있어요.", icon: Inbox, tone: "text-violet-500 bg-violet-500/10" },
-];
 
 export function AdminDashboard({ review = false }: { review?: boolean }) {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [error, setError] = useState<AdminApiError | null>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const reviewPath = (path: string) => review ? `/admin/preview${path.slice("/admin".length)}` : path;
 
-  const load = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true); else setLoading(true);
+  const load = useCallback(async () => {
+    setLoading(true);
     setError(null);
-    try { setSummary(await getDashboardSummary(review)); }
-    catch (reason) { setError(reason instanceof AdminApiError ? reason : new AdminApiError(0, "운영 현황을 불러오지 못했습니다.")); }
-    finally { setLoading(false); setRefreshing(false); }
+    try {
+      setSummary(await getDashboardSummary(review));
+    } catch (reason) {
+      setError(reason instanceof AdminApiError ? reason : new AdminApiError(0, "운영 현황을 불러오지 못했습니다."));
+    } finally {
+      setLoading(false);
+    }
   }, [review]);
 
   useEffect(() => { void load(); }, [load]);
 
-  if (loading && !summary) return <div className="mx-auto flex min-h-[calc(100dvh-50px)] max-w-[1220px] items-center justify-center px-5 text-sm font-bold text-zinc-500"><LoaderCircle className="mr-2 h-5 w-5 animate-spin" /> 운영 현황을 불러오고 있습니다.</div>;
-  if (error && !summary) {
-    const isAuth = error.status === 401 || error.status === 403;
-    return <div className="mx-auto w-full max-w-[1220px] px-5 pt-5"><section className="rounded-2xl border border-red-200 bg-white p-10 text-center dark:border-red-950 dark:bg-[#101419]"><AlertTriangle className="mx-auto h-10 w-10 text-red-500" /><h1 className="mt-4 text-xl font-extrabold">{isAuth ? "관리자 권한이 필요합니다" : "운영 현황을 불러오지 못했습니다"}</h1><p className="mt-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">{isAuth ? "관리자 계정으로 로그인한 후 다시 확인해 주세요." : error.message}</p>{isAuth ? <Link href="/auth/login" className="mt-5 inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 font-bold text-white">로그인</Link> : <button type="button" onClick={() => void load()} className="mt-5 inline-flex h-11 items-center gap-2 rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700"><RefreshCw className="h-4 w-4" /> 다시 시도</button>}</section></div>;
-  }
-  if (!summary) return null;
+  const authError = error?.status === 401 || error?.status === 403;
 
-  return <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5"><p className="text-base font-medium leading-6 text-zinc-500 dark:text-zinc-400">운영 상태를 빠르게 확인하세요.</p><section className="flex flex-wrap items-center justify-between gap-5 rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-[#101419] md:p-7"><div className="flex items-center gap-4"><span className="flex h-12 w-12 items-center justify-center rounded-xl bg-mint-500/10 text-mint-600 dark:text-mint-400"><DatabaseZap className="h-7 w-7" /></span><div><h1 className="text-2xl font-extrabold tracking-[-0.03em]">관리자 대시보드</h1><p className="mt-1 text-sm font-medium text-zinc-500 dark:text-zinc-400">생성 시각 · {formatTime(summary.generatedAt)}</p></div></div><button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex h-12 items-center gap-2 rounded-[10px] border border-zinc-300 px-4 text-sm font-extrabold transition-colors hover:border-mint-500 hover:text-mint-700 disabled:opacity-50 dark:border-zinc-700 dark:hover:text-mint-300"><RefreshCw className={`h-5 w-5 ${refreshing ? "animate-spin" : ""}`} />{refreshing ? "새로고침 중" : "새로고침"}</button></section>{error ? <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">최신 데이터를 갱신하지 못했습니다. 이전 요약을 표시합니다. {error.message}</p> : null}<div className="grid gap-4 lg:grid-cols-2"><MetricCard title="수집 상태" description="급식 데이터 수집 작업 상태" icon={DatabaseZap} href={reviewPath("/admin/collection-failures")} metrics={[{ label: "대기", value: summary.collection.pendingCount }, { label: "실행 중", value: summary.collection.runningCount, tone: "warning" }, { label: "성공", value: summary.collection.succeededCount, tone: "success" }, { label: "실패", value: summary.collection.failedCount, tone: "danger" }]} /><MetricCard title="라벨링 상태" description="알레르기 성분 라벨링 처리 상태" icon={Tag} metrics={[{ label: "라벨링 대기", value: summary.labeling.pendingCount }, { label: "표시 완료", value: summary.labeling.labeledCount, tone: "success" }, { label: "알 수 없음", value: summary.labeling.unknownCount, tone: "warning" }, { label: "실패", value: summary.labeling.labelingFailedCount, tone: "danger" }]} /></div><div className="grid gap-4 lg:grid-cols-[0.9fr_0.9fr_1.5fr]"><MetricCard title="아웃박스" description="외부 시스템 발행 대기/완료" icon={Send} metrics={[{ label: "대기", value: summary.outbox.pendingCount }, { label: "발행 완료", value: summary.outbox.publishedCount, tone: "success" }]} /><MetricCard title="DLQ" description="실패 메시지 보관 및 재처리 현황" icon={Inbox} href={reviewPath("/admin/notification-dlq-events")} metrics={[{ label: "대기", value: summary.dlq.pendingCount }, { label: "재처리 완료", value: summary.dlq.reprocessedCount, tone: "success" }]} /><MetricCard title="알림 상태" description="알림 발송 작업 상태" icon={BellRing} href={reviewPath("/admin/notification-failures")} metrics={[{ label: "대기", value: summary.notifications.pendingCount }, { label: "전송 중", value: summary.notifications.sendingCount, tone: "warning" }, { label: "재시도 대기", value: summary.notifications.retryPendingCount, tone: "warning" }, { label: "전송 완료", value: summary.notifications.sentCount, tone: "success" }, { label: "실패", value: summary.notifications.failedCount, tone: "danger" }, { label: "취소", value: summary.notifications.canceledCount }]} /></div><section className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-[#101419] md:p-6"><h2 className="text-xl font-extrabold">운영 바로가기</h2><div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">{shortcuts.map((shortcut) => { const Icon = shortcut.icon; const href = reviewPath(shortcut.href); const content = <><span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${shortcut.tone}`}><Icon className="h-5 w-5" /></span><div className="min-w-0"><h3 className="font-extrabold group-hover:text-mint-700 dark:group-hover:text-mint-300">{shortcut.title}</h3><p className="mt-1 text-sm font-medium leading-5 text-zinc-500 dark:text-zinc-400">{shortcut.description}</p></div><ArrowRight className="ml-auto h-5 w-5 shrink-0 text-zinc-400" /></>; const className = "group flex min-h-28 items-center gap-4 rounded-xl border border-zinc-200 p-4 transition-colors dark:border-zinc-800"; return <Link key={shortcut.href} href={href} className={`${className} hover:border-mint-500`}>{content}</Link>; })}</div></section></div>;
+  return (
+    <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">
+      <header><h1 className="text-2xl font-extrabold tracking-[-0.02em]">관리자 대시보드</h1><p className="mt-1.5 text-base font-medium leading-6 text-zinc-500 dark:text-zinc-400">급식 수집, 알림 발송, 재처리 작업의 상태를 확인하세요.</p></header>
+      <p role="status" className="sr-only">{loading ? "운영 현황을 불러오고 있습니다." : ""}</p>
+
+      {error && <section role="alert" className={`${panel} mb-5 p-6`}><div className="flex items-start gap-3"><AlertTriangle aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-zinc-500 dark:text-zinc-400" /><div><h2 className="text-base font-bold">{summary ? "최신 데이터를 갱신하지 못했습니다" : authError ? "관리자 권한이 필요합니다" : "운영 현황을 불러오지 못했습니다"}</h2><p className="mt-2 text-sm leading-6 text-zinc-500 dark:text-zinc-400">{summary ? `이전 요약을 표시합니다. ${error.message}` : authError ? "관리자 계정으로 로그인한 후 다시 확인해 주세요." : error.message}</p>{!summary && (authError ? <Link href="/auth/login" className={`${buttonStyle} mt-4`}>로그인</Link> : <button type="button" onClick={() => void load()} className={`${buttonStyle} mt-4`}>다시 시도</button>)}</div></div></section>}
+
+      {loading && !summary && <div aria-hidden="true" className={`${panel} space-y-5 p-6 md:p-8`}><div className="h-6 w-36 rounded bg-zinc-100 motion-safe:animate-pulse dark:bg-zinc-800" /><div className="grid gap-4 md:grid-cols-2">{[0, 1].map((index) => <div key={index} className="h-64 rounded-xl bg-zinc-100 motion-safe:animate-pulse dark:bg-zinc-800" />)}</div></div>}
+
+      {summary && <section aria-label="처리가 필요한 작업" aria-busy={loading} className={`${panel} px-6 py-3 md:px-8 md:py-4`}><div className="divide-y divide-zinc-200 dark:divide-zinc-800"><ActionRow title="급식 수집" description="수집에 실패해 재요청이 필요한 작업" primaryLabel="수집 실패" primaryCount={summary.collection?.failedCount} secondaryLabel="수집 대기" secondaryCount={summary.collection?.pendingCount} href={reviewPath("/admin/collection-failures")} linkLabel="수집 실패 보기" /><ActionRow title="알림 발송" description="발송에 실패했거나 재시도 중인 알림" primaryLabel="발송 실패" primaryCount={summary.notifications?.failedCount} secondaryLabel="재시도 대기" secondaryCount={summary.notifications?.retryPendingCount} href={reviewPath("/admin/notification-failures")} linkLabel="실패 알림 보기" /><ActionRow title="DLQ 이벤트" description="자동 재시도 후 재처리를 기다리는 이벤트" primaryLabel="재처리 대기" primaryCount={summary.dlq?.pendingCount} secondaryLabel="누적 재처리" secondaryCount={summary.dlq?.reprocessedCount} href={reviewPath("/admin/notification-dlq-events")} linkLabel="DLQ 이벤트 보기" /></div></section>}
+    </div>
+  );
 }

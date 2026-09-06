@@ -155,9 +155,9 @@ const pageLinks = [
     id: "15",
     title: "15_15_admin_dashboard",
     label: "관리자 대시보드",
-    description: "수집·라벨링·알림 작업의 운영 현황을 확인하는 화면입니다.",
+    description: "수집, 알림, 재처리 작업의 운영 현황을 확인하는 화면입니다.",
     href: "/admin/preview",
-    status: "리뷰 필요",
+    status: "완료",
     icon: ClipboardCheck,
   },
   {
