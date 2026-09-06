@@ -126,7 +126,7 @@ export function ChildPersonalizedMeals({ childId }: { childId: string }) {
       const school = await getSchool(profile.schoolId).catch(() => null);
       setChild(profile); setSchoolName(school?.name ?? ""); setAllergenNames(new Map(allergens.map((allergen) => [allergen.code, allergen.name]))); setData(meals);
     } catch (reason) {
-      setError(reason instanceof MemberApiError ? reason : new MemberApiError(0, "개인화 급식을 불러오지 못했습니다."));
+      setError(reason instanceof MemberApiError ? reason : new MemberApiError(0, "자녀 급식을 불러오지 못했습니다."));
     } finally { setLoading(false); }
   }, [childId, date, mode]);
 
@@ -143,10 +143,10 @@ export function ChildPersonalizedMeals({ childId }: { childId: string }) {
     return [...grouped.entries()].map(([mealDate, meals]) => ({ mealDate, meals }));
   }, [data]);
 
-  if (loading && !data) return <div className="mx-auto flex min-h-80 max-w-[1220px] items-center justify-center px-5 text-sm font-bold text-zinc-500"><LoaderCircle className="mr-2 h-5 w-5 animate-spin" /> 개인화 급식을 불러오고 있습니다.</div>;
+  if (loading && !data) return <div className="mx-auto flex min-h-80 max-w-[1220px] items-center justify-center px-5 text-sm font-bold text-zinc-500"><LoaderCircle className="mr-2 h-5 w-5 animate-spin" /> 자녀 급식을 불러오고 있습니다.</div>;
   if (error) {
     const auth = error.status === 401 || error.status === 403;
-    return <div className="mx-auto w-full max-w-[1220px] px-5 pt-5"><section className="rounded-2xl border border-red-200 bg-white p-10 text-center dark:border-red-950 dark:bg-[#101419]"><AlertTriangle className="mx-auto h-10 w-10 text-red-500" /><h1 className="mt-4 text-xl font-extrabold">{auth ? "로그인이 필요합니다" : "개인화 급식을 불러오지 못했습니다"}</h1><p className="mt-2 text-sm font-medium text-zinc-500">{message(error)}</p>{auth ? <Link href="/auth/login" className="mt-5 inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 font-bold text-white">로그인</Link> : <button type="button" onClick={() => void load()} className="mt-5 inline-flex h-11 items-center gap-2 rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700"><RefreshCw className="h-4 w-4" /> 다시 시도</button>}</section></div>;
+    return <div className="mx-auto w-full max-w-[1220px] px-5 pt-5"><section className="rounded-2xl border border-red-200 bg-white p-10 text-center dark:border-red-950 dark:bg-[#101419]"><AlertTriangle className="mx-auto h-10 w-10 text-red-500" /><h1 className="mt-4 text-xl font-extrabold">{auth ? "로그인이 필요합니다" : "자녀 급식을 불러오지 못했습니다"}</h1><p className="mt-2 text-sm font-medium text-zinc-500">{message(error)}</p>{auth ? <Link href="/auth/login" className="mt-5 inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 font-bold text-white">로그인</Link> : <button type="button" onClick={() => void load()} className="mt-5 inline-flex h-11 items-center gap-2 rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700"><RefreshCw className="h-4 w-4" /> 다시 시도</button>}</section></div>;
   }
   if (!child || !data) return null;
   const collecting = data.collectionStatus === "COLLECTING";

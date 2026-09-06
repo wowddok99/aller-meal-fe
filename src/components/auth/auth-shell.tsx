@@ -7,7 +7,6 @@ export function AuthShell({
   showSecurityNotice = true,
   showDescription = true,
   compact = false,
-  showHeader = true,
   centered = false,
 }: {
   children: React.ReactNode;
@@ -15,11 +14,10 @@ export function AuthShell({
   showSecurityNotice?: boolean;
   showDescription?: boolean;
   compact?: boolean;
-  showHeader?: boolean;
   centered?: boolean;
 }) {
   return (
-    <PublicPageShell showHeader={showHeader}>
+    <PublicPageShell>
       <div className={`mx-auto flex w-full flex-col gap-4 px-5 ${centered ? "min-h-[100dvh] justify-start pb-12 pt-10 sm:justify-center sm:pb-[12dvh] sm:pt-0" : "pb-12 pt-5"} ${compact ? "max-w-[680px]" : "max-w-[1020px]"}`}>
         {showDescription ? <p className="text-base font-medium text-zinc-500 dark:text-zinc-400">
           {description}

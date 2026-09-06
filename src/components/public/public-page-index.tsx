@@ -5,6 +5,7 @@
 } from "lucide-react";
 import Link from "next/link";
 import { AllerMealLogo } from "@/components/allermeal-logo";
+import { AppHeader } from "@/components/app-header";
 
 const pageLinks = [
   {
@@ -127,8 +128,8 @@ const pageLinks = [
   {
     id: "12",
     title: "12_12_personalized_meals",
-    label: "개인화 급식",
-    description: "상세 리뷰를 마치고 확정된 개인화 급식 화면입니다.",
+    label: "자녀 급식",
+    description: "상세 리뷰를 마치고 확정된 자녀 급식 화면입니다.",
     href: "/children/preview/meals",
     status: "완료",
     icon: CheckCircle2,
@@ -210,6 +211,7 @@ const pageLinks = [
 export function PublicPageIndex() {
   return (
     <main className="min-h-[100dvh] bg-zinc-50 text-zinc-950 dark:bg-canvas dark:text-zinc-50">
+      <AppHeader />
       <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-6 px-5 py-8">
         <div className="flex items-center">
           <AllerMealLogo variant="full" />
