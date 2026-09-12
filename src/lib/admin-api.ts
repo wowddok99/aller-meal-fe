@@ -1,34 +1,17 @@
 import type { AdminDashboardSummaryResponse } from "@/generated/api/admin/models/adminDashboardSummaryResponse";
+import type { AdminFailedCollectionJobItemResponse } from "@/generated/api/admin/models/adminFailedCollectionJobItemResponse";
+import type { AdminFailedCollectionJobPageResponse } from "@/generated/api/admin/models/adminFailedCollectionJobPageResponse";
+import type { AdminRecollectionResponse } from "@/generated/api/admin/models/adminRecollectionResponse";
 
 export type DashboardSummary = AdminDashboardSummaryResponse;
 
-export type FailedCollectionJob = {
-  collectionJobId: string;
-  schoolId: string;
-  mealDate: string;
-  mealType: string;
-  responseTimeMillis: number;
-  collectionDurationMillis: number;
-  rawObjectId: string;
-  failureCode: string;
-  failureMessage: string;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type FailedCollectionJobPage = {
+// Review fixtures include every field this screen depends on; the boundary
+// stays aligned with the generated OpenAPI contract.
+export type FailedCollectionJob = Required<AdminFailedCollectionJobItemResponse>;
+export type FailedCollectionJobPage = Required<Omit<AdminFailedCollectionJobPageResponse, "items">> & {
   items: FailedCollectionJob[];
-  page: number;
-  pageSize: number;
-  totalCount: number;
 };
-
-export type RecollectionResult = {
-  originalCollectionJobId: string;
-  collectionJobId: string;
-  status: string;
-  duplicate: boolean;
-};
+export type RecollectionResult = Required<AdminRecollectionResponse>;
 
 export type ExternalApiLog = {
   externalApiLogId: string;
@@ -110,6 +93,19 @@ const reviewDashboardSummary: DashboardSummary = {
 const reviewCollectionJobs: FailedCollectionJob[] = [
   { collectionJobId: "review-collection-001", schoolId: "B100000658", mealDate: "2026-07-13", mealType: "LUNCH", responseTimeMillis: 3210, collectionDurationMillis: 3372, rawObjectId: "raw-review-001", failureCode: "NEIS_TIMEOUT", failureMessage: "NEIS 응답 시간이 초과되었습니다.", createdAt: "2026-07-13T07:10:00+09:00", updatedAt: "2026-07-13T07:10:00+09:00" },
   { collectionJobId: "review-collection-002", schoolId: "B100000701", mealDate: "2026-07-13", mealType: "DINNER", responseTimeMillis: 502, collectionDurationMillis: 590, rawObjectId: "raw-review-002", failureCode: "SOURCE_UNAVAILABLE", failureMessage: "외부 급식 원본을 찾을 수 없습니다.", createdAt: "2026-07-13T06:42:00+09:00", updatedAt: "2026-07-13T06:42:00+09:00" },
+  ...Array.from({ length: 22 }, (_, index): FailedCollectionJob => ({
+    collectionJobId: `review-collection-${String(index + 3).padStart(3, "0")}`,
+    schoolId: `B100000${String(index + 702).padStart(3, "0")}`,
+    mealDate: `2026-07-${String(12 - Math.floor(index / 3)).padStart(2, "0")}`,
+    mealType: index % 3 === 0 ? "BREAKFAST" : index % 3 === 1 ? "LUNCH" : "DINNER",
+    responseTimeMillis: 600 + index * 137,
+    collectionDurationMillis: 730 + index * 151,
+    rawObjectId: `raw-review-${String(index + 3).padStart(3, "0")}`,
+    failureCode: index % 2 === 0 ? "NEIS_TIMEOUT" : "SOURCE_UNAVAILABLE",
+    failureMessage: index % 2 === 0 ? "NEIS 응답 시간이 초과되었습니다." : "외부 급식 원본을 찾을 수 없습니다.",
+    createdAt: `2026-07-${String(12 - Math.floor(index / 3)).padStart(2, "0")}T0${index % 9}:20:00+09:00`,
+    updatedAt: `2026-07-${String(12 - Math.floor(index / 3)).padStart(2, "0")}T0${index % 9}:25:00+09:00`,
+  })),
 ];
 
 const reviewExternalLogs: ExternalApiLog[] = [

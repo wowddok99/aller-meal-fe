@@ -167,8 +167,8 @@ const pageLinks = [
     label: "수집 실패",
     description: "급식 수집 실패 내역과 재수집 상태를 확인하는 화면입니다.",
     href: "/admin/preview/collection-failures",
-    status: "리뷰 필요",
-    icon: ClipboardCheck,
+    status: "완료",
+    icon: CheckCircle2,
   },
   {
     id: "17",

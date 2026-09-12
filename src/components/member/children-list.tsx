@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Bell, ChevronRight, MoreVertical, Pencil, Plus, RefreshCw, ShieldCheck, Trash2, UsersRound, Utensils } from "lucide-react";
+import { AlertTriangle, Bell, ChevronRight, History, MoreVertical, Pencil, Plus, RefreshCw, ShieldCheck, Trash2, UsersRound, Utensils } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChildProfile, deleteChild, getChildren, getSchool, MemberApiError } from "@/lib/member-api";
@@ -9,7 +9,7 @@ function ChildSkeleton() {
   return (
     <div className="animate-pulse overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-[#101419]">
       <div className="h-14 bg-zinc-100 dark:bg-zinc-900" />
-      <div className="space-y-3 p-5"><div className="h-5 w-36 rounded bg-zinc-200 dark:bg-zinc-800" /><div className="h-20 rounded bg-zinc-100 dark:bg-zinc-900" /><div className="h-20 rounded bg-zinc-100 dark:bg-zinc-900" /></div>
+      <div className="space-y-3 p-5"><div className="h-5 w-36 rounded bg-zinc-200 dark:bg-zinc-800" /><div className="h-20 rounded bg-zinc-100 dark:bg-zinc-900" /><div className="h-20 rounded bg-zinc-100 dark:bg-zinc-900" /><div className="h-20 rounded bg-zinc-100 dark:bg-zinc-900" /></div>
     </div>
   );
 }
@@ -117,6 +117,7 @@ export function ChildrenList() {
                 <Link href={`/children/${selectedChild.id}/meals`} className="group flex min-h-20 items-center gap-3 px-5 py-4 transition-colors hover:bg-mint-50/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-mint-500 dark:hover:bg-mint-950/10"><Utensils className="h-5 w-5 shrink-0 text-mint-600 dark:text-mint-300" /><div className="min-w-0 flex-1"><h3 className="font-extrabold">자녀 급식</h3><p className="mt-1 text-sm font-medium text-zinc-500 dark:text-zinc-400">자녀의 알레르기 기준으로 급식 위험 여부를 확인합니다.</p></div><ChevronRight className="h-5 w-5 shrink-0 text-zinc-400 transition-transform group-hover:translate-x-0.5 group-hover:text-mint-600 dark:group-hover:text-mint-300" aria-hidden="true" /></Link>
                 <Link href={`/children/${selectedChild.id}/allergens`} className="group flex min-h-20 items-center gap-3 px-5 py-4 transition-colors hover:bg-mint-50/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-mint-500 dark:hover:bg-mint-950/10"><ShieldCheck className="h-5 w-5 shrink-0 text-mint-600 dark:text-mint-300" /><div className="min-w-0 flex-1"><h3 className="font-extrabold">알레르기</h3><p className="mt-1 text-sm font-medium text-zinc-500 dark:text-zinc-400">등록한 알레르기 항목을 관리합니다.</p></div><ChevronRight className="h-5 w-5 shrink-0 text-zinc-400 transition-transform group-hover:translate-x-0.5 group-hover:text-mint-600 dark:group-hover:text-mint-300" aria-hidden="true" /></Link>
                 <Link href={`/children/${selectedChild.id}/notification-preference`} className="group flex min-h-20 items-center gap-3 px-5 py-4 transition-colors hover:bg-mint-50/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-mint-500 dark:hover:bg-mint-950/10"><Bell className="h-5 w-5 shrink-0 text-mint-600 dark:text-mint-300" /><div className="min-w-0 flex-1"><h3 className="font-extrabold">알림 설정</h3><p className="mt-1 text-sm font-medium text-zinc-500 dark:text-zinc-400">급식 알림 수신 방식을 관리합니다.</p></div><ChevronRight className="h-5 w-5 shrink-0 text-zinc-400 transition-transform group-hover:translate-x-0.5 group-hover:text-mint-600 dark:group-hover:text-mint-300" aria-hidden="true" /></Link>
+                <Link href={`/children/${selectedChild.id}/notifications`} className="group flex min-h-20 items-center gap-3 px-5 py-4 transition-colors hover:bg-mint-50/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-mint-500 dark:hover:bg-mint-950/10"><History className="h-5 w-5 shrink-0 text-mint-600 dark:text-mint-300" /><div className="min-w-0 flex-1"><h3 className="font-extrabold">알림 이력</h3><p className="mt-1 text-sm font-medium text-zinc-500 dark:text-zinc-400">급식 알림 발송 결과를 확인합니다.</p></div><ChevronRight className="h-5 w-5 shrink-0 text-zinc-400 transition-transform group-hover:translate-x-0.5 group-hover:text-mint-600 dark:group-hover:text-mint-300" aria-hidden="true" /></Link>
               </div>
             </section>
           </>
