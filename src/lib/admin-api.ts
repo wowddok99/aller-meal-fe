@@ -3,6 +3,8 @@ import type { AdminExternalApiLogItemResponse } from "@/generated/api/admin/mode
 import type { AdminExternalApiLogPageResponse } from "@/generated/api/admin/models/adminExternalApiLogPageResponse";
 import type { AdminFailedCollectionJobItemResponse } from "@/generated/api/admin/models/adminFailedCollectionJobItemResponse";
 import type { AdminFailedCollectionJobPageResponse } from "@/generated/api/admin/models/adminFailedCollectionJobPageResponse";
+import type { AdminFailedNotificationItemResponse } from "@/generated/api/admin/models/adminFailedNotificationItemResponse";
+import type { AdminFailedNotificationPageResponse } from "@/generated/api/admin/models/adminFailedNotificationPageResponse";
 import type { AdminRecollectionResponse } from "@/generated/api/admin/models/adminRecollectionResponse";
 
 export type DashboardSummary = AdminDashboardSummaryResponse;
@@ -28,27 +30,13 @@ export type ExternalApiLogPage = Required<
   items: ExternalApiLog[];
 };
 
-export type FailedNotification = {
-  notificationId: string;
-  notificationTargetId: string;
-  childId: string;
-  userId: string;
-  notificationDate: string;
-  channel: string;
-  reason: string;
-  status: string;
-  attemptCount: number;
-  maxAttempts: number;
-  failureCode: string;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type FailedNotificationPage = {
+export type FailedNotification = Required<
+  AdminFailedNotificationItemResponse
+>;
+export type FailedNotificationPage = Required<
+  Omit<AdminFailedNotificationPageResponse, "items">
+> & {
   items: FailedNotification[];
-  page: number;
-  pageSize: number;
-  totalCount: number;
 };
 
 export type DeadLetterEvent = {
@@ -234,6 +222,49 @@ const reviewFailedNotifications: FailedNotification[] = [
     createdAt: "2026-07-13T07:35:00+09:00",
     updatedAt: "2026-07-13T07:40:00+09:00",
   },
+  ...Array.from({ length: 22 }, (_, index): FailedNotification => {
+    const sequence = index + 3;
+    const day = String(13 - Math.floor(index / 4)).padStart(2, "0");
+    const hour = String(6 - (index % 4)).padStart(2, "0");
+    const status =
+      index % 5 === 0
+        ? "RETRY_PENDING"
+        : index % 7 === 0
+          ? "CANCELED"
+          : "FAILED";
+    const reason =
+      index % 3 === 0
+        ? "RISK_DETECTED"
+        : index % 3 === 1
+          ? "RISK_UNKNOWN"
+          : "RISK_LABELING_FAILED";
+    const isChildTarget = index % 2 === 0;
+
+    return {
+      notificationId: `review-notification-${String(sequence).padStart(3, "0")}`,
+      notificationTargetId: `review-target-${String(sequence).padStart(3, "0")}`,
+      childId: isChildTarget
+        ? `review-child-${String(sequence).padStart(3, "0")}`
+        : "",
+      userId: isChildTarget
+        ? ""
+        : `review-user-${String(sequence).padStart(3, "0")}`,
+      notificationDate: `2026-07-${day}`,
+      channel: "EMAIL",
+      reason,
+      status,
+      attemptCount: status === "FAILED" ? 3 : status === "RETRY_PENDING" ? 2 : 1,
+      maxAttempts: 3,
+      failureCode:
+        status === "CANCELED"
+          ? "CANCELED_BY_POLICY"
+          : reason === "RISK_LABELING_FAILED"
+            ? "LABELING_PENDING"
+            : "SMTP_TIMEOUT",
+      createdAt: `2026-07-${day}T${hour}:20:00+09:00`,
+      updatedAt: `2026-07-${day}T${hour}:25:00+09:00`,
+    };
+  }),
 ];
 
 const reviewDeadLetterEvents: DeadLetterEvent[] = [

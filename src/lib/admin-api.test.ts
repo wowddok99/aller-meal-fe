@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getExternalApiLogs } from "./admin-api";
+import { getExternalApiLogs, getFailedNotifications } from "./admin-api";
 
 describe("getExternalApiLogs review data", () => {
   it("provides one hundred records in the selected page size", async () => {
@@ -18,5 +18,20 @@ describe("getExternalApiLogs review data", () => {
     expect(finalPage.items[0]?.externalApiLogId).not.toBe(
       firstPage.items[0]?.externalApiLogId,
     );
+  });
+});
+
+describe("getFailedNotifications review data", () => {
+  it("provides multiple 10-item pages for the failure notification list", async () => {
+    const firstPage = await getFailedNotifications(1, 10, true);
+    const finalPage = await getFailedNotifications(3, 10, true);
+
+    expect(firstPage).toMatchObject({
+      page: 1,
+      pageSize: 10,
+      totalCount: 24,
+    });
+    expect(firstPage.items).toHaveLength(10);
+    expect(finalPage.items).toHaveLength(4);
   });
 });

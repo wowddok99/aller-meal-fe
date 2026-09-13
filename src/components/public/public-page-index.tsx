@@ -183,9 +183,9 @@ const pageLinks = [
     id: "18",
     title: "18_18_admin_failed_notifications",
     label: "실패 알림",
-    description: "발송에 실패한 알림과 실패 사유를 확인하는 화면입니다.",
+    description: "실패한 알림 요청과 재시도 상태를 확인하는 화면입니다.",
     href: "/admin/preview/notification-failures",
-    status: "리뷰 필요",
+    status: "완료",
     icon: ClipboardCheck,
   },
   {
