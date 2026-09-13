@@ -176,7 +176,7 @@ const pageLinks = [
     label: "외부 API 로그",
     description: "외부 연계 호출 기록과 응답 상태를 확인하는 화면입니다.",
     href: "/admin/preview/external-api-logs",
-    status: "리뷰 필요",
+    status: "완료",
     icon: ClipboardCheck,
   },
   {

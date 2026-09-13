@@ -1,4 +1,6 @@
 import type { AdminDashboardSummaryResponse } from "@/generated/api/admin/models/adminDashboardSummaryResponse";
+import type { AdminExternalApiLogItemResponse } from "@/generated/api/admin/models/adminExternalApiLogItemResponse";
+import type { AdminExternalApiLogPageResponse } from "@/generated/api/admin/models/adminExternalApiLogPageResponse";
 import type { AdminFailedCollectionJobItemResponse } from "@/generated/api/admin/models/adminFailedCollectionJobItemResponse";
 import type { AdminFailedCollectionJobPageResponse } from "@/generated/api/admin/models/adminFailedCollectionJobPageResponse";
 import type { AdminRecollectionResponse } from "@/generated/api/admin/models/adminRecollectionResponse";
@@ -7,33 +9,23 @@ export type DashboardSummary = AdminDashboardSummaryResponse;
 
 // Review fixtures include every field this screen depends on; the boundary
 // stays aligned with the generated OpenAPI contract.
-export type FailedCollectionJob = Required<AdminFailedCollectionJobItemResponse>;
-export type FailedCollectionJobPage = Required<Omit<AdminFailedCollectionJobPageResponse, "items">> & {
+export type FailedCollectionJob =
+  Required<AdminFailedCollectionJobItemResponse>;
+export type FailedCollectionJobPage = Required<
+  Omit<AdminFailedCollectionJobPageResponse, "items">
+> & {
   items: FailedCollectionJob[];
 };
 export type RecollectionResult = Required<AdminRecollectionResponse>;
 
-export type ExternalApiLog = {
-  externalApiLogId: string;
-  provider: string;
-  operation: string;
-  schoolId: string;
-  mealDate: string;
-  mealType: string;
-  method: string;
-  endpoint: string;
-  httpStatus: number;
-  outcome: string;
-  failureCode: string;
-  responseTimeMillis: number;
-  createdAt: string;
-};
-
-export type ExternalApiLogPage = {
+// The UI requires these fields to render a usable operation record. Keeping
+// the review boundary based on Orval types prevents it from drifting from the
+// API contract while fixtures remain intentionally complete.
+export type ExternalApiLog = Required<AdminExternalApiLogItemResponse>;
+export type ExternalApiLogPage = Required<
+  Omit<AdminExternalApiLogPageResponse, "items">
+> & {
   items: ExternalApiLog[];
-  page: number;
-  pageSize: number;
-  totalCount: number;
 };
 
 export type FailedNotification = {
@@ -83,56 +75,281 @@ export const ADMIN_REVIEW_PREFIX = "/admin/preview";
 
 const reviewDashboardSummary: DashboardSummary = {
   generatedAt: "2026-07-13T09:30:00+09:00",
-  collection: { pendingCount: 12, runningCount: 3, succeededCount: 1864, failedCount: 4 },
-  labeling: { pendingCount: 8, labeledCount: 1821, unknownCount: 19, labelingFailedCount: 3 },
+  collection: {
+    pendingCount: 12,
+    runningCount: 3,
+    succeededCount: 1864,
+    failedCount: 4,
+  },
+  labeling: {
+    pendingCount: 8,
+    labeledCount: 1821,
+    unknownCount: 19,
+    labelingFailedCount: 3,
+  },
   outbox: { pendingCount: 6, publishedCount: 2410 },
   dlq: { pendingCount: 2, reprocessedCount: 38 },
-  notifications: { pendingCount: 4, sendingCount: 2, retryPendingCount: 3, sentCount: 2387, failedCount: 5, canceledCount: 1 },
+  notifications: {
+    pendingCount: 4,
+    sendingCount: 2,
+    retryPendingCount: 3,
+    sentCount: 2387,
+    failedCount: 5,
+    canceledCount: 1,
+  },
 };
 
 const reviewCollectionJobs: FailedCollectionJob[] = [
-  { collectionJobId: "review-collection-001", schoolId: "B100000658", mealDate: "2026-07-13", mealType: "LUNCH", responseTimeMillis: 3210, collectionDurationMillis: 3372, rawObjectId: "raw-review-001", failureCode: "NEIS_TIMEOUT", failureMessage: "NEIS 응답 시간이 초과되었습니다.", createdAt: "2026-07-13T07:10:00+09:00", updatedAt: "2026-07-13T07:10:00+09:00" },
-  { collectionJobId: "review-collection-002", schoolId: "B100000701", mealDate: "2026-07-13", mealType: "DINNER", responseTimeMillis: 502, collectionDurationMillis: 590, rawObjectId: "raw-review-002", failureCode: "SOURCE_UNAVAILABLE", failureMessage: "외부 급식 원본을 찾을 수 없습니다.", createdAt: "2026-07-13T06:42:00+09:00", updatedAt: "2026-07-13T06:42:00+09:00" },
+  {
+    collectionJobId: "review-collection-001",
+    schoolId: "B100000658",
+    mealDate: "2026-07-13",
+    mealType: "LUNCH",
+    responseTimeMillis: 3210,
+    collectionDurationMillis: 3372,
+    rawObjectId: "raw-review-001",
+    failureCode: "NEIS_TIMEOUT",
+    failureMessage: "NEIS 응답 시간이 초과되었습니다.",
+    createdAt: "2026-07-13T07:10:00+09:00",
+    updatedAt: "2026-07-13T07:10:00+09:00",
+  },
+  {
+    collectionJobId: "review-collection-002",
+    schoolId: "B100000701",
+    mealDate: "2026-07-13",
+    mealType: "DINNER",
+    responseTimeMillis: 502,
+    collectionDurationMillis: 590,
+    rawObjectId: "raw-review-002",
+    failureCode: "SOURCE_UNAVAILABLE",
+    failureMessage: "외부 급식 원본을 찾을 수 없습니다.",
+    createdAt: "2026-07-13T06:42:00+09:00",
+    updatedAt: "2026-07-13T06:42:00+09:00",
+  },
   ...Array.from({ length: 22 }, (_, index): FailedCollectionJob => ({
     collectionJobId: `review-collection-${String(index + 3).padStart(3, "0")}`,
     schoolId: `B100000${String(index + 702).padStart(3, "0")}`,
     mealDate: `2026-07-${String(12 - Math.floor(index / 3)).padStart(2, "0")}`,
-    mealType: index % 3 === 0 ? "BREAKFAST" : index % 3 === 1 ? "LUNCH" : "DINNER",
+    mealType:
+      index % 3 === 0 ? "BREAKFAST" : index % 3 === 1 ? "LUNCH" : "DINNER",
     responseTimeMillis: 600 + index * 137,
     collectionDurationMillis: 730 + index * 151,
     rawObjectId: `raw-review-${String(index + 3).padStart(3, "0")}`,
     failureCode: index % 2 === 0 ? "NEIS_TIMEOUT" : "SOURCE_UNAVAILABLE",
-    failureMessage: index % 2 === 0 ? "NEIS 응답 시간이 초과되었습니다." : "외부 급식 원본을 찾을 수 없습니다.",
+    failureMessage:
+      index % 2 === 0
+        ? "NEIS 응답 시간이 초과되었습니다."
+        : "외부 급식 원본을 찾을 수 없습니다.",
     createdAt: `2026-07-${String(12 - Math.floor(index / 3)).padStart(2, "0")}T0${index % 9}:20:00+09:00`,
     updatedAt: `2026-07-${String(12 - Math.floor(index / 3)).padStart(2, "0")}T0${index % 9}:25:00+09:00`,
   })),
 ];
 
 const reviewExternalLogs: ExternalApiLog[] = [
-  { externalApiLogId: "review-log-001", provider: "NEIS", operation: "MEAL_FETCH", schoolId: "B100000658", mealDate: "2026-07-13", mealType: "LUNCH", method: "GET", endpoint: "/hub/mealServiceDietInfo?ATPT_OFCDC_SC_CODE=B10&SD_SCHUL_CODE=B100000658", httpStatus: 200, outcome: "SUCCESS", failureCode: "", responseTimeMillis: 248, createdAt: "2026-07-13T08:04:00+09:00" },
-  { externalApiLogId: "review-log-002", provider: "NEIS", operation: "MEAL_FETCH", schoolId: "B100000701", mealDate: "2026-07-13", mealType: "DINNER", method: "GET", endpoint: "/hub/mealServiceDietInfo?ATPT_OFCDC_SC_CODE=B10&SD_SCHUL_CODE=B100000701", httpStatus: 504, outcome: "FAILURE", failureCode: "UPSTREAM_TIMEOUT", responseTimeMillis: 3000, createdAt: "2026-07-13T07:59:00+09:00" },
+  {
+    externalApiLogId: "review-log-001",
+    provider: "NEIS",
+    operation: "MEAL_FETCH",
+    schoolId: "B100000658",
+    mealDate: "2026-07-13",
+    mealType: "LUNCH",
+    method: "GET",
+    endpoint:
+      "/hub/mealServiceDietInfo?ATPT_OFCDC_SC_CODE=B10&SD_SCHUL_CODE=B100000658",
+    httpStatus: 200,
+    outcome: "SUCCESS",
+    failureCode: "",
+    responseTimeMillis: 248,
+    createdAt: "2026-07-13T08:04:00+09:00",
+  },
+  {
+    externalApiLogId: "review-log-002",
+    provider: "NEIS",
+    operation: "MEAL_FETCH",
+    schoolId: "B100000701",
+    mealDate: "2026-07-13",
+    mealType: "DINNER",
+    method: "GET",
+    endpoint:
+      "/hub/mealServiceDietInfo?ATPT_OFCDC_SC_CODE=B10&SD_SCHUL_CODE=B100000701",
+    httpStatus: 504,
+    outcome: "FAILURE",
+    failureCode: "UPSTREAM_TIMEOUT",
+    responseTimeMillis: 3000,
+    createdAt: "2026-07-13T07:59:00+09:00",
+  },
+  ...Array.from({ length: 98 }, (_, index): ExternalApiLog => {
+    const sequence = index + 3;
+    const day = String(13 - Math.floor(index / 8)).padStart(2, "0");
+    const hour = String(7 - (index % 8)).padStart(2, "0");
+    const isFailure = sequence % 7 === 0;
+
+    return {
+      externalApiLogId: `review-log-${String(sequence).padStart(3, "0")}`,
+      provider: "NEIS",
+      operation: "MEAL_FETCH",
+      schoolId: `B100000${String(700 + sequence).padStart(3, "0")}`,
+      mealDate: `2026-07-${day}`,
+      mealType:
+        index % 3 === 0 ? "BREAKFAST" : index % 3 === 1 ? "LUNCH" : "DINNER",
+      method: "GET",
+      endpoint: `/hub/mealServiceDietInfo?ATPT_OFCDC_SC_CODE=B10&SD_SCHUL_CODE=B100000${String(700 + sequence).padStart(3, "0")}`,
+      httpStatus: isFailure ? 504 : 200,
+      outcome: isFailure ? "FAILURE" : "SUCCESS",
+      failureCode: isFailure ? "UPSTREAM_TIMEOUT" : "",
+      responseTimeMillis: isFailure ? 3000 : 180 + ((index * 37) % 920),
+      createdAt: `2026-07-${day}T${hour}:20:00+09:00`,
+    };
+  }),
 ];
 
 const reviewFailedNotifications: FailedNotification[] = [
-  { notificationId: "review-notification-001", notificationTargetId: "review-target-001", childId: "review-child-001", userId: "review-user-001", notificationDate: "2026-07-13", channel: "EMAIL", reason: "RISK_DETECTED", status: "FAILED", attemptCount: 3, maxAttempts: 3, failureCode: "SMTP_TIMEOUT", createdAt: "2026-07-13T08:10:00+09:00", updatedAt: "2026-07-13T08:15:00+09:00" },
-  { notificationId: "review-notification-002", notificationTargetId: "review-target-002", childId: "review-child-002", userId: "review-user-002", notificationDate: "2026-07-13", channel: "EMAIL", reason: "RISK_UNKNOWN", status: "RETRY_PENDING", attemptCount: 2, maxAttempts: 3, failureCode: "LABELING_PENDING", createdAt: "2026-07-13T07:35:00+09:00", updatedAt: "2026-07-13T07:40:00+09:00" },
+  {
+    notificationId: "review-notification-001",
+    notificationTargetId: "review-target-001",
+    childId: "review-child-001",
+    userId: "review-user-001",
+    notificationDate: "2026-07-13",
+    channel: "EMAIL",
+    reason: "RISK_DETECTED",
+    status: "FAILED",
+    attemptCount: 3,
+    maxAttempts: 3,
+    failureCode: "SMTP_TIMEOUT",
+    createdAt: "2026-07-13T08:10:00+09:00",
+    updatedAt: "2026-07-13T08:15:00+09:00",
+  },
+  {
+    notificationId: "review-notification-002",
+    notificationTargetId: "review-target-002",
+    childId: "review-child-002",
+    userId: "review-user-002",
+    notificationDate: "2026-07-13",
+    channel: "EMAIL",
+    reason: "RISK_UNKNOWN",
+    status: "RETRY_PENDING",
+    attemptCount: 2,
+    maxAttempts: 3,
+    failureCode: "LABELING_PENDING",
+    createdAt: "2026-07-13T07:35:00+09:00",
+    updatedAt: "2026-07-13T07:40:00+09:00",
+  },
 ];
 
 const reviewDeadLetterEvents: DeadLetterEvent[] = [
-  { deadLetterEventId: "dlq_01HXYZ8M2Y3J", messageId: "msg_01HXZ8K9ABC", eventType: "ALERT_EMAIL_SEND", retryCount: 3, status: "PENDING", reprocessedByUserId: "", reprocessedAt: "", createdAt: "2026-07-04T08:55:00+09:00", updatedAt: "2026-07-04T08:55:00+09:00", reprocessOutcome: "SUCCESS" },
-  { deadLetterEventId: "dlq_01HXYZ7P4N1T", messageId: "msg_01HXZ7N2DEF", eventType: "ALERT_EMAIL_SEND", retryCount: 2, status: "PENDING", reprocessedByUserId: "", reprocessedAt: "", createdAt: "2026-07-04T08:40:00+09:00", updatedAt: "2026-07-04T08:40:00+09:00", reprocessOutcome: "DUPLICATE" },
-  { deadLetterEventId: "dlq_01HXYR6QW8E", messageId: "msg_01HXYR3ZXCV", eventType: "ALERT_EMAIL_SEND", retryCount: 1, status: "PENDING", reprocessedByUserId: "", reprocessedAt: "", createdAt: "2026-07-04T08:25:00+09:00", updatedAt: "2026-07-04T08:25:00+09:00", reprocessOutcome: "ERROR" },
-  { deadLetterEventId: "dlq_01HXYQ9L5D2", messageId: "msg_01HXYQ6ASDF", eventType: "ALERT_EMAIL_BAD_ADDRESS", retryCount: 1, status: "PENDING", reprocessedByUserId: "", reprocessedAt: "", createdAt: "2026-07-04T08:15:00+09:00", updatedAt: "2026-07-04T08:15:00+09:00", reprocessOutcome: "SUCCESS" },
-  { deadLetterEventId: "dlq_01HXYP1K4F7", messageId: "msg_01HXYP0QWER", eventType: "ALERT_EMAIL_SEND", retryCount: 5, status: "REPROCESSED", reprocessedByUserId: "admin@allermeal.io", reprocessedAt: "2026-07-04T08:35:00+09:00", createdAt: "2026-07-04T07:55:00+09:00", updatedAt: "2026-07-04T08:35:00+09:00" },
-  { deadLetterEventId: "dlq_01HXYN8B9G6", messageId: "msg_01HXYN5TYUI", eventType: "ALERT_EMAIL_SEND", retryCount: 4, status: "REPROCESSED", reprocessedByUserId: "admin@allermeal.io", reprocessedAt: "2026-07-04T07:45:00+09:00", createdAt: "2026-07-04T07:05:00+09:00", updatedAt: "2026-07-04T07:45:00+09:00" },
-  { deadLetterEventId: "dlq_01HXYL2Z1H3", messageId: "msg_01HXYL0OPLK", eventType: "ALERT_EMAIL_SEND", retryCount: 2, status: "REPROCESSED", reprocessedByUserId: "admin@allermeal.io", reprocessedAt: "2026-07-03T22:10:00+09:00", createdAt: "2026-07-03T21:35:00+09:00", updatedAt: "2026-07-03T22:10:00+09:00" },
-  { deadLetterEventId: "dlq_01HXYK6J3M4", messageId: "msg_01HXYK3BNML", eventType: "ALERT_EMAIL_BAD_ADDRESS", retryCount: 1, status: "REPROCESSED", reprocessedByUserId: "admin@allermeal.io", reprocessedAt: "2026-07-03T21:05:00+09:00", createdAt: "2026-07-03T20:50:00+09:00", updatedAt: "2026-07-03T21:05:00+09:00" },
-  { deadLetterEventId: "dlq_01HXYJ9C7V8", messageId: "msg_01HXYJ6ZXCV", eventType: "ALERT_EMAIL_SEND", retryCount: 6, status: "REPROCESSED", reprocessedByUserId: "admin@allermeal.io", reprocessedAt: "2026-07-03T20:30:00+09:00", createdAt: "2026-07-03T19:45:00+09:00", updatedAt: "2026-07-03T20:30:00+09:00" },
+  {
+    deadLetterEventId: "dlq_01HXYZ8M2Y3J",
+    messageId: "msg_01HXZ8K9ABC",
+    eventType: "ALERT_EMAIL_SEND",
+    retryCount: 3,
+    status: "PENDING",
+    reprocessedByUserId: "",
+    reprocessedAt: "",
+    createdAt: "2026-07-04T08:55:00+09:00",
+    updatedAt: "2026-07-04T08:55:00+09:00",
+    reprocessOutcome: "SUCCESS",
+  },
+  {
+    deadLetterEventId: "dlq_01HXYZ7P4N1T",
+    messageId: "msg_01HXZ7N2DEF",
+    eventType: "ALERT_EMAIL_SEND",
+    retryCount: 2,
+    status: "PENDING",
+    reprocessedByUserId: "",
+    reprocessedAt: "",
+    createdAt: "2026-07-04T08:40:00+09:00",
+    updatedAt: "2026-07-04T08:40:00+09:00",
+    reprocessOutcome: "DUPLICATE",
+  },
+  {
+    deadLetterEventId: "dlq_01HXYR6QW8E",
+    messageId: "msg_01HXYR3ZXCV",
+    eventType: "ALERT_EMAIL_SEND",
+    retryCount: 1,
+    status: "PENDING",
+    reprocessedByUserId: "",
+    reprocessedAt: "",
+    createdAt: "2026-07-04T08:25:00+09:00",
+    updatedAt: "2026-07-04T08:25:00+09:00",
+    reprocessOutcome: "ERROR",
+  },
+  {
+    deadLetterEventId: "dlq_01HXYQ9L5D2",
+    messageId: "msg_01HXYQ6ASDF",
+    eventType: "ALERT_EMAIL_BAD_ADDRESS",
+    retryCount: 1,
+    status: "PENDING",
+    reprocessedByUserId: "",
+    reprocessedAt: "",
+    createdAt: "2026-07-04T08:15:00+09:00",
+    updatedAt: "2026-07-04T08:15:00+09:00",
+    reprocessOutcome: "SUCCESS",
+  },
+  {
+    deadLetterEventId: "dlq_01HXYP1K4F7",
+    messageId: "msg_01HXYP0QWER",
+    eventType: "ALERT_EMAIL_SEND",
+    retryCount: 5,
+    status: "REPROCESSED",
+    reprocessedByUserId: "admin@allermeal.io",
+    reprocessedAt: "2026-07-04T08:35:00+09:00",
+    createdAt: "2026-07-04T07:55:00+09:00",
+    updatedAt: "2026-07-04T08:35:00+09:00",
+  },
+  {
+    deadLetterEventId: "dlq_01HXYN8B9G6",
+    messageId: "msg_01HXYN5TYUI",
+    eventType: "ALERT_EMAIL_SEND",
+    retryCount: 4,
+    status: "REPROCESSED",
+    reprocessedByUserId: "admin@allermeal.io",
+    reprocessedAt: "2026-07-04T07:45:00+09:00",
+    createdAt: "2026-07-04T07:05:00+09:00",
+    updatedAt: "2026-07-04T07:45:00+09:00",
+  },
+  {
+    deadLetterEventId: "dlq_01HXYL2Z1H3",
+    messageId: "msg_01HXYL0OPLK",
+    eventType: "ALERT_EMAIL_SEND",
+    retryCount: 2,
+    status: "REPROCESSED",
+    reprocessedByUserId: "admin@allermeal.io",
+    reprocessedAt: "2026-07-03T22:10:00+09:00",
+    createdAt: "2026-07-03T21:35:00+09:00",
+    updatedAt: "2026-07-03T22:10:00+09:00",
+  },
+  {
+    deadLetterEventId: "dlq_01HXYK6J3M4",
+    messageId: "msg_01HXYK3BNML",
+    eventType: "ALERT_EMAIL_BAD_ADDRESS",
+    retryCount: 1,
+    status: "REPROCESSED",
+    reprocessedByUserId: "admin@allermeal.io",
+    reprocessedAt: "2026-07-03T21:05:00+09:00",
+    createdAt: "2026-07-03T20:50:00+09:00",
+    updatedAt: "2026-07-03T21:05:00+09:00",
+  },
+  {
+    deadLetterEventId: "dlq_01HXYJ9C7V8",
+    messageId: "msg_01HXYJ6ZXCV",
+    eventType: "ALERT_EMAIL_SEND",
+    retryCount: 6,
+    status: "REPROCESSED",
+    reprocessedByUserId: "admin@allermeal.io",
+    reprocessedAt: "2026-07-03T20:30:00+09:00",
+    createdAt: "2026-07-03T19:45:00+09:00",
+    updatedAt: "2026-07-03T20:30:00+09:00",
+  },
 ];
 
 function reviewPage<T>(items: T[], page: number, pageSize: number) {
   const start = (page - 1) * pageSize;
-  return { items: items.slice(start, start + pageSize), page, pageSize, totalCount: items.length };
+  return {
+    items: items.slice(start, start + pageSize),
+    page,
+    pageSize,
+    totalCount: items.length,
+  };
 }
 
 export class AdminApiError extends Error {
@@ -145,9 +362,49 @@ export class AdminApiError extends Error {
   }
 }
 
-export async function getDashboardSummary(review = false): Promise<DashboardSummary> { void review; return reviewDashboardSummary; }
-export async function getFailedCollectionJobs(page: number, pageSize: number, review = false): Promise<FailedCollectionJobPage> { void review; return reviewPage(reviewCollectionJobs, page, pageSize); }
-export async function getExternalApiLogs(page: number, pageSize: number, review = false): Promise<ExternalApiLogPage> { void review; return reviewPage(reviewExternalLogs, page, pageSize); }
-export async function getFailedNotifications(page: number, pageSize: number, review = false): Promise<FailedNotificationPage> { void review; return reviewPage(reviewFailedNotifications, page, pageSize); }
-export async function getDeadLetterEvents(page: number, pageSize: number): Promise<DeadLetterEventPage> { return reviewPage(reviewDeadLetterEvents, page, pageSize); }
-export async function requestRecollection(collectionJobId: string): Promise<RecollectionResult> { return { originalCollectionJobId: collectionJobId, collectionJobId: `review-recollection-${collectionJobId}`, status: "PENDING", duplicate: false }; }
+export async function getDashboardSummary(
+  review = false,
+): Promise<DashboardSummary> {
+  void review;
+  return reviewDashboardSummary;
+}
+export async function getFailedCollectionJobs(
+  page: number,
+  pageSize: number,
+  review = false,
+): Promise<FailedCollectionJobPage> {
+  void review;
+  return reviewPage(reviewCollectionJobs, page, pageSize);
+}
+export async function getExternalApiLogs(
+  page: number,
+  pageSize: number,
+  review = false,
+): Promise<ExternalApiLogPage> {
+  void review;
+  return reviewPage(reviewExternalLogs, page, pageSize);
+}
+export async function getFailedNotifications(
+  page: number,
+  pageSize: number,
+  review = false,
+): Promise<FailedNotificationPage> {
+  void review;
+  return reviewPage(reviewFailedNotifications, page, pageSize);
+}
+export async function getDeadLetterEvents(
+  page: number,
+  pageSize: number,
+): Promise<DeadLetterEventPage> {
+  return reviewPage(reviewDeadLetterEvents, page, pageSize);
+}
+export async function requestRecollection(
+  collectionJobId: string,
+): Promise<RecollectionResult> {
+  return {
+    originalCollectionJobId: collectionJobId,
+    collectionJobId: `review-recollection-${collectionJobId}`,
+    status: "PENDING",
+    duplicate: false,
+  };
+}
