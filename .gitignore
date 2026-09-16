@@ -1,8 +1,8 @@
 .agents
-AGENTS.md
 .codex
 .idea
 .next
+tsconfig.tsbuildinfo
 node_modules
 out
 dist

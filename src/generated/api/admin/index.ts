@@ -29,8 +29,15 @@ import type {
   AdminFailedNotificationPageResponse,
   AdminNotificationReprocessResponse,
   AdminRecollectionResponse,
+  AdminUserAccessHistoryPageResponse,
+  AdminUserDetailResponse,
+  AdminUserPageResponse,
+  AdminUserRoleChangeRequest,
   AdminUserRoleResponse,
+  AdminUserSuspensionRequest,
   ApiErrorResponse,
+  GetAdminUserAccessHistoryParams,
+  ListAdminUsersParams,
   ListExternalApiLogsParams,
   ListFailedCollectionJobsParams,
   ListFailedNotificationsParams,
@@ -255,17 +262,140 @@ export const useRequestCollectionRecollection = <
   );
 };
 
+export const getChangeAdminUserSuspensionUrl = (userId: string) => {
+  return `/api/v1/admin/users/${userId}/suspension`;
+};
+
+export const changeAdminUserSuspension = async (
+  userId: string,
+  adminUserSuspensionRequest: AdminUserSuspensionRequest,
+  options?: Parameters<typeof orvalFetch>[1],
+): Promise<AdminUserRoleResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+  return orvalFetch<AdminUserRoleResponse>(
+    getChangeAdminUserSuspensionUrl(userId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...getHeaders(options?.headers),
+      },
+      body: JSON.stringify(adminUserSuspensionRequest),
+    },
+  );
+};
+
+export const getChangeAdminUserSuspensionMutationKey = () =>
+  ["changeAdminUserSuspension"] as const;
+
+export const getChangeAdminUserSuspensionMutationOptions = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof changeAdminUserSuspension>>,
+    TError,
+    ChangeAdminUserSuspensionMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof changeAdminUserSuspension>>,
+  TError,
+  ChangeAdminUserSuspensionMutationVariables,
+  TContext
+> => {
+  const mutationKey = getChangeAdminUserSuspensionMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof changeAdminUserSuspension>>,
+    ChangeAdminUserSuspensionMutationVariables
+  > = (props) => {
+    const { userId, data } = props ?? {};
+
+    return changeAdminUserSuspension(userId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ChangeAdminUserSuspensionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof changeAdminUserSuspension>>
+>;
+export type ChangeAdminUserSuspensionMutationBody = AdminUserSuspensionRequest;
+export type ChangeAdminUserSuspensionMutationError =
+  ErrorType<ApiErrorResponse>;
+export type ChangeAdminUserSuspensionMutationVariables = {
+  userId: string;
+  data: AdminUserSuspensionRequest;
+};
+
+export const useChangeAdminUserSuspension = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof changeAdminUserSuspension>>,
+      TError,
+      ChangeAdminUserSuspensionMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof changeAdminUserSuspension>>,
+  TError,
+  ChangeAdminUserSuspensionMutationVariables,
+  TContext
+> => {
+  return useMutation(
+    getChangeAdminUserSuspensionMutationOptions(options),
+    queryClient,
+  );
+};
+
 export const getPromoteUserToAdminUrl = (userId: string) => {
   return `/api/v1/admin/users/${userId}/admin-role`;
 };
 
 export const promoteUserToAdmin = async (
   userId: string,
+  adminUserRoleChangeRequest: AdminUserRoleChangeRequest,
   options?: Parameters<typeof orvalFetch>[1],
 ): Promise<AdminUserRoleResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
   return orvalFetch<AdminUserRoleResponse>(getPromoteUserToAdminUrl(userId), {
     ...options,
     method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...getHeaders(options?.headers),
+    },
+    body: JSON.stringify(adminUserRoleChangeRequest),
   });
 };
 
@@ -302,9 +432,9 @@ export const getPromoteUserToAdminMutationOptions = <
     Awaited<ReturnType<typeof promoteUserToAdmin>>,
     PromoteUserToAdminMutationVariables
   > = (props) => {
-    const { userId } = props ?? {};
+    const { userId, data } = props ?? {};
 
-    return promoteUserToAdmin(userId, requestOptions);
+    return promoteUserToAdmin(userId, data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -313,9 +443,12 @@ export const getPromoteUserToAdminMutationOptions = <
 export type PromoteUserToAdminMutationResult = NonNullable<
   Awaited<ReturnType<typeof promoteUserToAdmin>>
 >;
-
+export type PromoteUserToAdminMutationBody = AdminUserRoleChangeRequest;
 export type PromoteUserToAdminMutationError = ErrorType<ApiErrorResponse>;
-export type PromoteUserToAdminMutationVariables = { userId: string };
+export type PromoteUserToAdminMutationVariables = {
+  userId: string;
+  data: AdminUserRoleChangeRequest;
+};
 
 export const usePromoteUserToAdmin = <
   TError = ErrorType<ApiErrorResponse>,
@@ -342,6 +475,496 @@ export const usePromoteUserToAdmin = <
     queryClient,
   );
 };
+
+export const getListAdminUsersUrl = (params?: ListAdminUsersParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/admin/users?${stringifiedParams}`
+    : `/api/v1/admin/users`;
+};
+
+export const listAdminUsers = async (
+  params?: ListAdminUsersParams,
+  options?: Parameters<typeof orvalFetch>[1],
+): Promise<AdminUserPageResponse> => {
+  return orvalFetch<AdminUserPageResponse>(getListAdminUsersUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAdminUsersQueryKey = (params?: ListAdminUsersParams) => {
+  return [`/api/v1/admin/users`, ...(params ? [params] : [])] as const;
+};
+
+export const getListAdminUsersQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAdminUsers>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: ListAdminUsersParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listAdminUsers>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListAdminUsersQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminUsers>>> = ({
+    signal,
+  }) => listAdminUsers(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminUsers>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListAdminUsersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAdminUsers>>
+>;
+export type ListAdminUsersQueryError = ErrorType<ApiErrorResponse>;
+
+export function useListAdminUsers<
+  TData = Awaited<ReturnType<typeof listAdminUsers>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params: undefined | ListAdminUsersParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listAdminUsers>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminUsers>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminUsers>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useListAdminUsers<
+  TData = Awaited<ReturnType<typeof listAdminUsers>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: ListAdminUsersParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listAdminUsers>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminUsers>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminUsers>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useListAdminUsers<
+  TData = Awaited<ReturnType<typeof listAdminUsers>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: ListAdminUsersParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listAdminUsers>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+
+export function useListAdminUsers<
+  TData = Awaited<ReturnType<typeof listAdminUsers>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: ListAdminUsersParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listAdminUsers>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getListAdminUsersQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getGetAdminUserUrl = (userId: string) => {
+  return `/api/v1/admin/users/${userId}`;
+};
+
+export const getAdminUser = async (
+  userId: string,
+  options?: Parameters<typeof orvalFetch>[1],
+): Promise<AdminUserDetailResponse> => {
+  return orvalFetch<AdminUserDetailResponse>(getGetAdminUserUrl(userId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAdminUserQueryKey = (userId: string) => {
+  return [`/api/v1/admin/users/${userId}`] as const;
+};
+
+export const getGetAdminUserQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAdminUser>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  userId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getAdminUser>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAdminUserQueryKey(userId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminUser>>> = ({
+    signal,
+  }) => getAdminUser(userId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: userId !== null && userId !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminUser>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetAdminUserQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAdminUser>>
+>;
+export type GetAdminUserQueryError = ErrorType<ApiErrorResponse>;
+
+export function useGetAdminUser<
+  TData = Awaited<ReturnType<typeof getAdminUser>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  userId: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getAdminUser>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminUser>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminUser>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetAdminUser<
+  TData = Awaited<ReturnType<typeof getAdminUser>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  userId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getAdminUser>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminUser>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminUser>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetAdminUser<
+  TData = Awaited<ReturnType<typeof getAdminUser>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  userId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getAdminUser>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+
+export function useGetAdminUser<
+  TData = Awaited<ReturnType<typeof getAdminUser>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  userId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getAdminUser>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getGetAdminUserQueryOptions(userId, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getGetAdminUserAccessHistoryUrl = (
+  userId: string,
+  params?: GetAdminUserAccessHistoryParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/admin/users/${userId}/access-history?${stringifiedParams}`
+    : `/api/v1/admin/users/${userId}/access-history`;
+};
+
+export const getAdminUserAccessHistory = async (
+  userId: string,
+  params?: GetAdminUserAccessHistoryParams,
+  options?: Parameters<typeof orvalFetch>[1],
+): Promise<AdminUserAccessHistoryPageResponse> => {
+  return orvalFetch<AdminUserAccessHistoryPageResponse>(
+    getGetAdminUserAccessHistoryUrl(userId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetAdminUserAccessHistoryQueryKey = (
+  userId: string,
+  params?: GetAdminUserAccessHistoryParams,
+) => {
+  return [
+    `/api/v1/admin/users/${userId}/access-history`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetAdminUserAccessHistoryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAdminUserAccessHistory>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  userId: string,
+  params?: GetAdminUserAccessHistoryParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAdminUserAccessHistory>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getGetAdminUserAccessHistoryQueryKey(userId, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAdminUserAccessHistory>>
+  > = ({ signal }) =>
+    getAdminUserAccessHistory(userId, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: userId !== null && userId !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminUserAccessHistory>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetAdminUserAccessHistoryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAdminUserAccessHistory>>
+>;
+export type GetAdminUserAccessHistoryQueryError = ErrorType<ApiErrorResponse>;
+
+export function useGetAdminUserAccessHistory<
+  TData = Awaited<ReturnType<typeof getAdminUserAccessHistory>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  userId: string,
+  params: undefined | GetAdminUserAccessHistoryParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAdminUserAccessHistory>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminUserAccessHistory>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminUserAccessHistory>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetAdminUserAccessHistory<
+  TData = Awaited<ReturnType<typeof getAdminUserAccessHistory>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  userId: string,
+  params?: GetAdminUserAccessHistoryParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAdminUserAccessHistory>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminUserAccessHistory>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminUserAccessHistory>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetAdminUserAccessHistory<
+  TData = Awaited<ReturnType<typeof getAdminUserAccessHistory>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  userId: string,
+  params?: GetAdminUserAccessHistoryParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAdminUserAccessHistory>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+
+export function useGetAdminUserAccessHistory<
+  TData = Awaited<ReturnType<typeof getAdminUserAccessHistory>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  userId: string,
+  params?: GetAdminUserAccessHistoryParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAdminUserAccessHistory>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getGetAdminUserAccessHistoryQueryOptions(
+    userId,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
 
 export const getListFailedNotificationsUrl = (
   params?: ListFailedNotificationsParams,

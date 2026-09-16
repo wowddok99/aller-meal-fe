@@ -6,8 +6,13 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { AdminUserRoleResponseRole } from "./adminUserRoleResponseRole";
+import type { AdminUserRoleResponseStatus } from "./adminUserRoleResponseStatus";
 
 export interface AdminUserRoleResponse {
-  userId?: string;
-  role?: AdminUserRoleResponseRole;
+  userId: string;
+  role: AdminUserRoleResponseRole;
+  status: AdminUserRoleResponseStatus;
+  version: number;
+  action: string;
+  changedAt: string;
 }

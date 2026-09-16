@@ -1,12 +1,10 @@
 "use client";
 
 import {
-  AlertCircle,
   CalendarDays,
   Check,
   CheckCircle2,
   ChevronDown,
-  ChevronLeft,
   ChevronRight,
   Info,
   MapPin,
@@ -352,39 +350,25 @@ export function PublicSchoolMealsPage({ schoolId }: PublicSchoolMealsPageProps) 
             </div>
           </div>
 
-          <div className="mt-4 flex flex-col gap-3 rounded-[10px] border border-amber-500/35 bg-amber-500/[0.04] px-4 py-3 text-amber-700 dark:text-amber-400 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-center gap-3">
-              <AlertCircle className="h-5 w-5 shrink-0" strokeWidth={2.2} />
-              <p className="text-sm font-extrabold">
-                {isRefreshing ? "급식 정보를 다시 확인하고 있어요" : "수집 중인 급식이 있어요"}
-              </p>
-              <span className="hidden text-sm font-semibold text-zinc-500 dark:text-zinc-400 sm:inline">
-                다시 확인까지 약 30초
-              </span>
+          <div className="mt-4 flex justify-end">
+            <div className="group relative">
+              <button
+                type="button"
+                aria-describedby="meal-refresh-help"
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-[10px] border border-zinc-300 bg-white px-3.5 text-sm font-bold text-zinc-700 transition-colors hover:border-zinc-400 hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-200 dark:hover:border-zinc-600 dark:hover:bg-zinc-900"
+                onClick={handleRefresh}
+              >
+                <RefreshCw
+                  className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+                  strokeWidth={2.2}
+                />
+                다시 확인
+              </button>
+              <span id="meal-refresh-help" role="tooltip" className="pointer-events-none absolute bottom-[calc(100%+0.6rem)] right-0 z-10 w-max max-w-60 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-medium leading-5 text-white opacity-0 shadow-lg shadow-zinc-950/15 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 dark:bg-zinc-100 dark:text-zinc-900">학교가 제공하는 최신 급식 정보를 다시 불러옵니다.<span className="absolute -bottom-1.5 right-5 h-3 w-3 rotate-45 rounded-sm bg-zinc-900 dark:bg-zinc-100" /></span>
             </div>
-            <button
-              type="button"
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-[10px] border border-zinc-300 bg-white px-4 text-sm font-extrabold text-zinc-800 transition-colors hover:border-zinc-400 hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-100 dark:hover:border-zinc-600 dark:hover:bg-zinc-900"
-              onClick={handleRefresh}
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
-                strokeWidth={2.2}
-              />
-              다시 확인
-            </button>
           </div>
         </Card>
 
-        <div className="flex justify-start">
-          <Link
-            href="/schools"
-            className="inline-flex h-10 items-center gap-1.5 rounded-[10px] px-2 text-sm font-bold text-zinc-500 transition-colors hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50"
-          >
-            <ChevronLeft className="h-4 w-4" strokeWidth={2.2} />
-            학교 검색으로 돌아가기
-          </Link>
-        </div>
       </div>
     </PublicPageShell>
   );
