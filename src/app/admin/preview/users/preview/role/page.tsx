@@ -1,6 +1,5 @@
-import { AdminShell } from "@/components/admin/admin-shell";
-import { AdminUserRole } from "@/components/admin/admin-user-role";
+import { redirect } from "next/navigation";
 
 export default function AdminUserRolePreviewPage() {
-  return <AdminShell><AdminUserRole /></AdminShell>;
+  redirect("/admin/preview/users");
 }
