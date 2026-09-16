@@ -2,12 +2,25 @@
   ArrowUpRight,
   CheckCircle2,
   ClipboardCheck,
+  type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { AllerMealLogo } from "@/components/allermeal-logo";
 import { AppHeader } from "@/components/app-header";
 
-const pageLinks = [
+type PageStatus = "완료" | "리뷰 중" | "리뷰 필요";
+
+type PageLink = {
+  id: string;
+  title: string;
+  label: string;
+  description: string;
+  href: string;
+  status: PageStatus;
+  icon: LucideIcon;
+};
+
+const pageLinks: PageLink[] = [
   {
     id: "00",
     title: "00_public_school_search_approved",
@@ -192,21 +205,21 @@ const pageLinks = [
     id: "19",
     title: "19_19_admin_dlq_events",
     label: "알림 DLQ 이벤트",
-    description: "1차 구현을 마치고 현재 상세 리뷰를 진행 중인 알림 DLQ 이벤트 화면입니다.",
+    description: "DLQ 이벤트 목록과 상세 정보를 확인하고 재처리 상태를 관리하는 화면입니다.",
     href: "/admin/preview/notification-dlq-events",
-    status: "리뷰 중",
-    icon: ClipboardCheck,
+    status: "완료",
+    icon: CheckCircle2,
   },
   {
     id: "20",
     title: "20_20_admin_user_role",
-    label: "사용자 권한",
-    description: "사용자 ID를 입력해 관리자 권한을 부여하는 화면입니다.",
-    href: "/admin/preview/users/preview/role",
-    status: "리뷰 필요",
-    icon: ClipboardCheck,
+    label: "사용자 관리",
+    description: "사용자 목록, 계정 상세와 변경 이력을 확인하고 권한 및 이용 상태를 관리하는 화면입니다.",
+    href: "/admin/preview/users",
+    status: "완료",
+    icon: CheckCircle2,
   },
-] as const;
+];
 
 export function PublicPageIndex() {
   return (

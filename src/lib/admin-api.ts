@@ -1,11 +1,21 @@
 import type { AdminDashboardSummaryResponse } from "@/generated/api/admin/models/adminDashboardSummaryResponse";
+import type { AdminDeadLetterEventItemResponse } from "@/generated/api/admin/models/adminDeadLetterEventItemResponse";
+import type { AdminDeadLetterEventPageResponse } from "@/generated/api/admin/models/adminDeadLetterEventPageResponse";
 import type { AdminExternalApiLogItemResponse } from "@/generated/api/admin/models/adminExternalApiLogItemResponse";
 import type { AdminExternalApiLogPageResponse } from "@/generated/api/admin/models/adminExternalApiLogPageResponse";
 import type { AdminFailedCollectionJobItemResponse } from "@/generated/api/admin/models/adminFailedCollectionJobItemResponse";
 import type { AdminFailedCollectionJobPageResponse } from "@/generated/api/admin/models/adminFailedCollectionJobPageResponse";
 import type { AdminFailedNotificationItemResponse } from "@/generated/api/admin/models/adminFailedNotificationItemResponse";
 import type { AdminFailedNotificationPageResponse } from "@/generated/api/admin/models/adminFailedNotificationPageResponse";
+import type { AdminNotificationReprocessResponse } from "@/generated/api/admin/models/adminNotificationReprocessResponse";
 import type { AdminRecollectionResponse } from "@/generated/api/admin/models/adminRecollectionResponse";
+import type { AdminUserDetailResponse } from "@/generated/api/admin/models/adminUserDetailResponse";
+import type { AdminUserRoleChangeRequest } from "@/generated/api/admin/models/adminUserRoleChangeRequest";
+import type { AdminUserRoleResponse } from "@/generated/api/admin/models/adminUserRoleResponse";
+import {
+  getAdminUser as requestAdminUser,
+  promoteUserToAdmin as requestUserPromotion,
+} from "@/generated/api/admin";
 
 export type DashboardSummary = AdminDashboardSummaryResponse;
 
@@ -39,25 +49,19 @@ export type FailedNotificationPage = Required<
   items: FailedNotification[];
 };
 
-export type DeadLetterEvent = {
-  deadLetterEventId: string;
-  messageId: string;
-  eventType: string;
-  retryCount: number;
-  status: "PENDING" | "REPROCESSED";
-  reprocessedByUserId: string;
-  reprocessedAt: string;
-  createdAt: string;
-  updatedAt: string;
+export type DeadLetterEvent = Required<AdminDeadLetterEventItemResponse> & {
   reprocessOutcome?: "SUCCESS" | "DUPLICATE" | "ERROR";
 };
-
-export type DeadLetterEventPage = {
+export type DeadLetterEventPage = Required<
+  Omit<AdminDeadLetterEventPageResponse, "items">
+> & {
   items: DeadLetterEvent[];
-  page: number;
-  pageSize: number;
-  totalCount: number;
 };
+export type NotificationReprocessResult = Required<
+  AdminNotificationReprocessResponse
+>;
+export type AdminUserRole = AdminUserRoleResponse;
+export type AdminUserDetail = AdminUserDetailResponse;
 
 export const ADMIN_REVIEW_PREFIX = "/admin/preview";
 
@@ -426,8 +430,36 @@ export async function getFailedNotifications(
 export async function getDeadLetterEvents(
   page: number,
   pageSize: number,
+  review = false,
 ): Promise<DeadLetterEventPage> {
+  void review;
   return reviewPage(reviewDeadLetterEvents, page, pageSize);
+}
+
+export async function reprocessDeadLetterEvent(
+  event: DeadLetterEvent,
+): Promise<NotificationReprocessResult> {
+  if (event.reprocessOutcome === "ERROR") {
+    throw new AdminApiError(500, "DLQ 이벤트를 재처리하지 못했습니다.");
+  }
+
+  return {
+    deadLetterEventId: event.deadLetterEventId,
+    status: "REPROCESSED",
+    duplicate: event.reprocessOutcome === "DUPLICATE",
+    reprocessedAt: "2026-07-04T09:10:00+09:00",
+  };
+}
+
+export async function getAdminUserDetail(userId: string): Promise<AdminUserDetail> {
+  return requestAdminUser(userId);
+}
+
+export async function promoteUserToAdmin(
+  userId: string,
+  request: AdminUserRoleChangeRequest,
+): Promise<AdminUserRole> {
+  return requestUserPromotion(userId, request);
 }
 export async function requestRecollection(
   collectionJobId: string,

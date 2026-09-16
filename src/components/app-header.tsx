@@ -31,8 +31,8 @@ export function AppHeader() {
   const [mobileServiceOpen, setMobileServiceOpen] = useState(pathname.startsWith("/admin"));
   const serviceManagementActive = pathname.startsWith("/admin");
   const serviceManagementItems = pathname.startsWith("/admin/preview")
-    ? [{ href: "/admin/preview", label: "관리자 대시보드" }, { href: "/admin/preview/users/preview/role", label: "사용자 권한" }]
-    : [{ href: "/admin", label: "관리자 대시보드" }, { href: "/admin/users/8f3a0000-0000-4000-8000-000000007b9c/role", label: "사용자 권한" }];
+    ? [{ href: "/admin/preview", label: "관리자 대시보드" }, { href: "/admin/preview/users", label: "사용자 관리" }]
+    : [{ href: "/admin", label: "관리자 대시보드" }, { href: "/admin/users", label: "사용자 관리" }];
 
   useEffect(() => {
     if (!mobileMenuOpen) return;
