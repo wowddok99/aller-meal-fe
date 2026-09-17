@@ -278,7 +278,7 @@ function FilterField({
   );
 }
 
-export function FailedNotifications({ review = false }: { review?: boolean }) {
+export function FailedNotifications() {
   const [result, setResult] = useState<FailedNotificationPage>();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -293,7 +293,7 @@ export function FailedNotifications({ review = false }: { review?: boolean }) {
     setLoading(true);
     setError(undefined);
     try {
-      const next = await getFailedNotifications(page, pageSize, review);
+      const next = await getFailedNotifications(page, pageSize);
       setResult(next);
       setSelected((current) =>
         next.items.find(
@@ -309,7 +309,7 @@ export function FailedNotifications({ review = false }: { review?: boolean }) {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, review]);
+  }, [page, pageSize]);
 
   useEffect(() => {
     void load();

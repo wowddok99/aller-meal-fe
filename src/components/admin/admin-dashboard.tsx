@@ -68,23 +68,22 @@ function NavigationRow({ title, description, href, linkLabel }: {
   );
 }
 
-export function AdminDashboard({ review = false }: { review?: boolean }) {
+export function AdminDashboard() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [error, setError] = useState<AdminApiError | null>(null);
   const [loading, setLoading] = useState(true);
-  const reviewPath = (path: string) => review ? `/admin/preview${path.slice("/admin".length)}` : path;
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      setSummary(await getDashboardSummary(review));
+      setSummary(await getDashboardSummary());
     } catch (reason) {
       setError(reason instanceof AdminApiError ? reason : new AdminApiError(0, "운영 현황을 불러오지 못했습니다."));
     } finally {
       setLoading(false);
     }
-  }, [review]);
+  }, []);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -99,7 +98,7 @@ export function AdminDashboard({ review = false }: { review?: boolean }) {
 
       {loading && !summary && <div aria-hidden="true" className={`${panel} space-y-5 p-6 md:p-8`}><div className="h-6 w-36 rounded bg-zinc-100 motion-safe:animate-pulse dark:bg-zinc-800" /><div className="grid gap-4 md:grid-cols-2">{[0, 1].map((index) => <div key={index} className="h-64 rounded-xl bg-zinc-100 motion-safe:animate-pulse dark:bg-zinc-800" />)}</div></div>}
 
-      {summary && <section aria-label="서비스 운영 현황" aria-busy={loading} className={`${panel} px-6 py-3 md:px-8 md:py-4`}><div className="divide-y divide-zinc-200 dark:divide-zinc-800"><ActionRow title="급식 수집" description="수집에 실패해 재요청이 필요한 작업" primaryLabel="수집 실패" primaryCount={summary.collection?.failedCount} secondaryLabel="수집 대기" secondaryCount={summary.collection?.pendingCount} href={reviewPath("/admin/collection-failures")} linkLabel="수집 실패 보기" /><ActionRow title="알림 발송" description="발송에 실패했거나 재시도 중인 알림" primaryLabel="발송 실패" primaryCount={summary.notifications?.failedCount} secondaryLabel="재시도 대기" secondaryCount={summary.notifications?.retryPendingCount} href={reviewPath("/admin/notification-failures")} linkLabel="실패 알림 보기" /><ActionRow title="DLQ 이벤트" description="자동 재시도 후 재처리를 기다리는 이벤트" primaryLabel="재처리 대기" primaryCount={summary.dlq?.pendingCount} secondaryLabel="누적 재처리" secondaryCount={summary.dlq?.reprocessedCount} href={reviewPath("/admin/notification-dlq-events")} linkLabel="DLQ 이벤트 보기" /><NavigationRow title="외부 연동" description="외부 API 호출 기록과 응답 상태를 확인합니다." href={reviewPath("/admin/external-api-logs")} linkLabel="외부 API 로그 보기" /></div></section>}
+      {summary && <section aria-label="서비스 운영 현황" aria-busy={loading} className={`${panel} px-6 py-3 md:px-8 md:py-4`}><div className="divide-y divide-zinc-200 dark:divide-zinc-800"><ActionRow title="급식 수집" description="수집에 실패해 재요청이 필요한 작업" primaryLabel="수집 실패" primaryCount={summary.collection?.failedCount} secondaryLabel="수집 대기" secondaryCount={summary.collection?.pendingCount} href="/admin/collection-failures" linkLabel="수집 실패 보기" /><ActionRow title="알림 발송" description="발송에 실패했거나 재시도 중인 알림" primaryLabel="발송 실패" primaryCount={summary.notifications?.failedCount} secondaryLabel="재시도 대기" secondaryCount={summary.notifications?.retryPendingCount} href="/admin/notification-failures" linkLabel="실패 알림 보기" /><ActionRow title="DLQ 이벤트" description="자동 재시도 후 재처리를 기다리는 이벤트" primaryLabel="재처리 대기" primaryCount={summary.dlq?.pendingCount} secondaryLabel="누적 재처리" secondaryCount={summary.dlq?.reprocessedCount} href="/admin/notification-dlq-events" linkLabel="DLQ 이벤트 보기" /><NavigationRow title="외부 연동" description="외부 API 호출 기록과 응답 상태를 확인합니다." href="/admin/external-api-logs" linkLabel="외부 API 로그 보기" /></div></section>}
     </div>
   );
 }

@@ -63,8 +63,6 @@ export type NotificationReprocessResult = Required<
 export type AdminUserRole = AdminUserRoleResponse;
 export type AdminUserDetail = AdminUserDetailResponse;
 
-export const ADMIN_REVIEW_PREFIX = "/admin/preview";
-
 const reviewDashboardSummary: DashboardSummary = {
   generatedAt: "2026-07-13T09:30:00+09:00",
   collection: {
@@ -397,42 +395,31 @@ export class AdminApiError extends Error {
   }
 }
 
-export async function getDashboardSummary(
-  review = false,
-): Promise<DashboardSummary> {
-  void review;
+export async function getDashboardSummary(): Promise<DashboardSummary> {
   return reviewDashboardSummary;
 }
 export async function getFailedCollectionJobs(
   page: number,
   pageSize: number,
-  review = false,
 ): Promise<FailedCollectionJobPage> {
-  void review;
   return reviewPage(reviewCollectionJobs, page, pageSize);
 }
 export async function getExternalApiLogs(
   page: number,
   pageSize: number,
-  review = false,
 ): Promise<ExternalApiLogPage> {
-  void review;
   return reviewPage(reviewExternalLogs, page, pageSize);
 }
 export async function getFailedNotifications(
   page: number,
   pageSize: number,
-  review = false,
 ): Promise<FailedNotificationPage> {
-  void review;
   return reviewPage(reviewFailedNotifications, page, pageSize);
 }
 export async function getDeadLetterEvents(
   page: number,
   pageSize: number,
-  review = false,
 ): Promise<DeadLetterEventPage> {
-  void review;
   return reviewPage(reviewDeadLetterEvents, page, pageSize);
 }
 

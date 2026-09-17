@@ -30,9 +30,7 @@ export function AppHeader() {
   const [serviceMenuOpen, setServiceMenuOpen] = useState(false);
   const [mobileServiceOpen, setMobileServiceOpen] = useState(pathname.startsWith("/admin"));
   const serviceManagementActive = pathname.startsWith("/admin");
-  const serviceManagementItems = pathname.startsWith("/admin/preview")
-    ? [{ href: "/admin/preview", label: "관리자 대시보드" }, { href: "/admin/preview/users", label: "사용자 관리" }]
-    : [{ href: "/admin", label: "관리자 대시보드" }, { href: "/admin/users", label: "사용자 관리" }];
+  const serviceManagementItems = [{ href: "/admin", label: "관리자 대시보드" }, { href: "/admin/users", label: "사용자 관리" }];
 
   useEffect(() => {
     if (!mobileMenuOpen) return;

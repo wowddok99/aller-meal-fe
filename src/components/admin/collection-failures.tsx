@@ -80,7 +80,7 @@ function PageSizeMenu({ value, onChange }: { value: number; onChange: (size: num
   );
 }
 
-export function CollectionFailures({ review = false }: { review?: boolean }) {
+export function CollectionFailures() {
   const [result, setResult] = useState<FailedCollectionJobPage>();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -94,13 +94,13 @@ export function CollectionFailures({ review = false }: { review?: boolean }) {
     setLoading(true);
     setError(undefined);
     try {
-      setResult(await getFailedCollectionJobs(page, pageSize, review));
+      setResult(await getFailedCollectionJobs(page, pageSize));
     } catch (cause) {
       setError(cause instanceof AdminApiError ? cause : new AdminApiError(0, "수집 실패 목록을 불러오지 못했습니다."));
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, review]);
+  }, [page, pageSize]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -108,9 +108,7 @@ export function CollectionFailures({ review = false }: { review?: boolean }) {
     setPendingId(job.collectionJobId);
     setActionError(undefined);
     try {
-      const response = review
-        ? { originalCollectionJobId: job.collectionJobId, collectionJobId: `review-recollection-${job.collectionJobId}`, status: "PENDING" as const, duplicate: false }
-        : await requestRecollection(job.collectionJobId);
+      const response = await requestRecollection(job.collectionJobId);
       setRecollection({ job, response });
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : "재수집 요청을 처리하지 못했습니다.");

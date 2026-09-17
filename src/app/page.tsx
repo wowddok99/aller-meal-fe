@@ -1,5 +1,5 @@
-import { PublicPageIndex } from "@/components/public/public-page-index";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return <PublicPageIndex />;
+  redirect("/schools");
 }

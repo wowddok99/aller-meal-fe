@@ -42,7 +42,7 @@ export function NotificationDlqEvents() {
   const load = useCallback(async () => {
     setLoading(true); setError(undefined);
     try {
-      const next = await getDeadLetterEvents(page, pageSize, true);
+      const next = await getDeadLetterEvents(page, pageSize);
       setResult(next);
       setSelected((current) => next.items.find((item) => item.deadLetterEventId === current?.deadLetterEventId));
     } catch (cause) {

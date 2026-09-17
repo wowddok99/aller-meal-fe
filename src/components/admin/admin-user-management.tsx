@@ -730,11 +730,7 @@ function UserDetail({
   );
 }
 
-export function AdminUserManagement({
-  preview = false,
-}: {
-  preview?: boolean;
-}) {
+export function AdminUserManagement() {
   const [users, setUsers] = useState(reviewUsers);
   const [histories, setHistories] = useState(initialHistory);
   const [input, setInput] = useState("");
@@ -742,7 +738,7 @@ export function AdminUserManagement({
   const [status, setStatus] = useState<StatusFilter>("ALL");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [selectedUserId, setSelectedUserId] = useState(users[0].userId);
+  const [selectedUserId, setSelectedUserId] = useState("");
   const [notice, setNotice] = useState("");
   const filtered = useMemo(
     () =>
@@ -819,10 +815,7 @@ export function AdminUserManagement({
     );
   };
   return (
-    <div
-      data-review-route={preview ? "preview" : "admin"}
-      className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5"
-    >
+    <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">
       <header>
         <p className="text-base font-medium leading-6 text-zinc-500 dark:text-zinc-400">
           사용자 계정 상태와 관리자 권한을 확인하고 관리하세요.
