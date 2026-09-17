@@ -1,5 +1,8 @@
 .agents
 .codex
+/AGENTS.md
+/CLAUDE.md
+/docs/
 .idea
 .next
 tsconfig.tsbuildinfo
