@@ -15,7 +15,7 @@ import {
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { PublicPageShell } from "@/components/public/public-page-shell";
-import { getSchoolById, schoolSearchResponse } from "@/components/public/school-data";
+import { getSchoolById } from "@/components/public/school-data";
 
 type PublicSchoolMealsPageProps = {
   schoolId: string;
@@ -24,8 +24,6 @@ type PublicSchoolMealsPageProps = {
 type MealMode = "daily" | "weekly";
 type MealPeriod = "lunch" | "dinner";
 type DetailKey = "nutrition" | "origin";
-
-const fallbackSchool = schoolSearchResponse.schools[0];
 
 const dates = ["2026-07-04", "2026-07-05", "2026-07-06"];
 
@@ -128,7 +126,7 @@ function DetailRow({
 }
 
 export function PublicSchoolMealsPage({ schoolId }: PublicSchoolMealsPageProps) {
-  const school = getSchoolById(schoolId) ?? fallbackSchool;
+  const school = getSchoolById(schoolId);
   const [mode, setMode] = useState<MealMode>("daily");
   const [selectedDate, setSelectedDate] = useState(dates[0]);
   const [period, setPeriod] = useState<MealPeriod>("lunch");
@@ -164,13 +162,13 @@ export function PublicSchoolMealsPage({ schoolId }: PublicSchoolMealsPageProps) 
               </div>
               <div className="flex min-w-0 flex-wrap items-center gap-3">
                 <h1 className="min-w-0 text-3xl font-extrabold tracking-[-0.03em]">
-                  {school.name}
+                  {school?.name ?? "학교 정보 확인 필요"}
                 </h1>
-                <RegionBadge>{school.region}</RegionBadge>
+                {school ? <RegionBadge>{school.region}</RegionBadge> : null}
               </div>
               <p className="flex items-center gap-2 text-base font-semibold text-zinc-500 dark:text-zinc-400">
                 <MapPin className="h-4 w-4 shrink-0" strokeWidth={2} />
-                {school.address}
+                {school?.address ?? "학교 검색에서 다시 선택해 주세요."}
               </p>
             </div>
 

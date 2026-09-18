@@ -1,53 +1,68 @@
-export type SchoolResponse = {
-  id: number;
-  name: string;
-  address: string;
-  region: string;
-  neisSchoolCode: string;
-  educationOfficeCode: string;
-};
+import type { SchoolSearchItem } from "@/components/public/school-search/school-search-adapter";
 
-export type SchoolSearchResponse = {
-  schools: SchoolResponse[];
-  page: number;
-  pageSize: number;
-  totalCount: number;
-};
+export type SchoolResponse = SchoolSearchItem;
 
-export const schoolSearchResponse: SchoolSearchResponse = {
-  page: 1,
-  pageSize: 3,
-  totalCount: 24,
-  schools: [
-    {
-      id: 1,
-      name: "서울하늘초등학교",
-      address: "서울특별시 마포구 월드컵북로 00",
-      region: "서울",
-      neisSchoolCode: "B100000001",
-      educationOfficeCode: "B10",
-    },
-    {
-      id: 2,
-      name: "서울푸른중학교",
-      address: "서울특별시 성동구 왕십리로 00",
-      region: "서울",
-      neisSchoolCode: "B100000002",
-      educationOfficeCode: "B10",
-    },
-    {
-      id: 3,
-      name: "경기별빛고등학교",
-      address: "경기도 성남시 분당구 판교로 00",
-      region: "경기",
-      neisSchoolCode: "J100000003",
-      educationOfficeCode: "J10",
-    },
-  ],
-};
+const recentSchoolsStorageKey = "allermeal:recent-schools";
+const maxRecentSchools = 2;
+
+function canUseStorage() {
+  return typeof window !== "undefined";
+}
+
+export function getRecentSchools(): SchoolResponse[] {
+  if (!canUseStorage()) {
+    return [];
+  }
+
+  try {
+    const storedSchools: unknown = JSON.parse(
+      window.localStorage.getItem(recentSchoolsStorageKey) ?? "[]",
+    );
+
+    return Array.isArray(storedSchools)
+      ? storedSchools.filter(isSchoolResponse).slice(0, maxRecentSchools)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveRecentSchool(school: SchoolResponse) {
+  if (!canUseStorage()) {
+    return;
+  }
+
+  const recentSchools = [
+    school,
+    ...getRecentSchools().filter((item) => item.id !== school.id),
+  ].slice(0, maxRecentSchools);
+
+  try {
+    window.localStorage.setItem(
+      recentSchoolsStorageKey,
+      JSON.stringify(recentSchools),
+    );
+  } catch {
+    // Storage can be unavailable in privacy-restricted browser contexts.
+  }
+}
 
 export function getSchoolById(schoolId: string) {
-  return schoolSearchResponse.schools.find(
-    (school) => String(school.id) === schoolId,
-  );
+  return getRecentSchools().find((school) => school.id === schoolId);
+}
+
+function isSchoolResponse(value: unknown): value is SchoolResponse {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const school = value as Record<string, unknown>;
+  return [
+    "id",
+    "name",
+    "address",
+    "region",
+    "neisSchoolCode",
+    "educationOfficeCode",
+  ].every((key) => typeof school[key] === "string");
 }
