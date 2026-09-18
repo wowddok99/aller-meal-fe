@@ -3,43 +3,24 @@
 import { Search } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { PublicPageShell } from "@/components/public/public-page-shell";
-
-type AllergenCode = {
-  code: number;
-  name: string;
-};
-
-const allergenCodes: AllergenCode[] = [
-  { code: 1, name: "난류" },
-  { code: 2, name: "우유" },
-  { code: 3, name: "메밀" },
-  { code: 4, name: "땅콩" },
-  { code: 5, name: "대두" },
-  { code: 6, name: "밀" },
-  { code: 7, name: "고등어" },
-  { code: 8, name: "게" },
-  { code: 9, name: "새우" },
-  { code: 10, name: "돼지고기" },
-  { code: 11, name: "복숭아" },
-  { code: 12, name: "토마토" },
-  { code: 13, name: "아황산류" },
-  { code: 14, name: "호두" },
-  { code: 15, name: "닭고기" },
-  { code: 16, name: "쇠고기" },
-  { code: 17, name: "오징어" },
-  { code: 18, name: "조개류" },
-  { code: 19, name: "잣" },
-];
+import { useListAllergens } from "@/generated/api/public";
+import {
+  toPublicAllergens,
+  type PublicAllergen,
+} from "./public-allergen-adapter";
 
 function Card({
   children,
   className = "",
+  ariaBusy,
 }: {
   children: React.ReactNode;
   className?: string;
+  ariaBusy?: boolean;
 }) {
   return (
     <section
+      aria-busy={ariaBusy}
       className={`rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-[#101419] ${className}`}
     >
       {children}
@@ -55,7 +36,13 @@ function CodeBadge({ code }: { code: number }) {
   );
 }
 
-function AllergenRow({ allergen, isMatch }: { allergen: AllergenCode; isMatch: boolean }) {
+function AllergenRow({
+  allergen,
+  isMatch,
+}: {
+  allergen: PublicAllergen;
+  isMatch: boolean;
+}) {
   return (
     <div
       id={`allergen-code-${allergen.code}`}
@@ -76,6 +63,11 @@ function AllergenRow({ allergen, isMatch }: { allergen: AllergenCode; isMatch: b
 export function PublicAllergenGuidePage() {
   const [query, setQuery] = useState("");
   const [activeQuery, setActiveQuery] = useState("");
+  const allergensQuery = useListAllergens({ query: { retry: false } });
+  const allergens = useMemo(
+    () => (allergensQuery.data ? toPublicAllergens(allergensQuery.data) : []),
+    [allergensQuery.data],
+  );
 
   const matchingCodes = useMemo(() => {
     const keyword = activeQuery.toLowerCase();
@@ -85,19 +77,23 @@ export function PublicAllergenGuidePage() {
     }
 
     return new Set(
-      allergenCodes.filter(
+      allergens.filter(
         (allergen) =>
         allergen.name.toLowerCase().includes(keyword) ||
         String(allergen.code).includes(keyword),
       ).map((allergen) => allergen.code),
     );
-  }, [activeQuery]);
+  }, [activeQuery, allergens]);
 
-  const columns = [
-    allergenCodes.slice(0, 7),
-    allergenCodes.slice(7, 14),
-    allergenCodes.slice(14),
-  ];
+  const columns = useMemo(() => {
+    const columnSize = Math.ceil(allergens.length / 3);
+
+    return [
+      allergens.slice(0, columnSize),
+      allergens.slice(columnSize, columnSize * 2),
+      allergens.slice(columnSize * 2),
+    ];
+  }, [allergens]);
 
   useEffect(() => {
     const firstMatchedCode = matchingCodes.values().next().value;
@@ -159,28 +155,78 @@ export function PublicAllergenGuidePage() {
           </form>
         </Card>
 
-        <Card className="p-5 md:p-7">
+        <Card
+          className="p-5 md:p-7"
+          ariaBusy={allergensQuery.isLoading || allergensQuery.isFetching}
+        >
           <h2 className="mb-5 text-2xl font-extrabold tracking-[-0.02em]">
             알레르기 코드 목록
           </h2>
 
-          <div className="grid overflow-hidden lg:grid-cols-3">
-            {columns.map((column, columnIndex) => (
-              <div
-                key={columnIndex}
-                className="border-b border-zinc-200 last:border-b-0 dark:border-zinc-800 lg:border-b-0 lg:border-r lg:last:border-r-0"
+          {allergensQuery.isLoading ? (
+            <p
+              role="status"
+              className="rounded-xl border border-dashed border-zinc-300 px-5 py-10 text-center text-sm font-semibold text-zinc-500 dark:border-zinc-700 dark:text-zinc-400"
+            >
+              알레르기 코드를 불러오고 있습니다.
+            </p>
+          ) : null}
+          {allergensQuery.isError ? (
+            <div
+              role="alert"
+              className="rounded-xl border border-dashed border-zinc-300 px-5 py-10 text-center dark:border-zinc-700"
+            >
+              <p className="text-sm font-semibold text-red-600">
+                {allergensQuery.error.message ||
+                  "알레르기 코드를 불러오는 중 문제가 발생했습니다."}
+              </p>
+              <button
+                type="button"
+                onClick={() => void allergensQuery.refetch()}
+                className="mt-4 h-10 rounded-[10px] border border-zinc-300 px-4 text-sm font-bold text-zinc-700 transition-colors hover:border-mint-500 hover:text-mint-600 dark:border-zinc-700 dark:text-zinc-200"
               >
-                <div className="grid h-10 grid-cols-[56px_minmax(0,1fr)_minmax(120px,0.8fr)] items-center gap-3 border-b border-zinc-200 px-4 text-xs font-extrabold text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-                  <span>{columnIndex === 0 ? "코드" : ""}</span>
-                  <span />
-                  <span>표시 예시</span>
+                다시 시도
+              </button>
+            </div>
+          ) : null}
+          {!allergensQuery.isLoading &&
+          !allergensQuery.isError &&
+          allergens.length === 0 ? (
+            <div
+              role="status"
+              className="rounded-xl border border-dashed border-zinc-300 px-5 py-10 text-center dark:border-zinc-700"
+            >
+              <p className="text-base font-extrabold text-zinc-900 dark:text-zinc-100">
+                제공되는 알레르기 코드가 없습니다.
+              </p>
+              <p className="mt-2 text-sm font-semibold text-zinc-500 dark:text-zinc-400">
+                잠시 후 다시 확인해 주세요.
+              </p>
+            </div>
+          ) : null}
+          {allergens.length > 0 ? (
+            <div className="grid overflow-hidden lg:grid-cols-3">
+              {columns.map((column, columnIndex) => (
+                <div
+                  key={columnIndex}
+                  className="border-b border-zinc-200 last:border-b-0 dark:border-zinc-800 lg:border-b-0 lg:border-r lg:last:border-r-0"
+                >
+                  <div className="grid h-10 grid-cols-[56px_minmax(0,1fr)_minmax(120px,0.8fr)] items-center gap-3 border-b border-zinc-200 px-4 text-xs font-extrabold text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+                    <span>{columnIndex === 0 ? "코드" : ""}</span>
+                    <span />
+                    <span>표시 예시</span>
+                  </div>
+                  {column.map((allergen) => (
+                    <AllergenRow
+                      key={allergen.code}
+                      allergen={allergen}
+                      isMatch={matchingCodes.has(allergen.code)}
+                    />
+                  ))}
                 </div>
-                {column.map((allergen) => (
-                  <AllergenRow key={allergen.code} allergen={allergen} isMatch={matchingCodes.has(allergen.code)} />
-                ))}
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : null}
         </Card>
 
         <Card className="p-5 md:px-7 md:py-6">
