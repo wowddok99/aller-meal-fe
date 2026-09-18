@@ -1,0 +1,2 @@
+# Generated API clients use LF consistently across contributor environments.
+src/generated/** text eol=lf
