@@ -508,23 +508,6 @@ export function PublicSchoolMealsPage({
               </div>
             </div>
           ) : null}
-          {!activeMealQuery.isLoading &&
-          !activeMealQuery.isError &&
-          !isCollecting ? (
-            <div className="mt-4 flex justify-end">
-              <button
-                type="button"
-                className="inline-flex h-9 items-center justify-center gap-2 rounded-[10px] border border-zinc-300 bg-white px-3.5 text-sm font-bold text-zinc-700 transition-colors hover:border-zinc-400 hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-200 dark:hover:border-zinc-600 dark:hover:bg-zinc-900"
-                onClick={handleRefresh}
-              >
-                <RefreshCw
-                  className={`h-4 w-4 ${activeMealQuery.isFetching ? "animate-spin" : ""}`}
-                  strokeWidth={2.2}
-                />
-                다시 확인
-              </button>
-            </div>
-          ) : null}
         </Card>
       </div>
     </PublicPageShell>
