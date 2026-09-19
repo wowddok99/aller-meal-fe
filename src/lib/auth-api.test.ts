@@ -4,6 +4,8 @@ import { ApiClientError } from "@/shared/api/api-client-error";
 const publicApi = vi.hoisted(() => ({
   confirmEmailVerification: vi.fn(),
   confirmPasswordReset: vi.fn(),
+  login: vi.fn(),
+  logout: vi.fn(),
   requestEmailVerification: vi.fn(),
   requestPasswordReset: vi.fn(),
   signUp: vi.fn(),
@@ -15,9 +17,12 @@ import {
   confirmEmailVerification,
   confirmPasswordReset,
   getAuthErrorMessage,
+  login,
+  logout,
   requestEmailVerification,
   requestPasswordReset,
   signup,
+  shouldTerminateSessionAfterLogout,
 } from "./auth-api";
 
 describe("auth-api public adapters", () => {
@@ -31,6 +36,33 @@ describe("auth-api public adapters", () => {
 
     await expect(signup({ email: "user@example.com", password: "password123" })).resolves.toBe(response);
     expect(publicApi.signUp).toHaveBeenCalledWith({ email: "user@example.com", password: "password123" });
+  });
+
+  it("forwards login input and preserves the cookie-session response", async () => {
+    const response = {
+      userId: "user-1",
+      emailVerificationStatus: "VERIFIED",
+      accessTokenExpiresAt: "2026-09-19T12:00:00+09:00",
+    };
+    publicApi.login.mockResolvedValue(response);
+
+    await expect(login({ email: "user@example.com", password: "password123" })).resolves.toBe(response);
+    expect(publicApi.login).toHaveBeenCalledWith({ email: "user@example.com", password: "password123" });
+  });
+
+  it("uses the generated logout adapter", async () => {
+    publicApi.logout.mockResolvedValue(undefined);
+
+    await expect(logout()).resolves.toBeUndefined();
+    expect(publicApi.logout).toHaveBeenCalledWith();
+  });
+
+  it.each([
+    [new ApiClientError({ status: 401, code: "UNAUTHORIZED", message: "Session ended." }), true],
+    [new ApiClientError({ status: 403, code: "FORBIDDEN", message: "Forbidden." }), false],
+    [new Error("Network failed."), false],
+  ])("ends the client session only for a 401 logout response", (error, expected) => {
+    expect(shouldTerminateSessionAfterLogout(error)).toBe(expected);
   });
 
   it("uses the generated email verification request and confirmation adapters", async () => {

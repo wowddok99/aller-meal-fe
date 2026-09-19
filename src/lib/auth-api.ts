@@ -1,6 +1,8 @@
 import {
   confirmEmailVerification as confirmEmailVerificationRequest,
   confirmPasswordReset as confirmPasswordResetRequest,
+  login as loginRequest,
+  logout as logoutRequest,
   requestEmailVerification as requestEmailVerificationRequest,
   requestPasswordReset as requestPasswordResetRequest,
   signUp,
@@ -8,6 +10,8 @@ import {
 import type {
   EmailVerificationConfirmResponse as GeneratedEmailVerificationConfirmResponse,
   EmailVerificationRequestResponse as GeneratedEmailVerificationRequestResponse,
+  LoginRequest as GeneratedLoginRequest,
+  LoginResponse as GeneratedLoginResponse,
   PasswordResetConfirmRequest as GeneratedPasswordResetConfirmRequest,
   PasswordResetRequest as GeneratedPasswordResetRequest,
   SignupRequest as GeneratedSignupRequest,
@@ -19,17 +23,8 @@ export type EmailVerificationStatus = string;
 export type SignupRequest = GeneratedSignupRequest;
 export type SignupResponse = GeneratedSignupResponse;
 
-export type LoginRequest = {
-  email: string;
-  password: string;
-};
-
-export type LoginResponse = {
-  userId: string;
-  emailVerificationStatus: EmailVerificationStatus;
-  accessTokenExpiresAt: string;
-  refreshTokenExpiresAt: string;
-};
+export type LoginRequest = GeneratedLoginRequest;
+export type LoginResponse = GeneratedLoginResponse;
 
 export type EmailVerificationRequestResponse =
   GeneratedEmailVerificationRequestResponse;
@@ -40,6 +35,11 @@ export type PasswordResetConfirmRequest = GeneratedPasswordResetConfirmRequest;
 
 // Preserve the import used by the login slice while propagating the shared error model.
 export { ApiClientError as AuthApiError } from "@/shared/api/api-client-error";
+
+/** A 401 logout response means the server has already ended this browser session. */
+export function shouldTerminateSessionAfterLogout(error: unknown) {
+  return error instanceof ApiClientError && error.status === 401;
+}
 
 type AuthAction =
   | "signup"
@@ -113,16 +113,12 @@ export async function signup(request: SignupRequest): Promise<SignupResponse> {
 }
 
 export async function login(request: LoginRequest): Promise<LoginResponse> {
-  void request;
-  return {
-    userId: "review-user-001",
-    emailVerificationStatus: "VERIFIED",
-    accessTokenExpiresAt: "2026-07-13T18:00:00+09:00",
-    refreshTokenExpiresAt: "2026-07-13T18:00:00+09:00",
-  };
+  return loginRequest(request);
 }
 
-export async function logout(): Promise<void> {}
+export async function logout(): Promise<void> {
+  return logoutRequest();
+}
 
 export async function requestEmailVerification(
   email: string,

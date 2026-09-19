@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ApiClientError } from "./api-client-error";
 import { API_SESSION_EXPIRED_EVENT } from "./orval-mutator";
+import { getSessionExpiredLoginUrl } from "./session-expired-redirect";
 
 function createQueryClient() {
   return new QueryClient({
@@ -30,8 +31,7 @@ export function ApiClientProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const onSessionExpired = () => {
       queryClient.clear();
-      const next = `${window.location.pathname}${window.location.search}`;
-      window.location.assign(`/auth/login?next=${encodeURIComponent(next)}`);
+      window.location.assign(getSessionExpiredLoginUrl(window.location));
     };
 
     window.addEventListener(API_SESSION_EXPIRED_EVENT, onSessionExpired);

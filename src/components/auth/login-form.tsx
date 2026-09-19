@@ -12,7 +12,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { AuthApiError, login } from "@/lib/auth-api";
-import { cancelAccountWithdrawal } from "@/lib/member-api";
 
 type FieldErrors = { email?: string; password?: string };
 
@@ -47,16 +46,6 @@ function getLoginError(error: unknown) {
   return error.message;
 }
 
-function isNoActiveWithdrawal(error: unknown) {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "status" in error &&
-    ((error as { status?: unknown }).status === 404 ||
-      (error as { status?: unknown }).status === 409)
-  );
-}
-
 export function LoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -79,22 +68,7 @@ export function LoginForm() {
 
     setIsSubmitting(true);
     try {
-      const response = await login({ email: normalizedEmail, password });
-      if (response.emailVerificationStatus !== "VERIFIED") {
-        setNeedsVerification(true);
-        setErrorMessage("이메일 인증을 완료한 뒤 로그인해 주세요.");
-        return;
-      }
-      try {
-        await cancelAccountWithdrawal();
-      } catch (error) {
-        if (!isNoActiveWithdrawal(error)) {
-          setErrorMessage(
-            "회원 탈퇴를 취소하지 못했습니다. 잠시 후 다시 로그인해 주세요.",
-          );
-          return;
-        }
-      }
+      await login({ email: normalizedEmail, password });
       router.push("/children");
       router.refresh();
     } catch (error) {
