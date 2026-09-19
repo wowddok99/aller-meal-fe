@@ -47,14 +47,11 @@ function AllergenRow({
     <div
       id={`allergen-code-${allergen.code}`}
       aria-label={isMatch ? `${allergen.name}, 코드 ${allergen.code}, 검색 일치` : undefined}
-      className={`relative grid min-h-12 grid-cols-[56px_minmax(0,1fr)_minmax(120px,0.8fr)] items-center gap-3 border-b border-zinc-200 px-4 transition-colors last:border-b-0 dark:border-zinc-800 ${isMatch ? "bg-mint-500/[0.07] before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-mint-500 dark:bg-mint-500/10" : ""}`}
+      className={`relative grid min-h-12 grid-cols-[56px_minmax(0,1fr)] items-center gap-5 border-b border-zinc-200 px-4 transition-colors last:border-b-0 dark:border-zinc-800 ${isMatch ? "bg-mint-500/[0.07] before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-mint-500 dark:bg-mint-500/10" : ""}`}
     >
       <CodeBadge code={allergen.code} />
-      <p className="truncate text-sm font-extrabold text-zinc-900 dark:text-zinc-100">
+      <p className="min-w-0 break-words text-sm font-extrabold leading-5 text-zinc-900 dark:text-zinc-100">
         {allergen.name}
-      </p>
-      <p className="truncate text-sm font-semibold text-zinc-500 dark:text-zinc-400">
-        {allergen.code} 또는 {allergen.name}
       </p>
     </div>
   );
@@ -205,17 +202,12 @@ export function PublicAllergenGuidePage() {
             </div>
           ) : null}
           {allergens.length > 0 ? (
-            <div className="grid overflow-hidden lg:grid-cols-3">
+            <div className="relative grid lg:grid-cols-3">
               {columns.map((column, columnIndex) => (
                 <div
                   key={columnIndex}
                   className="border-b border-zinc-200 last:border-b-0 dark:border-zinc-800 lg:border-b-0 lg:border-r lg:last:border-r-0"
                 >
-                  <div className="grid h-10 grid-cols-[56px_minmax(0,1fr)_minmax(120px,0.8fr)] items-center gap-3 border-b border-zinc-200 px-4 text-xs font-extrabold text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-                    <span>{columnIndex === 0 ? "코드" : ""}</span>
-                    <span />
-                    <span>표시 예시</span>
-                  </div>
                   {column.map((allergen) => (
                     <AllergenRow
                       key={allergen.code}
