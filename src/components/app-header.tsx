@@ -1,11 +1,13 @@
 "use client";
 
-import { ChevronDown, Info, LogOut, Menu, Search, Settings2, Soup, UsersRound, X } from "lucide-react";
+import { ChevronDown, Info, LoaderCircle, LogIn, LogOut, Menu, Search, Settings2, Soup, UsersRound, X } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { AllerMealLogo } from "@/components/allermeal-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { logout, shouldTerminateSessionAfterLogout } from "@/lib/auth-api";
+import { API_SESSION_EXPIRED_EVENT } from "@/shared/api/orval-mutator";
 
 const navigationItems = [
   { href: "/schools", label: "학교 검색", icon: Search },
@@ -22,15 +24,51 @@ function isNavigationItemActive(pathname: string, href: string) {
   return pathname.startsWith("/admin");
 }
 
+function isProtectedRoute(pathname: string) {
+  return pathname === "/children" || pathname.startsWith("/children/") || pathname === "/admin" || pathname.startsWith("/admin/");
+}
+
 export function AppHeader() {
   const pathname = usePathname();
-  const router = useRouter();
   const serviceMenuRef = useRef<HTMLDivElement>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [serviceMenuOpen, setServiceMenuOpen] = useState(false);
   const [mobileServiceOpen, setMobileServiceOpen] = useState(pathname.startsWith("/admin"));
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>();
   const serviceManagementActive = pathname.startsWith("/admin");
+  const protectedRoute = isProtectedRoute(pathname);
+  const authRoute = pathname.startsWith("/auth/");
   const serviceManagementItems = [{ href: "/admin", label: "관리자 대시보드" }, { href: "/admin/users", label: "사용자 관리" }];
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadSession() {
+      try {
+        const response = await fetch("/auth/session", { cache: "no-store", signal: controller.signal });
+        if (!response.ok) throw new Error("Unable to load the session state.");
+        const data = await response.json() as { authenticated?: unknown };
+        setIsAuthenticated(data.authenticated === true);
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setIsAuthenticated(false);
+        }
+      }
+    }
+
+    function clearSession() {
+      setIsAuthenticated(false);
+    }
+
+    void loadSession();
+    window.addEventListener(API_SESSION_EXPIRED_EVENT, clearSession);
+    return () => {
+      controller.abort();
+      window.removeEventListener(API_SESSION_EXPIRED_EVENT, clearSession);
+    };
+  }, []);
 
   useEffect(() => {
     if (!mobileMenuOpen) return;
@@ -55,9 +93,25 @@ export function AppHeader() {
     };
   }, [serviceMenuOpen]);
 
-  function handleLogout() {
+  async function handleLogout() {
+    if (isLoggingOut) return;
     setMobileMenuOpen(false);
-    router.push("/auth/login");
+    setLogoutError("");
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      setIsAuthenticated(false);
+      window.dispatchEvent(new Event(API_SESSION_EXPIRED_EVENT));
+    } catch (error) {
+      if (shouldTerminateSessionAfterLogout(error)) {
+        setIsAuthenticated(false);
+        window.dispatchEvent(new Event(API_SESSION_EXPIRED_EVENT));
+      } else {
+        setLogoutError("로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      }
+    } finally {
+      setIsLoggingOut(false);
+    }
   }
 
   return (
@@ -82,7 +136,8 @@ export function AppHeader() {
           </div>
         </div>
         <div className="hidden shrink-0 items-center gap-2 md:flex">
-          <button type="button" onClick={handleLogout} className="inline-flex h-9 items-center gap-1.5 rounded-[10px] px-2.5 text-sm font-semibold text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white dark:focus-visible:ring-zinc-700"><LogOut className="h-4 w-4" />로그아웃</button>
+          {!authRoute && (isAuthenticated ?? protectedRoute) ? <button type="button" onClick={() => void handleLogout()} disabled={isLoggingOut} className="inline-flex h-9 items-center gap-1.5 rounded-[10px] px-2.5 text-sm font-semibold text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 disabled:opacity-50 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white dark:focus-visible:ring-zinc-700"><LogOut className="h-4 w-4" />{isLoggingOut ? "로그아웃 중" : "로그아웃"}</button> : null}
+          {!authRoute && isAuthenticated === false ? <Link href="/auth/login" className="inline-flex h-9 items-center gap-1.5 rounded-[10px] px-2.5 text-sm font-semibold text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white dark:focus-visible:ring-zinc-700"><LogIn className="h-4 w-4" />로그인</Link> : null}
           <ThemeToggle />
         </div>
         <button type="button" onClick={() => setMobileMenuOpen(true)} className="inline-flex h-10 w-10 items-center justify-center rounded-[10px] text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 dark:text-zinc-200 dark:focus-visible:ring-zinc-700 md:hidden" aria-label="메뉴 열기" aria-expanded={mobileMenuOpen}><Menu className="h-6 w-6" /></button>
@@ -108,10 +163,11 @@ export function AppHeader() {
                 </div> : null}
               </div>
             </div>
-            <div className="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800"><button type="button" onClick={handleLogout} className="flex h-[52px] w-full items-center gap-3 rounded-[10px] px-3 text-[16px] font-bold text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-900"><LogOut className="h-5 w-5" />로그아웃</button><ThemeToggle variant="menu" /></div>
+            <div className="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">{!authRoute && (isAuthenticated ?? protectedRoute) ? <button type="button" onClick={() => void handleLogout()} disabled={isLoggingOut} className="flex h-[52px] w-full items-center gap-3 rounded-[10px] px-3 text-[16px] font-bold text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 dark:text-zinc-300 dark:hover:bg-zinc-900">{isLoggingOut ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <LogOut className="h-5 w-5" />}{isLoggingOut ? "로그아웃 중" : "로그아웃"}</button> : null}{!authRoute && isAuthenticated === false ? <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)} className="flex h-[52px] items-center gap-3 rounded-[10px] px-3 text-[16px] font-bold text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-900"><LogIn className="h-5 w-5" />로그인</Link> : null}<ThemeToggle variant="menu" /></div>
           </nav>
         </div>
       </div>
+      {logoutError ? <p role="alert" className="mx-auto w-full max-w-[1220px] px-5 pb-3 text-right text-sm font-semibold text-red-600 dark:text-red-400">{logoutError}</p> : null}
     </header>
   );
 }

@@ -9,26 +9,16 @@ import {
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import {
-  AuthApiError,
   confirmEmailVerification,
+  getAuthErrorMessage,
   requestEmailVerification,
 } from "@/lib/auth-api";
 
 type ResultState = "loading" | "success" | "error" | "missing";
 
-function errorMessage(error: unknown) {
-  if (error instanceof AuthApiError && error.status === 429) {
-    return "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.";
-  }
-  if (error instanceof AuthApiError && error.message) {
-    return error.message;
-  }
-  return "인증 링크가 만료되었거나 올바르지 않습니다.";
-}
-
-export function EmailVerificationResult({ token, previewState }: { token?: string; previewState?: "success" | "error" }) {
-  const [state, setState] = useState<ResultState>(previewState ?? (token ? "loading" : "missing"));
-  const [message, setMessage] = useState(previewState === "error" ? "인증 링크가 만료되었거나 올바르지 않습니다." : "");
+export function EmailVerificationResult({ token }: { token?: string }) {
+  const [state, setState] = useState<ResultState>(token ? "loading" : "missing");
+  const [message, setMessage] = useState("");
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState("");
   const [isResending, setIsResending] = useState(false);
@@ -36,7 +26,7 @@ export function EmailVerificationResult({ token, previewState }: { token?: strin
   const [resendFailed, setResendFailed] = useState(false);
 
   useEffect(() => {
-    if (previewState || !token) return;
+    if (!token) return;
     let active = true;
 
     confirmEmailVerification(token)
@@ -51,14 +41,14 @@ export function EmailVerificationResult({ token, previewState }: { token?: strin
       })
       .catch((error) => {
         if (!active) return;
-        setMessage(errorMessage(error));
+        setMessage(getAuthErrorMessage(error, "email-verification-confirm"));
         setState("error");
       });
 
     return () => {
       active = false;
     };
-  }, [previewState, token]);
+  }, [token]);
 
   const handleResend = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -78,7 +68,7 @@ export function EmailVerificationResult({ token, previewState }: { token?: strin
       setResendMessage("인증 메일을 다시 보냈습니다. 받은편지함을 확인해 주세요.");
     } catch (error) {
       setResendFailed(true);
-      setResendMessage(errorMessage(error));
+      setResendMessage(getAuthErrorMessage(error, "email-verification-request"));
     } finally {
       setIsResending(false);
     }

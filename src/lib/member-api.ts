@@ -170,4 +170,3 @@ export async function getPersonalizedMeals(childId: string, mode: PersonalizedMe
 export async function getNotificationHistory(childId: string, page = 1, pageSize = 20): Promise<NotificationHistory> { void childId; return reviewNotifications(page, pageSize); }
 export async function requestAccountWithdrawal(): Promise<AccountWithdrawal> { return { userId: "review-user-001", withdrawalRequestedAt: now, withdrawalDueAt: "2026-08-12T09:00:00+09:00", maskedNotificationCount: 12 }; }
 export async function cancelAccountWithdrawal(): Promise<void> {}
-export async function logout(): Promise<void> {}
