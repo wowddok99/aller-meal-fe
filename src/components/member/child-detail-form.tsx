@@ -3,7 +3,7 @@
 import { AlertTriangle, CheckCircle2, ChevronDown, LoaderCircle, Minus, Plus, RefreshCw, School as SchoolIcon, Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { ChildProfile, getChild, getSchool, MemberApiError, School, searchSchools, updateChild } from "@/lib/member-api";
 import { UnsavedChangesDialog } from "@/components/member/unsaved-changes-dialog";
 
@@ -48,6 +48,7 @@ export function ChildDetailForm({ childId }: { childId: string }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<MemberApiError | null>(null);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [notice, setNotice] = useState("");
   const [formError, setFormError] = useState("");
   const [changingSchool, setChangingSchool] = useState(false);
@@ -94,14 +95,16 @@ export function ChildDetailForm({ childId }: { childId: string }) {
 
   async function handleSave(event: FormEvent) {
     event.preventDefault();
+    if (savingRef.current) return;
     if (!child || !normalizedName || normalizedName.length > 100) { setFormError("이름을 1자 이상 100자 이하로 입력해 주세요."); return; }
+    savingRef.current = true;
     setSaving(true); setFormError(""); setNotice("");
     try {
       const updated = await updateChild(childId, { name: normalizedName, grade, classNumber, schoolId: school?.id ?? child.schoolId });
       setChild(updated); setName(updated.name); setGrade(updated.grade); setClassNumber(updated.classNumber);
       setNotice("변경사항을 저장했습니다."); setChangingSchool(false); setSchools([]); router.refresh();
     } catch (reason) { setFormError(reason instanceof MemberApiError ? errorMessage(reason) : "변경사항을 저장하지 못했습니다."); }
-    finally { setSaving(false); }
+    finally { savingRef.current = false; setSaving(false); }
   }
 
   function requestLeave() {
@@ -119,8 +122,8 @@ export function ChildDetailForm({ childId }: { childId: string }) {
 
   if (loading) return <div className="mx-auto flex min-h-80 max-w-[1220px] items-center justify-center px-5 text-sm font-bold text-zinc-500"><LoaderCircle className="mr-2 h-5 w-5 animate-spin" />자녀 정보를 불러오고 있습니다.</div>;
   if (loadError) {
-    const auth = loadError.status === 401 || loadError.status === 403;
-    return <div className="mx-auto w-full max-w-[1220px] px-5 pt-5"><section className="rounded-2xl border border-red-200 bg-white p-10 text-center dark:border-red-950 dark:bg-[#101419]"><AlertTriangle className="mx-auto h-10 w-10 text-red-500" /><h1 className="mt-4 text-xl font-extrabold">{loadError.status === 404 ? "자녀 정보를 찾을 수 없습니다" : auth ? "로그인이 필요합니다" : "정보를 불러오지 못했습니다"}</h1><p className="mt-2 text-sm font-medium text-zinc-500">{errorMessage(loadError)}</p>{auth ? <Link href="/auth/login" className="mt-5 inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 font-bold text-white">로그인</Link> : <button onClick={() => void load()} className="mt-5 inline-flex h-11 items-center gap-2 rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700"><RefreshCw className="h-4 w-4" />다시 시도</button>}</section></div>;
+    const loginRequired = loadError.status === 401;
+    return <div className="mx-auto w-full max-w-[1220px] px-5 pt-5"><section className="rounded-2xl border border-red-200 bg-white p-10 text-center dark:border-red-950 dark:bg-[#101419]"><AlertTriangle className="mx-auto h-10 w-10 text-red-500" /><h1 className="mt-4 text-xl font-extrabold">{loadError.status === 404 ? "자녀 정보를 찾을 수 없습니다" : loadError.status === 403 ? "자녀 정보에 접근할 수 없습니다" : loginRequired ? "로그인이 필요합니다" : "정보를 불러오지 못했습니다"}</h1><p className="mt-2 text-sm font-medium text-zinc-500">{errorMessage(loadError)}</p>{loginRequired ? <Link href="/auth/login" className="mt-5 inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 font-bold text-white">로그인</Link> : <button onClick={() => void load()} className="mt-5 inline-flex h-11 items-center gap-2 rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700"><RefreshCw className="h-4 w-4" />다시 시도</button>}</section></div>;
   }
   if (!child) return null;
 

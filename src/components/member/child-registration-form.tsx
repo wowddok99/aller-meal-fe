@@ -3,7 +3,7 @@
 import { AlertTriangle, Check, ChevronDown, Info, LoaderCircle, Minus, Plus, School as SchoolIcon, Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { createChild, MemberApiError, School, searchSchools } from "@/lib/member-api";
 import { UnsavedChangesDialog } from "@/components/member/unsaved-changes-dialog";
 
@@ -91,6 +91,7 @@ export function ChildRegistrationForm() {
   const [searchError, setSearchError] = useState("");
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
 
   const dirty = Boolean(name.trim() || keyword.trim() || selected || grade !== 1 || classNumber !== 1);
@@ -117,15 +118,18 @@ export function ChildRegistrationForm() {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (savingRef.current) return;
     const normalizedName = name.trim().replace(/\s+/g, " ");
     if (!normalizedName || normalizedName.length > 100) { setFormError("이름을 1자 이상 100자 이하로 입력해 주세요."); return; }
     if (!selected) { setFormError("학교를 검색하고 선택해 주세요."); return; }
+    savingRef.current = true;
     setSaving(true); setFormError("");
     try {
       const child = await createChild({ name: normalizedName, grade, classNumber, schoolId: selected.id });
       router.push(`/children/${child.id}/allergens`);
       router.refresh();
-    } catch (reason) { setFormError(reason instanceof MemberApiError ? messageFor(reason) : "자녀를 등록하지 못했습니다."); setSaving(false); }
+    } catch (reason) { setFormError(reason instanceof MemberApiError ? messageFor(reason) : "자녀를 등록하지 못했습니다."); }
+    finally { savingRef.current = false; setSaving(false); }
   }
 
   function requestLeave() {

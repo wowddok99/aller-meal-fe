@@ -23,10 +23,10 @@ import {
 } from "@/lib/member-api";
 import { UnsavedChangesDialog } from "@/components/member/unsaved-changes-dialog";
 
-const FIXED_TIMEZONE = "Asia/Seoul" as const;
+const DEFAULT_TIMEZONE = "Asia/Seoul";
 const DEFAULT_TIME = "08:30";
 
-type FormValue = { emailEnabled: boolean; notificationTime: string };
+type FormValue = { emailEnabled: boolean; notificationTime: string; timezone: string };
 
 function errorMessage(error: MemberApiError) {
   if (error.status === 401) return "로그인이 필요합니다.";
@@ -38,23 +38,23 @@ function errorMessage(error: MemberApiError) {
   return error.message;
 }
 
-function normalizeTime(value: string | undefined) {
-  return value?.match(/^\d{2}:\d{2}/)?.[0] ?? DEFAULT_TIME;
-}
-
-function formatDateTime(value?: string) {
+function formatDateTime(value?: string, timezone = DEFAULT_TIMEZONE) {
   if (!value) return "아직 저장되지 않음";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("ko-KR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: FIXED_TIMEZONE,
-  }).format(date);
+  try {
+    return new Intl.DateTimeFormat("ko-KR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      timeZone: timezone,
+    }).format(date);
+  } catch {
+    return value;
+  }
 }
 
 export function ChildNotificationPreferenceForm({ childId }: { childId: string }) {
@@ -62,8 +62,8 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
   const [child, setChild] = useState<ChildProfile | null>(null);
   const [schoolName, setSchoolName] = useState("");
   const [preference, setPreference] = useState<ChildNotificationPreference | null>(null);
-  const [form, setForm] = useState<FormValue>({ emailEnabled: false, notificationTime: DEFAULT_TIME });
-  const [saved, setSaved] = useState<FormValue>({ emailEnabled: false, notificationTime: DEFAULT_TIME });
+  const [form, setForm] = useState<FormValue>({ emailEnabled: false, notificationTime: DEFAULT_TIME, timezone: DEFAULT_TIMEZONE });
+  const [saved, setSaved] = useState<FormValue>({ emailEnabled: false, notificationTime: DEFAULT_TIME, timezone: DEFAULT_TIMEZONE });
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<MemberApiError | null>(null);
   const [saving, setSaving] = useState(false);
@@ -87,14 +87,15 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
         const result = await getChildNotificationPreference(childId);
         const next = {
           emailEnabled: result.emailEnabled,
-          notificationTime: normalizeTime(result.notificationTime),
+          notificationTime: result.notificationTime,
+          timezone: result.timezone,
         };
         setPreference(result);
         setForm(next);
         setSaved(next);
       } catch (reason) {
         if (!(reason instanceof MemberApiError) || reason.status !== 404) throw reason;
-        const initial = { emailEnabled: false, notificationTime: DEFAULT_TIME };
+        const initial = { emailEnabled: false, notificationTime: DEFAULT_TIME, timezone: DEFAULT_TIMEZONE };
         setPreference(null);
         setForm(initial);
         setSaved(initial);
@@ -115,7 +116,7 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
   }, [load]);
 
   const dirty = useMemo(
-    () => form.emailEnabled !== saved.emailEnabled || form.notificationTime !== saved.notificationTime,
+    () => form.emailEnabled !== saved.emailEnabled || form.notificationTime !== saved.notificationTime || form.timezone !== saved.timezone,
     [form, saved],
   );
 
@@ -136,7 +137,7 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
   }
 
   async function save() {
-    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(form.notificationTime)) {
+    if (!/^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,3})?)?$/.test(form.notificationTime)) {
       setSaveError("알림 시간을 올바르게 입력해 주세요.");
       return;
     }
@@ -146,11 +147,11 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
     try {
       const result = await updateChildNotificationPreference(childId, {
         ...form,
-        timezone: FIXED_TIMEZONE,
       });
       const next = {
         emailEnabled: result.emailEnabled,
-        notificationTime: normalizeTime(result.notificationTime),
+        notificationTime: result.notificationTime,
+        timezone: result.timezone,
       };
       setPreference(result);
       setForm(next);
@@ -197,17 +198,22 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
   }
 
   if (loadError) {
-    const authError = loadError.status === 401 || loadError.status === 403;
+    const loginRequired = loadError.status === 401;
     return (
       <div className="mx-auto w-full max-w-[1220px] px-5 pt-5">
         <section className="rounded-2xl border border-red-200 bg-white p-10 text-center dark:border-red-950 dark:bg-[#101419]">
           <AlertTriangle className="mx-auto h-10 w-10 text-red-500" />
           <h1 className="mt-4 text-xl font-extrabold">
-            {loadError.status === 404 ? "자녀 정보를 찾을 수 없습니다" : authError ? "로그인이 필요합니다" : "알림 설정을 불러오지 못했습니다"}
+            {loadError.status === 404 ? "자녀 정보를 찾을 수 없습니다" : loadError.status === 403 ? "알림 설정에 접근할 수 없습니다" : loginRequired ? "로그인이 필요합니다" : "알림 설정을 불러오지 못했습니다"}
           </h1>
           <p className="mt-2 text-sm font-medium text-zinc-500">{errorMessage(loadError)}</p>
-          {authError ? (
+          {loginRequired ? (
             <Link href="/auth/login" className="mt-5 inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 font-bold text-white">로그인</Link>
+          ) : loadError.status === 403 ? (
+            <div className="mt-5 flex flex-wrap justify-center gap-2">
+              <Link href="/children" className="inline-flex h-11 items-center rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700">자녀 관리로 돌아가기</Link>
+              <button type="button" onClick={() => void load()} className="inline-flex h-11 items-center gap-2 rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700"><RefreshCw className="h-4 w-4" /> 다시 시도</button>
+            </div>
           ) : (
             <button type="button" onClick={() => void load()} className="mt-5 inline-flex h-11 items-center gap-2 rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700"><RefreshCw className="h-4 w-4" /> 다시 시도</button>
           )}
@@ -251,16 +257,16 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
           </div>
           <label className="flex min-h-20 flex-col justify-between gap-3 p-4 md:flex-row md:items-center md:px-5">
             <span><span className="block font-extrabold">알림 발송 시간</span><span className="mt-1 block text-sm font-medium text-zinc-500">위험 메뉴 알림을 받을 시간을 설정해요.</span></span>
-            <span className="relative block w-full md:w-52"><Clock3 className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" /><input type="time" value={form.notificationTime} onChange={(event) => updateForm({ notificationTime: event.target.value })} disabled={saving || !form.emailEnabled} required className="h-12 w-full appearance-none rounded-[10px] border border-zinc-300 bg-white pl-11 pr-4 text-sm font-bold text-zinc-700 outline-none focus:border-mint-500 focus:ring-2 focus:ring-mint-500/20 disabled:cursor-not-allowed disabled:opacity-50 [&::-webkit-calendar-picker-indicator]:opacity-0 dark:border-zinc-700 dark:bg-[#0b0f13] dark:text-zinc-200" /></span>
+            <span className="relative block w-full md:w-52"><Clock3 className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" /><input type="time" step="1" value={form.notificationTime} onChange={(event) => updateForm({ notificationTime: event.target.value })} disabled={saving || !form.emailEnabled} required className="h-12 w-full appearance-none rounded-[10px] border border-zinc-300 bg-white pl-11 pr-4 text-sm font-bold text-zinc-700 outline-none focus:border-mint-500 focus:ring-2 focus:ring-mint-500/20 disabled:cursor-not-allowed disabled:opacity-50 [&::-webkit-calendar-picker-indicator]:opacity-0 dark:border-zinc-700 dark:bg-[#0b0f13] dark:text-zinc-200" /></span>
           </label>
           <div className="flex min-h-20 flex-col justify-between gap-3 p-4 md:flex-row md:items-center md:px-5">
             <div><h3 className="font-extrabold">시간대</h3><p className="mt-1 text-sm font-medium text-zinc-500">서비스 기본 시간대로 고정되어 있어요.</p></div>
-            <div className="flex h-12 w-full items-center gap-3 rounded-[10px] border border-zinc-300 bg-white px-4 text-sm font-bold text-zinc-700 md:w-52 dark:border-zinc-700 dark:bg-[#0b0f13] dark:text-zinc-200"><LockKeyhole className="h-4 w-4 shrink-0" /> <span>{FIXED_TIMEZONE}</span></div>
+            <div className="flex h-12 w-full items-center gap-3 rounded-[10px] border border-zinc-300 bg-white px-4 text-sm font-bold text-zinc-700 md:w-52 dark:border-zinc-700 dark:bg-[#0b0f13] dark:text-zinc-200"><LockKeyhole className="h-4 w-4 shrink-0" /> <span>{form.timezone}</span></div>
           </div>
         </div>
         <div className={`mt-4 flex flex-col gap-2 rounded-xl border px-4 py-3 text-sm font-semibold md:flex-row md:items-center md:justify-between ${form.emailEnabled ? "border-mint-500/30 bg-mint-500/[0.08] text-mint-600 dark:border-mint-500/30 dark:bg-mint-500/10 dark:text-mint-400" : "border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950/40 dark:text-zinc-300"}`}>
           <p className="flex items-start gap-2"><Info className="mt-0.5 h-4 w-4 shrink-0" /> {notificationSummary}</p>
-          <p className="shrink-0 text-xs font-medium text-zinc-500 dark:text-zinc-400">마지막 수정 {formatDateTime(preference?.updatedAt)}</p>
+          <p className="shrink-0 text-xs font-medium text-zinc-500 dark:text-zinc-400">마지막 수정 {formatDateTime(preference?.updatedAt, form.timezone)}</p>
         </div>
         </div>
       </section>

@@ -15,6 +15,7 @@ import {
   ChildProfile,
   School,
   getAllergens,
+  getChildAllergens,
   getChild,
   getSchool,
   MemberApiError,
@@ -52,15 +53,17 @@ export function ChildAllergenSettings({ childId }: { childId: string }) {
     setLoadError(null);
     try {
       const profile = await getChild(childId);
-      const [allergenList, schoolInfo] = await Promise.all([
-        getAllergens(childId === "preview"),
+      const [allergenList, childAllergens, schoolInfo] = await Promise.all([
+        getAllergens(),
+        getChildAllergens(childId),
         getSchool(profile.schoolId).catch(() => null),
       ]);
       setChild(profile);
       setSchool(schoolInfo);
       setAllergens([...allergenList].sort((a, b) => a.code - b.code));
-      setSelectedCodes([]);
-      setSavedCodes(null);
+      const serverCodes = [...childAllergens.allergenCodes].sort((a, b) => a - b);
+      setSelectedCodes(serverCodes);
+      setSavedCodes(serverCodes);
     } catch (reason) {
       setLoadError(
         reason instanceof MemberApiError
@@ -129,7 +132,7 @@ export function ChildAllergenSettings({ childId }: { childId: string }) {
   }
 
   if (loadError) {
-    const authError = loadError.status === 401 || loadError.status === 403;
+    const loginRequired = loadError.status === 401;
     return (
       <div className="mx-auto w-full max-w-[1220px] px-5 pt-5">
         <section className="rounded-2xl border border-red-200 bg-white p-10 text-center dark:border-red-950 dark:bg-[#101419]">
@@ -137,15 +140,22 @@ export function ChildAllergenSettings({ childId }: { childId: string }) {
           <h1 className="mt-4 text-xl font-extrabold">
             {loadError.status === 404
               ? "자녀 정보를 찾을 수 없습니다"
-              : authError
+              : loadError.status === 403
+                ? "알레르기 설정에 접근할 수 없습니다"
+              : loginRequired
                 ? "로그인이 필요합니다"
                 : "정보를 불러오지 못했습니다"}
           </h1>
           <p className="mt-2 text-sm font-medium text-zinc-500">{errorMessage(loadError)}</p>
-          {authError ? (
+          {loginRequired ? (
             <Link href="/auth/login" className="mt-5 inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 font-bold text-white">
               로그인
             </Link>
+          ) : loadError.status === 403 ? (
+            <div className="mt-5 flex flex-wrap justify-center gap-2">
+              <Link href="/children" className="inline-flex h-11 items-center rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700">자녀 관리로 돌아가기</Link>
+              <button type="button" onClick={() => void load()} className="inline-flex h-11 items-center gap-2 rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700"><RefreshCw className="h-4 w-4" /> 다시 시도</button>
+            </div>
           ) : (
             <button type="button" onClick={() => void load()} className="mt-5 inline-flex h-11 items-center gap-2 rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700">
               <RefreshCw className="h-4 w-4" /> 다시 시도

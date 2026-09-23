@@ -1,7 +1,30 @@
 import type {
+  ChildAllergenResponse as GeneratedChildAllergen,
+  ChildNotificationPreferenceResponse as GeneratedChildNotificationPreference,
   NotificationHistoryItemResponse as GeneratedNotificationHistoryItem,
   NotificationHistoryResponse as GeneratedNotificationHistory,
 } from "@/generated/api/member/models";
+import type { ChildProfileResponse as GeneratedChildProfile } from "@/generated/api/member/models/childProfileResponse";
+import {
+  createChild as requestCreateChild,
+  deleteChild as requestDeleteChild,
+  getChildAllergens as requestChildAllergens,
+  getChildNotificationPreference as requestChildNotificationPreference,
+  getChild as requestChild,
+  listChildren as requestChildren,
+  replaceChildAllergens as requestReplaceChildAllergens,
+  updateChildNotificationPreference as requestUpdateChildNotificationPreference,
+  updateChild as requestUpdateChild,
+} from "@/generated/api/member";
+import {
+  listAllergens as requestAllergens,
+  getPublicSchool as requestSchool,
+  searchPublicSchools as requestSchoolSearch,
+} from "@/generated/api/public";
+import type { AllergenResponse as GeneratedAllergen } from "@/generated/api/public/models";
+import type { SchoolResponse as GeneratedSchool } from "@/generated/api/public/models/schoolResponse";
+import { toSchoolSearchResult } from "@/components/public/school-search/school-search-adapter";
+import { ApiClientError } from "@/shared/api/api-client-error";
 
 export type ChildProfile = { id: string; name: string; grade: number; classNumber: number; schoolId: string; createdAt: string; updatedAt: string };
 export type School = { id: string; neisSchoolCode: string; educationOfficeCode: string; name: string; address: string; region: string };
@@ -11,7 +34,7 @@ export type UpdateChildProfileInput = CreateChildProfileInput;
 export type Allergen = { code: number; name: string };
 export type ChildAllergen = { childId: string; allergenCodes: number[] };
 export type ChildNotificationPreference = { childId: string; emailEnabled: boolean; notificationTime: string; timezone: string; createdAt: string; updatedAt: string };
-export type UpdateChildNotificationPreferenceInput = { emailEnabled: boolean; notificationTime: string; timezone: "Asia/Seoul" };
+export type UpdateChildNotificationPreferenceInput = { emailEnabled: boolean; notificationTime: string; timezone: string };
 export type PersonalizedMealItem = { name: string; rawText: string; displayOrder: number; labelingStatus: string; riskLevel: string; matchedAllergenCodes: number[] };
 export type MealOrigin = { ingredients: string[]; origin: string };
 export type PersonalizedMeal = { mealId: string; mealDate: string; mealType: string; sourceReceivedAt: string; labelingStatus: string; nutritionInfo: string; originInfo: string; origins?: MealOrigin[]; riskLevel: string; riskVersion: string; items: PersonalizedMealItem[] };
@@ -25,23 +48,11 @@ export class MemberApiError extends Error {
   constructor(public readonly status: number, message: string) { super(message); this.name = "MemberApiError"; }
 }
 
-export const REVIEW_CHILD_ID = "preview";
 const now = "2026-07-13T09:00:00+09:00";
-const reviewChildren: ChildProfile[] = [
-  { id: REVIEW_CHILD_ID, name: "김민준", grade: 3, classNumber: 2, schoolId: "preview-school", createdAt: "2026-03-02T09:00:00+09:00", updatedAt: now },
-  { id: "preview-child-2", name: "이서준", grade: 1, classNumber: 4, schoolId: "preview-school", createdAt: "2026-04-14T09:00:00+09:00", updatedAt: now },
-  { id: "preview-child-3", name: "박하은", grade: 5, classNumber: 1, schoolId: "preview-school", createdAt: "2026-05-20T09:00:00+09:00", updatedAt: now },
-];
-const reviewChild = reviewChildren[0];
-const reviewSchool: School = { id: "preview-school", neisSchoolCode: "B100000658", educationOfficeCode: "B10", name: "서울가람초등학교", address: "서울특별시 마포구 월드컵북로 123", region: "서울" };
-const reviewAllergens: Allergen[] = ["난류", "우유", "메밀", "땅콩", "대두", "밀", "고등어", "게", "새우", "돼지고기", "복숭아", "토마토", "아황산류", "호두", "닭고기", "쇠고기", "오징어", "조개류", "잣"].map((name, index) => ({ code: index + 1, name }));
-
-function childFor(id: string): ChildProfile { return { ...(reviewChildren.find((child) => child.id === id) ?? reviewChild) }; }
-
 function reviewMeals(childId: string, date: string): PersonalizedMealQuery {
   return {
     childId,
-    schoolId: reviewSchool.id,
+    schoolId: "review-school",
     rangeStart: date,
     rangeEnd: date,
     collectionStatus: "COMPLETED",
@@ -111,7 +122,7 @@ function reviewWeeklyMeals(childId: string, date: string): PersonalizedMealQuery
 
   return {
     childId,
-    schoolId: reviewSchool.id,
+    schoolId: "review-school",
     rangeStart,
     rangeEnd,
     collectionStatus: "COMPLETED",
@@ -152,17 +163,135 @@ function reviewNotifications(page: number, pageSize: number): NotificationHistor
   return { notifications: notifications.slice(start, start + pageSize), page, pageSize, totalCount: notifications.length };
 }
 
-export async function getChildren(): Promise<ChildProfile[]> { return reviewChildren.map((child) => ({ ...child })); }
-export async function getChild(childId: string): Promise<ChildProfile> { return childFor(childId); }
-export async function getSchool(schoolId: string): Promise<School> { return { ...reviewSchool, id: schoolId || reviewSchool.id }; }
-export async function getAllergens(review = false): Promise<Allergen[]> { void review; return reviewAllergens; }
-export async function searchSchools(keyword: string): Promise<SchoolSearchResult> { const schools = keyword.trim() ? [reviewSchool] : []; return { schools, page: 1, pageSize: 20, totalCount: schools.length }; }
-export async function createChild(input: CreateChildProfileInput): Promise<ChildProfile> { return { ...childFor("review-child-new"), ...input, createdAt: now, updatedAt: now }; }
-export async function updateChild(childId: string, input: UpdateChildProfileInput): Promise<ChildProfile> { return { ...childFor(childId), ...input, updatedAt: new Date().toISOString() }; }
-export async function deleteChild(childId: string): Promise<void> { void childId; }
-export async function replaceChildAllergens(childId: string, allergenCodes: number[]): Promise<ChildAllergen> { return { childId, allergenCodes }; }
-export async function getChildNotificationPreference(childId: string): Promise<ChildNotificationPreference> { return { childId, emailEnabled: true, notificationTime: "08:30:00", timezone: "Asia/Seoul", createdAt: "2026-03-02T09:00:00+09:00", updatedAt: now }; }
-export async function updateChildNotificationPreference(childId: string, input: UpdateChildNotificationPreferenceInput): Promise<ChildNotificationPreference> { return { childId, ...input, notificationTime: `${input.notificationTime}:00`, createdAt: "2026-03-02T09:00:00+09:00", updatedAt: new Date().toISOString() }; }
+function asMemberApiError(error: unknown, fallbackMessage: string): MemberApiError {
+  if (error instanceof MemberApiError) return error;
+  if (error instanceof ApiClientError) return new MemberApiError(error.status, error.message);
+  return new MemberApiError(0, error instanceof Error ? error.message : fallbackMessage);
+}
+
+/** Converts an optional OpenAPI response into the UI model only when its identity is usable. */
+export function toChildProfile(response: GeneratedChildProfile | null | undefined): ChildProfile | undefined {
+  if (!response?.id) return undefined;
+
+  return {
+    id: response.id,
+    name: response.name ?? "이름 정보 없음",
+    grade: response.grade ?? 0,
+    classNumber: response.classNumber ?? 0,
+    schoolId: response.schoolId ?? "",
+    createdAt: response.createdAt ?? "",
+    updatedAt: response.updatedAt ?? "",
+  };
+}
+
+function requiredChild(response: GeneratedChildProfile | null | undefined): ChildProfile {
+  const child = toChildProfile(response);
+  if (!child) throw new MemberApiError(0, "자녀 정보 응답이 올바르지 않습니다.");
+  return child;
+}
+
+function toSchool(response: GeneratedSchool | null | undefined): School | undefined {
+  if (!response?.id) return undefined;
+
+  return {
+    id: response.id,
+    name: response.name ?? "학교명 정보 없음",
+    address: response.address ?? "주소 정보 없음",
+    region: response.region ?? "지역 정보 없음",
+    neisSchoolCode: response.neisSchoolCode ?? "정보 없음",
+    educationOfficeCode: response.educationOfficeCode ?? "정보 없음",
+  };
+}
+
+function requiredSchool(response: GeneratedSchool | null | undefined): School {
+  const school = toSchool(response);
+  if (!school) throw new MemberApiError(0, "학교 정보 응답이 올바르지 않습니다.");
+  return school;
+}
+
+function toAllergen(response: GeneratedAllergen | null | undefined): Allergen | undefined {
+  if (typeof response?.code !== "number" || !response.name) return undefined;
+  return { code: response.code, name: response.name };
+}
+
+export function toChildAllergen(response: GeneratedChildAllergen | null | undefined): ChildAllergen | undefined {
+  if (!response?.childId || !Array.isArray(response.allergenCodes) || !response.allergenCodes.every((code) => typeof code === "number")) return undefined;
+  return { childId: response.childId, allergenCodes: response.allergenCodes };
+}
+
+function requiredChildAllergen(response: GeneratedChildAllergen | null | undefined): ChildAllergen {
+  const allergens = toChildAllergen(response);
+  if (!allergens) throw new MemberApiError(0, "자녀 알레르기 설정 응답이 올바르지 않습니다.");
+  return allergens;
+}
+
+export function toChildNotificationPreference(response: GeneratedChildNotificationPreference | null | undefined): ChildNotificationPreference | undefined {
+  if (!response?.childId || typeof response.emailEnabled !== "boolean" || typeof response.notificationTime !== "string" || typeof response.timezone !== "string" || typeof response.createdAt !== "string" || typeof response.updatedAt !== "string") return undefined;
+  return {
+    childId: response.childId,
+    emailEnabled: response.emailEnabled,
+    notificationTime: response.notificationTime,
+    timezone: response.timezone,
+    createdAt: response.createdAt,
+    updatedAt: response.updatedAt,
+  };
+}
+
+function requiredChildNotificationPreference(response: GeneratedChildNotificationPreference | null | undefined): ChildNotificationPreference {
+  const preference = toChildNotificationPreference(response);
+  if (!preference) throw new MemberApiError(0, "자녀 알림 설정 응답이 올바르지 않습니다.");
+  return preference;
+}
+
+export async function getChildren(): Promise<ChildProfile[]> {
+  try { return (await requestChildren()).map(toChildProfile).filter((child): child is ChildProfile => child !== undefined); }
+  catch (error) { throw asMemberApiError(error, "자녀 목록을 불러오지 못했습니다."); }
+}
+export async function getChild(childId: string): Promise<ChildProfile> {
+  try { return requiredChild(await requestChild(childId)); }
+  catch (error) { throw asMemberApiError(error, "자녀 정보를 불러오지 못했습니다."); }
+}
+export async function getSchool(schoolId: string): Promise<School> {
+  try { return requiredSchool(await requestSchool(schoolId)); }
+  catch (error) { throw asMemberApiError(error, "학교 정보를 불러오지 못했습니다."); }
+}
+export async function getAllergens(_review = false): Promise<Allergen[]> {
+  void _review;
+  try { return (await requestAllergens()).map(toAllergen).filter((allergen): allergen is Allergen => allergen !== undefined); }
+  catch (error) { throw asMemberApiError(error, "알레르기 목록을 불러오지 못했습니다."); }
+}
+export async function searchSchools(keyword: string): Promise<SchoolSearchResult> {
+  try { return toSchoolSearchResult(await requestSchoolSearch({ keyword, page: 1, pageSize: 20 }), 1, 20); }
+  catch (error) { throw asMemberApiError(error, "학교를 검색하지 못했습니다."); }
+}
+export async function createChild(input: CreateChildProfileInput): Promise<ChildProfile> {
+  try { return requiredChild(await requestCreateChild(input)); }
+  catch (error) { throw asMemberApiError(error, "자녀를 등록하지 못했습니다."); }
+}
+export async function updateChild(childId: string, input: UpdateChildProfileInput): Promise<ChildProfile> {
+  try { return requiredChild(await requestUpdateChild(childId, input)); }
+  catch (error) { throw asMemberApiError(error, "자녀 정보를 수정하지 못했습니다."); }
+}
+export async function deleteChild(childId: string): Promise<void> {
+  try { await requestDeleteChild(childId); }
+  catch (error) { throw asMemberApiError(error, "자녀 정보를 삭제하지 못했습니다."); }
+}
+export async function getChildAllergens(childId: string): Promise<ChildAllergen> {
+  try { return requiredChildAllergen(await requestChildAllergens(childId)); }
+  catch (error) { throw asMemberApiError(error, "자녀 알레르기 설정을 불러오지 못했습니다."); }
+}
+export async function replaceChildAllergens(childId: string, allergenCodes: number[]): Promise<ChildAllergen> {
+  try { return requiredChildAllergen(await requestReplaceChildAllergens(childId, { allergenCodes })); }
+  catch (error) { throw asMemberApiError(error, "자녀 알레르기 설정을 저장하지 못했습니다."); }
+}
+export async function getChildNotificationPreference(childId: string): Promise<ChildNotificationPreference> {
+  try { return requiredChildNotificationPreference(await requestChildNotificationPreference(childId)); }
+  catch (error) { throw asMemberApiError(error, "자녀 알림 설정을 불러오지 못했습니다."); }
+}
+export async function updateChildNotificationPreference(childId: string, input: UpdateChildNotificationPreferenceInput): Promise<ChildNotificationPreference> {
+  try { return requiredChildNotificationPreference(await requestUpdateChildNotificationPreference(childId, input)); }
+  catch (error) { throw asMemberApiError(error, "자녀 알림 설정을 저장하지 못했습니다."); }
+}
 export async function getPersonalizedMeals(childId: string, mode: PersonalizedMealMode, date: string): Promise<PersonalizedMealQuery> {
   if (mode === "weekly") return reviewWeeklyMeals(childId, date);
   return reviewMeals(childId, mode === "today" ? toKstDate(new Date()) : date);
