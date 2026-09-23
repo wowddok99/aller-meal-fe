@@ -1,18 +1,27 @@
 import type {
+  AccountWithdrawalResponse as GeneratedAccountWithdrawal,
   ChildAllergenResponse as GeneratedChildAllergen,
   ChildNotificationPreferenceResponse as GeneratedChildNotificationPreference,
   NotificationHistoryItemResponse as GeneratedNotificationHistoryItem,
   NotificationHistoryResponse as GeneratedNotificationHistory,
+  PersonalizedMealQueryResponse as GeneratedPersonalizedMealQuery,
+  PersonalizedMealResponse as GeneratedPersonalizedMeal,
 } from "@/generated/api/member/models";
 import type { ChildProfileResponse as GeneratedChildProfile } from "@/generated/api/member/models/childProfileResponse";
 import {
+  cancelAccountWithdrawal as requestCancelAccountWithdrawal,
   createChild as requestCreateChild,
   deleteChild as requestDeleteChild,
   getChildAllergens as requestChildAllergens,
   getChildNotificationPreference as requestChildNotificationPreference,
   getChild as requestChild,
+  getChildNotificationHistory as requestNotificationHistory,
+  getPersonalizedDailyMeal as requestPersonalizedDailyMeal,
+  getPersonalizedTodayMeal as requestPersonalizedTodayMeal,
+  getPersonalizedWeeklyMeals as requestPersonalizedWeeklyMeals,
   listChildren as requestChildren,
   replaceChildAllergens as requestReplaceChildAllergens,
+  requestAccountWithdrawal as requestWithdrawal,
   updateChildNotificationPreference as requestUpdateChildNotificationPreference,
   updateChild as requestUpdateChild,
 } from "@/generated/api/member";
@@ -46,121 +55,6 @@ export type AccountWithdrawal = { userId: string; withdrawalRequestedAt: string;
 
 export class MemberApiError extends Error {
   constructor(public readonly status: number, message: string) { super(message); this.name = "MemberApiError"; }
-}
-
-const now = "2026-07-13T09:00:00+09:00";
-function reviewMeals(childId: string, date: string): PersonalizedMealQuery {
-  return {
-    childId,
-    schoolId: "review-school",
-    rangeStart: date,
-    rangeEnd: date,
-    collectionStatus: "COMPLETED",
-    retryAfterSeconds: 0,
-    pendingTargets: [],
-    meals: [{
-      mealId: "review-meal-lunch",
-      mealDate: date,
-      mealType: "LUNCH",
-      sourceReceivedAt: `${date}T11:30:00+09:00`,
-      labelingStatus: "LABELED",
-      nutritionInfo: "열량: 612 kcal · 단백질: 24.1 g · 칼슘: 238 mg",
-      originInfo: "쌀·돼지고기 국내산, 고등어 노르웨이산",
-      origins: [{ ingredients: ["쌀", "돼지고기"], origin: "국내산" }, { ingredients: ["고등어"], origin: "노르웨이산" }],
-      riskLevel: "RISKY",
-      riskVersion: "review",
-      items: [
-        { name: "현미밥", rawText: "현미밥", displayOrder: 1, labelingStatus: "LABELED", riskLevel: "SAFE", matchedAllergenCodes: [] },
-        { name: "된장국", rawText: "두부된장국(5.6)", displayOrder: 2, labelingStatus: "LABELED", riskLevel: "RISKY", matchedAllergenCodes: [5, 6] },
-        { name: "고등어구이", rawText: "고등어구이(7)", displayOrder: 3, labelingStatus: "LABELED", riskLevel: "RISKY", matchedAllergenCodes: [7] },
-        { name: "배추김치", rawText: "배추김치", displayOrder: 4, labelingStatus: "LABELED", riskLevel: "SAFE", matchedAllergenCodes: [] },
-      ],
-    }, {
-      mealId: "review-meal-dinner",
-      mealDate: date,
-      mealType: "DINNER",
-      sourceReceivedAt: `${date}T16:30:00+09:00`,
-      labelingStatus: "LABELED",
-      nutritionInfo: "열량: 574 kcal · 단백질: 27.8 g · 칼슘: 194 mg",
-      originInfo: "쌀 국내산, 닭고기 국내산",
-      origins: [{ ingredients: ["쌀"], origin: "국내산" }, { ingredients: ["닭고기"], origin: "국내산" }],
-      riskLevel: "RISKY",
-      riskVersion: "review",
-      items: [
-        { name: "보리밥", rawText: "보리밥", displayOrder: 1, labelingStatus: "LABELED", riskLevel: "SAFE", matchedAllergenCodes: [] },
-        { name: "닭볶음탕", rawText: "닭볶음탕(15)", displayOrder: 2, labelingStatus: "LABELED", riskLevel: "RISKY", matchedAllergenCodes: [15] },
-        { name: "콩나물무침", rawText: "콩나물무침(5)", displayOrder: 3, labelingStatus: "LABELED", riskLevel: "RISKY", matchedAllergenCodes: [5] },
-        { name: "깍두기", rawText: "깍두기", displayOrder: 4, labelingStatus: "LABELED", riskLevel: "SAFE", matchedAllergenCodes: [] },
-      ],
-    }],
-  };
-}
-
-function toKstDate(date: Date) {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(date);
-}
-
-function addDays(date: string, days: number) {
-  const value = new Date(`${date}T12:00:00+09:00`);
-  value.setDate(value.getDate() + days);
-  return toKstDate(value);
-}
-
-function weekRange(date: string) {
-  const value = new Date(`${date}T12:00:00+09:00`);
-  const mondayOffset = (value.getDay() + 6) % 7;
-  const rangeStart = addDays(date, -mondayOffset);
-  return { rangeStart, rangeEnd: addDays(rangeStart, 6) };
-}
-
-function reviewWeeklyMeals(childId: string, date: string): PersonalizedMealQuery {
-  const { rangeStart, rangeEnd } = weekRange(date);
-  const meals = Array.from({ length: 5 }, (_, index) => {
-    const mealDate = addDays(rangeStart, index);
-    return reviewMeals(childId, mealDate).meals.map((meal) => ({ ...meal, mealId: `${meal.mealId}-${mealDate}` }));
-  }).flat();
-
-  return {
-    childId,
-    schoolId: "review-school",
-    rangeStart,
-    rangeEnd,
-    collectionStatus: "COMPLETED",
-    retryAfterSeconds: 0,
-    pendingTargets: [],
-    meals,
-  };
-}
-
-function reviewNotifications(page: number, pageSize: number): NotificationHistory {
-  const patterns: Array<{ reason: string; status: string; attemptCount: number; sentTime?: string; failureCode?: string }> = [
-    { reason: "RISK_DETECTED", status: "SENT", attemptCount: 1, sentTime: "08:30" },
-    { reason: "NO_RISK", status: "SENT", attemptCount: 1, sentTime: "06:10" },
-    { reason: "RISK_DETECTED", status: "FAILED", attemptCount: 3, sentTime: "17:25", failureCode: "SMTP_TIMEOUT" },
-    { reason: "RISK_UNKNOWN", status: "RETRY_PENDING", attemptCount: 2 },
-    { reason: "RISK_PENDING", status: "PENDING", attemptCount: 0 },
-    { reason: "NO_MEAL", status: "CANCELED", attemptCount: 1 },
-    { reason: "RISK_LABELING_FAILED", status: "FAILED", attemptCount: 3, sentTime: "08:32", failureCode: "LABELING_FAILED" },
-  ] as const;
-  const notifications: NotificationHistoryItem[] = Array.from({ length: 27 }, (_, index) => {
-    const pattern = patterns[index % patterns.length];
-    const notificationDate = addDays("2026-07-04", -Math.floor(index / 3));
-    const createdTime = pattern.sentTime ?? "06:05";
-    return {
-      notificationId: `review-notification-${index + 1}`,
-      notificationDate,
-      channel: "EMAIL",
-      reason: pattern.reason,
-      status: pattern.status,
-      attemptCount: pattern.attemptCount,
-      ...(pattern.sentTime ? { sentAt: `${notificationDate}T${pattern.sentTime}:00+09:00` } : {}),
-      ...(pattern.failureCode ? { failureCode: pattern.failureCode } : {}),
-      createdAt: `${notificationDate}T${createdTime}:00+09:00`,
-      updatedAt: `${notificationDate}T${createdTime}:00+09:00`,
-    };
-  });
-  const start = (page - 1) * pageSize;
-  return { notifications: notifications.slice(start, start + pageSize), page, pageSize, totalCount: notifications.length };
 }
 
 function asMemberApiError(error: unknown, fallbackMessage: string): MemberApiError {
@@ -243,6 +137,92 @@ function requiredChildNotificationPreference(response: GeneratedChildNotificatio
   return preference;
 }
 
+function toPersonalizedMeal(response: GeneratedPersonalizedMeal): PersonalizedMeal | undefined {
+  if (!response.mealId || !response.mealDate || !response.mealType) return undefined;
+  const origins = response.origins?.flatMap((origin) =>
+    Array.isArray(origin.ingredients) && typeof origin.origin === "string"
+      ? [{ ingredients: origin.ingredients.filter((ingredient) => typeof ingredient === "string"), origin: origin.origin }]
+      : [],
+  );
+  return {
+    mealId: response.mealId,
+    mealDate: response.mealDate,
+    mealType: response.mealType,
+    sourceReceivedAt: response.sourceReceivedAt ?? "",
+    labelingStatus: response.labelingStatus ?? "UNKNOWN",
+    nutritionInfo: response.nutritionInfo ?? "",
+    originInfo: response.originInfo ?? "",
+    ...(origins?.length ? { origins } : {}),
+    riskLevel: response.riskLevel ?? "UNKNOWN",
+    riskVersion: response.riskVersion ?? "",
+    items: (response.items ?? []).flatMap((item) => item.name ? [{
+      name: item.name,
+      rawText: item.rawText ?? "",
+      displayOrder: item.displayOrder ?? 0,
+      labelingStatus: item.labelingStatus ?? "UNKNOWN",
+      riskLevel: item.riskLevel ?? "UNKNOWN",
+      matchedAllergenCodes: (item.matchedAllergenCodes ?? []).filter((code) => typeof code === "number"),
+    }] : []),
+  };
+}
+
+function requiredPersonalizedMealQuery(response: GeneratedPersonalizedMealQuery | null | undefined): PersonalizedMealQuery {
+  if (!response?.childId || !response.schoolId || !response.rangeStart || !response.rangeEnd || !response.collectionStatus) {
+    throw new MemberApiError(0, "자녀 급식 응답이 올바르지 않습니다.");
+  }
+  return {
+    childId: response.childId,
+    schoolId: response.schoolId,
+    rangeStart: response.rangeStart,
+    rangeEnd: response.rangeEnd,
+    collectionStatus: response.collectionStatus,
+    retryAfterSeconds: typeof response.retryAfterSeconds === "number" ? response.retryAfterSeconds : 0,
+    meals: (response.meals ?? []).flatMap((meal) => {
+      const mapped = toPersonalizedMeal(meal);
+      return mapped ? [mapped] : [];
+    }),
+    pendingTargets: (response.pendingTargets ?? []).flatMap((target) =>
+      target.mealDate && target.mealType ? [{ mealDate: target.mealDate, mealType: target.mealType }] : [],
+    ),
+  };
+}
+
+function requiredNotificationHistory(response: GeneratedNotificationHistory | null | undefined): NotificationHistory {
+  if (!response || typeof response.page !== "number" || typeof response.pageSize !== "number" || typeof response.totalCount !== "number") {
+    throw new MemberApiError(0, "알림 이력 응답이 올바르지 않습니다.");
+  }
+  return {
+    page: response.page,
+    pageSize: response.pageSize,
+    totalCount: response.totalCount,
+    notifications: (response.notifications ?? []).flatMap((item) =>
+      item.notificationId && item.notificationDate && item.channel && item.reason && item.status && typeof item.attemptCount === "number" && item.createdAt && item.updatedAt
+        ? [{ notificationId: item.notificationId, notificationDate: item.notificationDate, channel: item.channel, reason: item.reason, status: item.status, attemptCount: item.attemptCount, createdAt: item.createdAt, updatedAt: item.updatedAt, ...(item.sentAt ? { sentAt: item.sentAt } : {}), ...(item.failureCode ? { failureCode: item.failureCode } : {}) }]
+        : [],
+    ),
+  };
+}
+
+/** Accepts a withdrawal result only when every server-provided status field is usable. */
+export function toAccountWithdrawal(response: GeneratedAccountWithdrawal | null | undefined): AccountWithdrawal | undefined {
+  if (!response?.userId || !response.withdrawalRequestedAt || !response.withdrawalDueAt || typeof response.maskedNotificationCount !== "number") {
+    return undefined;
+  }
+
+  return {
+    userId: response.userId,
+    withdrawalRequestedAt: response.withdrawalRequestedAt,
+    withdrawalDueAt: response.withdrawalDueAt,
+    maskedNotificationCount: response.maskedNotificationCount,
+  };
+}
+
+function requiredAccountWithdrawal(response: GeneratedAccountWithdrawal | null | undefined): AccountWithdrawal {
+  const withdrawal = toAccountWithdrawal(response);
+  if (!withdrawal) throw new MemberApiError(0, "회원 탈퇴 응답이 올바르지 않습니다.");
+  return withdrawal;
+}
+
 export async function getChildren(): Promise<ChildProfile[]> {
   try { return (await requestChildren()).map(toChildProfile).filter((child): child is ChildProfile => child !== undefined); }
   catch (error) { throw asMemberApiError(error, "자녀 목록을 불러오지 못했습니다."); }
@@ -293,9 +273,24 @@ export async function updateChildNotificationPreference(childId: string, input: 
   catch (error) { throw asMemberApiError(error, "자녀 알림 설정을 저장하지 못했습니다."); }
 }
 export async function getPersonalizedMeals(childId: string, mode: PersonalizedMealMode, date: string): Promise<PersonalizedMealQuery> {
-  if (mode === "weekly") return reviewWeeklyMeals(childId, date);
-  return reviewMeals(childId, mode === "today" ? toKstDate(new Date()) : date);
+  try {
+    const response = mode === "today"
+      ? await requestPersonalizedTodayMeal(childId)
+      : mode === "daily"
+        ? await requestPersonalizedDailyMeal(childId, date)
+        : await requestPersonalizedWeeklyMeals(childId, { date });
+    return requiredPersonalizedMealQuery(response);
+  } catch (error) { throw asMemberApiError(error, "자녀 급식을 불러오지 못했습니다."); }
 }
-export async function getNotificationHistory(childId: string, page = 1, pageSize = 20): Promise<NotificationHistory> { void childId; return reviewNotifications(page, pageSize); }
-export async function requestAccountWithdrawal(): Promise<AccountWithdrawal> { return { userId: "review-user-001", withdrawalRequestedAt: now, withdrawalDueAt: "2026-08-12T09:00:00+09:00", maskedNotificationCount: 12 }; }
-export async function cancelAccountWithdrawal(): Promise<void> {}
+export async function getNotificationHistory(childId: string, page = 1, pageSize = 20): Promise<NotificationHistory> {
+  try { return requiredNotificationHistory(await requestNotificationHistory(childId, { page, pageSize })); }
+  catch (error) { throw asMemberApiError(error, "알림 이력을 불러오지 못했습니다."); }
+}
+export async function requestAccountWithdrawal(): Promise<AccountWithdrawal> {
+  try { return requiredAccountWithdrawal(await requestWithdrawal()); }
+  catch (error) { throw asMemberApiError(error, "회원 탈퇴를 예약하지 못했습니다."); }
+}
+export async function cancelAccountWithdrawal(): Promise<void> {
+  try { await requestCancelAccountWithdrawal(); }
+  catch (error) { throw asMemberApiError(error, "회원 탈퇴 예약을 취소하지 못했습니다."); }
+}
