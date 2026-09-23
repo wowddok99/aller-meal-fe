@@ -3,16 +3,9 @@
 import { AlertCircle, CheckCircle2, Eye, EyeOff, LoaderCircle, LockKeyhole, Mail } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useState } from "react";
-import { AuthApiError, confirmPasswordReset, requestPasswordReset } from "@/lib/auth-api";
+import { confirmPasswordReset, getAuthErrorMessage, requestPasswordReset } from "@/lib/auth-api";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function errorMessage(error: unknown, action: "request" | "confirm") {
-  if (!(error instanceof AuthApiError)) return "네트워크 연결을 확인한 뒤 다시 시도해 주세요.";
-  if (error.status === 429) return "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.";
-  if (action === "confirm" && [400, 404, 409, 422].includes(error.status)) return "재설정 링크가 올바르지 않거나 만료되었습니다. 새 링크를 요청해 주세요.";
-  return error.message;
-}
 
 export function PasswordResetRequestForm() {
   const [email, setEmail] = useState("");
@@ -33,7 +26,7 @@ export function PasswordResetRequestForm() {
       await requestPasswordReset({ email: normalized });
       setSubmitted(true);
     } catch (caught) {
-      setError(errorMessage(caught, "request"));
+      setError(getAuthErrorMessage(caught, "password-reset-request"));
     } finally { setLoading(false); }
   }
 
@@ -67,7 +60,7 @@ export function PasswordResetConfirmForm({ initialToken }: { initialToken: strin
     if (!password.trim() || password.length < 8) { setFieldError("비밀번호를 8자 이상 입력해 주세요."); return; }
     setFieldError(""); setError(""); setLoading(true);
     try { await confirmPasswordReset({ token: normalizedToken, password }); setSuccess(true); }
-    catch (caught) { setError(errorMessage(caught, "confirm")); }
+    catch (caught) { setError(getAuthErrorMessage(caught, "password-reset-confirm")); }
     finally { setLoading(false); }
   }
 

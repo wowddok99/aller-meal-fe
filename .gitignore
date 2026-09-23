@@ -5,6 +5,7 @@
 /docs/
 .idea
 .next
+.playwright-cli/
 tsconfig.tsbuildinfo
 node_modules
 out
