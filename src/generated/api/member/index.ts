@@ -839,6 +839,158 @@ export const useCreateChild = <
   return useMutation(getCreateChildMutationOptions(options), queryClient);
 };
 
+export const getGetAccountWithdrawalUrl = () => {
+  return `/api/v1/account/withdrawal`;
+};
+
+export const getAccountWithdrawal = async (
+  options?: Parameters<typeof orvalFetch>[1],
+): Promise<AccountWithdrawalResponse | void> => {
+  return orvalFetch<AccountWithdrawalResponse | void>(
+    getGetAccountWithdrawalUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetAccountWithdrawalQueryKey = () => {
+  return [`/api/v1/account/withdrawal`] as const;
+};
+
+export const getGetAccountWithdrawalQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAccountWithdrawal>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<
+      Awaited<ReturnType<typeof getAccountWithdrawal>>,
+      TError,
+      TData
+    >
+  >;
+  request?: SecondParameter<typeof orvalFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAccountWithdrawalQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAccountWithdrawal>>
+  > = ({ signal }) => getAccountWithdrawal({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAccountWithdrawal>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetAccountWithdrawalQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAccountWithdrawal>>
+>;
+export type GetAccountWithdrawalQueryError = ErrorType<ApiErrorResponse>;
+
+export function useGetAccountWithdrawal<
+  TData = Awaited<ReturnType<typeof getAccountWithdrawal>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAccountWithdrawal>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAccountWithdrawal>>,
+          TError,
+          Awaited<ReturnType<typeof getAccountWithdrawal>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetAccountWithdrawal<
+  TData = Awaited<ReturnType<typeof getAccountWithdrawal>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAccountWithdrawal>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAccountWithdrawal>>,
+          TError,
+          Awaited<ReturnType<typeof getAccountWithdrawal>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetAccountWithdrawal<
+  TData = Awaited<ReturnType<typeof getAccountWithdrawal>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAccountWithdrawal>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+
+export function useGetAccountWithdrawal<
+  TData = Awaited<ReturnType<typeof getAccountWithdrawal>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAccountWithdrawal>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getGetAccountWithdrawalQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
 export const getRequestAccountWithdrawalUrl = () => {
   return `/api/v1/account/withdrawal`;
 };

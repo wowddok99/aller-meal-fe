@@ -1,16 +1,17 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, LoaderCircle } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { AlertTriangle, CheckCircle2, LoaderCircle, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   cancelAccountWithdrawal,
+  getAccountWithdrawal,
   MemberApiError,
   requestAccountWithdrawal,
   type AccountWithdrawal,
 } from "@/lib/member-api";
 
 type WithdrawalResult = "idle" | "cancelled";
-type WithdrawalAction = "request" | "cancel";
+type WithdrawalAction = "load" | "request" | "cancel";
 
 function errorMessage(error: MemberApiError, action: WithdrawalAction) {
   if (error.status === 401) return "로그인이 필요합니다.";
@@ -19,7 +20,9 @@ function errorMessage(error: MemberApiError, action: WithdrawalAction) {
   if (error.status === 409)
     return action === "request"
       ? "이미 회원 탈퇴가 예약되어 있습니다."
-      : "취소할 회원 탈퇴 예약이 없습니다.";
+      : action === "cancel"
+        ? "취소할 회원 탈퇴 예약이 없습니다."
+        : error.message;
   if (error.status === 429)
     return "요청이 많습니다. 잠시 후 다시 시도해 주세요.";
   return error.message;
@@ -36,14 +39,56 @@ function formatWithdrawalDate(value: string) {
 
 export function AccountWithdrawalPage() {
   const [confirming, setConfirming] = useState(false);
+  const [loadingWithdrawal, setLoadingWithdrawal] = useState(true);
   const [pending, setPending] = useState(false);
   const [withdrawal, setWithdrawal] = useState<AccountWithdrawal>();
-  const [alreadyRequested, setAlreadyRequested] = useState(false);
   const [result, setResult] = useState<WithdrawalResult>("idle");
+  const [loadError, setLoadError] = useState("");
   const [error, setError] = useState("");
   const withdrawalButtonRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const backButtonRef = useRef<HTMLButtonElement>(null);
+  const withdrawalLoadGeneration = useRef(0);
+
+  const loadWithdrawal = useCallback(async (requirePending = false) => {
+    const generation = ++withdrawalLoadGeneration.current;
+    setLoadingWithdrawal(true);
+    setLoadError("");
+    try {
+      const currentWithdrawal = await getAccountWithdrawal();
+      if (requirePending && !currentWithdrawal) {
+        throw new MemberApiError(
+          0,
+          "회원 탈퇴 상태를 다시 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        );
+      }
+      if (generation !== withdrawalLoadGeneration.current) return currentWithdrawal;
+      setWithdrawal(currentWithdrawal ?? undefined);
+      setResult("idle");
+      return currentWithdrawal;
+    } catch (reason) {
+      if (generation !== withdrawalLoadGeneration.current) return null;
+      setWithdrawal(undefined);
+      setConfirming(false);
+      setLoadError(
+        reason instanceof MemberApiError
+          ? errorMessage(reason, "load")
+          : "회원 탈퇴 상태를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      );
+      return null;
+    } finally {
+      if (generation === withdrawalLoadGeneration.current) {
+        setLoadingWithdrawal(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadWithdrawal();
+    return () => {
+      withdrawalLoadGeneration.current += 1;
+    };
+  }, [loadWithdrawal]);
 
   useEffect(() => {
     if (!confirming) return;
@@ -85,19 +130,18 @@ export function AccountWithdrawalPage() {
   }, [confirming, pending]);
 
   async function handleWithdrawal() {
-    if (pending) return;
+    if (pending || loadingWithdrawal || loadError) return;
     setPending(true);
     setError("");
     try {
       const response = await requestAccountWithdrawal();
       setWithdrawal(response);
-      setAlreadyRequested(false);
       setResult("idle");
       setConfirming(false);
     } catch (reason) {
       if (reason instanceof MemberApiError && reason.status === 409) {
-        setAlreadyRequested(true);
         setConfirming(false);
+        await loadWithdrawal(true);
         return;
       }
       setError(
@@ -111,13 +155,12 @@ export function AccountWithdrawalPage() {
   }
 
   async function handleCancellation() {
-    if (pending) return;
+    if (pending || loadingWithdrawal || loadError) return;
     setPending(true);
     setError("");
     try {
       await cancelAccountWithdrawal();
       setWithdrawal(undefined);
-      setAlreadyRequested(false);
       setResult("cancelled");
     } catch (reason) {
       setError(
@@ -129,6 +172,12 @@ export function AccountWithdrawalPage() {
       setPending(false);
     }
   }
+
+  /*
+   * A load failure is intentionally terminal for this render. Rendering the
+   * normal guide would make a request or cancellation from an unknown state.
+   */
+  const canMutateWithdrawal = !loadingWithdrawal && !loadError && !pending;
 
   return (
     <main className="mx-auto w-full max-w-[720px] px-5 pb-16 pt-5">
@@ -152,7 +201,40 @@ export function AccountWithdrawalPage() {
           </div>
         ) : null}
 
-        {withdrawal || alreadyRequested ? (
+        {loadingWithdrawal ? (
+          <div
+            role="status"
+            aria-busy="true"
+            className="flex min-h-48 items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-5 text-sm font-bold text-zinc-500 dark:border-zinc-800 dark:bg-[#101419] dark:text-zinc-400"
+          >
+            <LoaderCircle className="h-5 w-5 animate-spin" /> 회원 탈퇴 상태를
+            불러오고 있습니다.
+          </div>
+        ) : loadError ? (
+          <section
+            aria-labelledby="withdrawal-load-error-heading"
+            className="rounded-2xl border border-red-200 bg-white p-5 text-center dark:border-red-950 dark:bg-[#101419]"
+          >
+            <AlertTriangle className="mx-auto h-9 w-9 text-red-500" />
+            <h2
+              id="withdrawal-load-error-heading"
+              className="mt-3 text-lg font-extrabold"
+            >
+              회원 탈퇴 상태를 불러오지 못했습니다
+            </h2>
+            <p className="mt-2 text-sm font-medium leading-6 text-zinc-500 dark:text-zinc-400">
+              {loadError}
+            </p>
+            <button
+              type="button"
+              onClick={() => void loadWithdrawal()}
+              disabled={pending}
+              className="mt-5 inline-flex h-11 items-center gap-2 rounded-[10px] border border-zinc-300 px-5 text-sm font-bold transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            >
+              <RefreshCw className="h-4 w-4" /> 다시 시도
+            </button>
+          </section>
+        ) : withdrawal ? (
           <section
             aria-labelledby="withdrawal-requested-heading"
             className="rounded-2xl border border-amber-200 bg-white p-5 md:p-6 dark:border-amber-900/60 dark:bg-[#101419]"
@@ -166,17 +248,14 @@ export function AccountWithdrawalPage() {
                   id="withdrawal-requested-heading"
                   className="text-xl font-extrabold tracking-[-0.02em]"
                 >
-                  {withdrawal
-                    ? "회원 탈퇴가 예약되었어요"
-                    : "회원 탈퇴가 이미 예약되어 있어요"}
+                  회원 탈퇴가 예약되었어요
                 </h2>
                 <p className="mt-1.5 text-sm font-medium leading-6 text-zinc-500 dark:text-zinc-400">
                   예정일 전까지 예약을 취소하고 계정을 계속 이용할 수 있어요.
                 </p>
               </div>
             </div>
-            {withdrawal ? (
-              <dl className="mt-5 space-y-3 rounded-xl bg-zinc-50 px-4 py-3 text-sm dark:bg-zinc-900/70">
+            <dl className="mt-5 space-y-3 rounded-xl bg-zinc-50 px-4 py-3 text-sm dark:bg-zinc-900/70">
                 <div className="flex items-center justify-between gap-4">
                   <dt className="font-semibold text-zinc-500 dark:text-zinc-400">
                     예약일
@@ -206,15 +285,9 @@ export function AccountWithdrawalPage() {
                   </dd>
                 </div>
               </dl>
-            ) : (
-              <p className="mt-5 rounded-xl bg-zinc-50 px-4 py-3 text-sm font-medium leading-6 text-zinc-600 dark:bg-zinc-900/70 dark:text-zinc-300">
-                현재 계약에는 예약 조회 API가 없어 예정일을 다시 불러올 수
-                없습니다. 예약 취소는 계속할 수 있어요.
-              </p>
-            )}
             <button
               type="button"
-              disabled={pending}
+              disabled={!canMutateWithdrawal}
               onClick={() => void handleCancellation()}
               className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[10px] border border-zinc-300 px-5 text-sm font-extrabold text-zinc-700 transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
             >
@@ -272,7 +345,7 @@ export function AccountWithdrawalPage() {
                 <button
                   ref={withdrawalButtonRef}
                   type="button"
-                  disabled={pending}
+                  disabled={!canMutateWithdrawal}
                   onClick={() => {
                     setError("");
                     setConfirming(true);

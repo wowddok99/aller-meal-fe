@@ -15,6 +15,7 @@ import {
   getChildAllergens as requestChildAllergens,
   getChildNotificationPreference as requestChildNotificationPreference,
   getChild as requestChild,
+  getAccountWithdrawal as requestCurrentAccountWithdrawal,
   getChildNotificationHistory as requestNotificationHistory,
   getPersonalizedDailyMeal as requestPersonalizedDailyMeal,
   getPersonalizedTodayMeal as requestPersonalizedTodayMeal,
@@ -289,6 +290,17 @@ export async function getNotificationHistory(childId: string, page = 1, pageSize
 export async function requestAccountWithdrawal(): Promise<AccountWithdrawal> {
   try { return requiredAccountWithdrawal(await requestWithdrawal()); }
   catch (error) { throw asMemberApiError(error, "회원 탈퇴를 예약하지 못했습니다."); }
+}
+export async function getAccountWithdrawal(): Promise<AccountWithdrawal | null> {
+  try {
+    const response = await requestCurrentAccountWithdrawal();
+    if (!response) return null;
+    const withdrawal = toAccountWithdrawal(response);
+    if (!withdrawal) {
+      throw new MemberApiError(0, "회원 탈퇴 상태 응답이 올바르지 않습니다.");
+    }
+    return withdrawal;
+  } catch (error) { throw asMemberApiError(error, "회원 탈퇴 상태를 불러오지 못했습니다."); }
 }
 export async function cancelAccountWithdrawal(): Promise<void> {
   try { await requestCancelAccountWithdrawal(); }

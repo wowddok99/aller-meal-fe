@@ -7,6 +7,7 @@ import {
   getChildNotificationHistory as requestNotificationHistory,
   getChildNotificationPreference as requestChildNotificationPreference,
   getChild as requestChild,
+  getAccountWithdrawal as requestCurrentAccountWithdrawal,
   getPersonalizedDailyMeal as requestPersonalizedDailyMeal,
   getPersonalizedTodayMeal as requestPersonalizedTodayMeal,
   getPersonalizedWeeklyMeals as requestPersonalizedWeeklyMeals,
@@ -42,6 +43,7 @@ import {
   updateChild,
   replaceChildAllergens,
   requestAccountWithdrawal as createWithdrawal,
+  getAccountWithdrawal as getWithdrawalStatus,
   toAccountWithdrawal,
 } from "./member-api";
 
@@ -53,6 +55,7 @@ vi.mock("@/generated/api/member", () => ({
   getChildNotificationHistory: vi.fn(),
   getChildNotificationPreference: vi.fn(),
   getChild: vi.fn(),
+  getAccountWithdrawal: vi.fn(),
   getPersonalizedDailyMeal: vi.fn(),
   getPersonalizedTodayMeal: vi.fn(),
   getPersonalizedWeeklyMeals: vi.fn(),
@@ -243,6 +246,23 @@ describe("account withdrawal adapter", () => {
 
     await expect(createWithdrawal()).resolves.toEqual(withdrawal);
     await expect(cancelWithdrawal()).resolves.toBeUndefined();
+  });
+
+  it("maps the current withdrawal response and normalizes a 204 response to null", async () => {
+    vi.mocked(requestCurrentAccountWithdrawal).mockResolvedValueOnce(withdrawal);
+    vi.mocked(requestCurrentAccountWithdrawal).mockResolvedValueOnce(undefined);
+
+    await expect(getWithdrawalStatus()).resolves.toEqual(withdrawal);
+    await expect(getWithdrawalStatus()).resolves.toBeNull();
+  });
+
+  it("rejects an incomplete current withdrawal response", async () => {
+    vi.mocked(requestCurrentAccountWithdrawal).mockResolvedValue({ userId: "user-1" });
+
+    await expect(getWithdrawalStatus()).rejects.toMatchObject({
+      status: 0,
+      message: "회원 탈퇴 상태 응답이 올바르지 않습니다.",
+    });
   });
 
   it("rejects incomplete withdrawal responses and preserves request-state errors", async () => {

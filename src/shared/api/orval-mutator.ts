@@ -1,6 +1,7 @@
 import { ApiClientError } from "./api-client-error";
 
 export const API_SESSION_EXPIRED_EVENT = "allermeal:api-session-expired";
+export const API_SESSION_REFRESHED_EVENT = "allermeal:api-session-refreshed";
 export type ErrorType<TError> = TError extends unknown ? ApiClientError : never;
 
 type ErrorPayload = {
@@ -102,6 +103,12 @@ function emitSessionExpired() {
   }
 }
 
+function emitSessionRefreshed() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(API_SESSION_REFRESHED_EVENT));
+  }
+}
+
 function asSessionExpired(error: ApiClientError) {
   return new ApiClientError({
     status: error.status,
@@ -120,6 +127,7 @@ async function refreshSession() {
       if (!response.ok) {
         throw await parseError(response);
       }
+      emitSessionRefreshed();
     })().finally(() => {
       refreshPromise = undefined;
     });

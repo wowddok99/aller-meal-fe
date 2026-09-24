@@ -18,7 +18,10 @@ import { useEffect, useRef, useState } from "react";
 import { AllerMealLogo } from "@/components/allermeal-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { logout, shouldTerminateSessionAfterLogout } from "@/lib/auth-api";
-import { API_SESSION_EXPIRED_EVENT } from "@/shared/api/orval-mutator";
+import {
+  API_SESSION_EXPIRED_EVENT,
+  API_SESSION_REFRESHED_EVENT,
+} from "@/shared/api/orval-mutator";
 
 const navigationItems = [
   { href: "/schools", label: "학교 검색", icon: Search },
@@ -51,6 +54,7 @@ export function AppHeader() {
   const mobileMenuDialogRef = useRef<HTMLDivElement>(null);
   const mobileMenuCloseRef = useRef<HTMLButtonElement>(null);
   const shouldRestoreMobileMenuFocus = useRef(false);
+  const sessionLoadGeneration = useRef(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [serviceMenuOpen, setServiceMenuOpen] = useState(false);
   const [mobileServiceOpen, setMobileServiceOpen] = useState(
@@ -73,33 +77,39 @@ export function AppHeader() {
   }
 
   useEffect(() => {
-    const controller = new AbortController();
-
     async function loadSession() {
+      const generation = ++sessionLoadGeneration.current;
       try {
         const response = await fetch("/auth/session", {
           cache: "no-store",
-          signal: controller.signal,
         });
         if (!response.ok) throw new Error("Unable to load the session state.");
         const data = (await response.json()) as { authenticated?: unknown };
+        if (generation !== sessionLoadGeneration.current) return;
         setIsAuthenticated(data.authenticated === true);
-      } catch (error) {
-        if (!(error instanceof DOMException && error.name === "AbortError")) {
+      } catch {
+        if (generation === sessionLoadGeneration.current) {
           setIsAuthenticated(false);
         }
       }
     }
 
     function clearSession() {
+      sessionLoadGeneration.current += 1;
       setIsAuthenticated(false);
+    }
+
+    function reloadSession() {
+      void loadSession();
     }
 
     void loadSession();
     window.addEventListener(API_SESSION_EXPIRED_EVENT, clearSession);
+    window.addEventListener(API_SESSION_REFRESHED_EVENT, reloadSession);
     return () => {
-      controller.abort();
+      sessionLoadGeneration.current += 1;
       window.removeEventListener(API_SESSION_EXPIRED_EVENT, clearSession);
+      window.removeEventListener(API_SESSION_REFRESHED_EVENT, reloadSession);
     };
   }, []);
 
