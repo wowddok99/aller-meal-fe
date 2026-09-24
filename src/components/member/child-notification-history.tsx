@@ -87,7 +87,8 @@ function Detail({ label, value }: { label: string; value: React.ReactNode }) {
   return <div className="flex min-w-0 items-center justify-between gap-3 md:block"><span className="text-xs font-bold text-zinc-500 md:hidden">{label}</span><span className="min-w-0 truncate text-right md:text-left">{value}</span></div>;
 }
 
-export function ChildNotificationHistory({ childId }: { childId: string }) {
+export function ChildNotificationHistory({ childId }: { childId?: string }) {
+  const hasChild = Boolean(childId && childId !== "preview");
   const [child, setChild] = useState<ChildProfile | null>(null);
   const [schoolName, setSchoolName] = useState("");
   const [history, setHistory] = useState<NotificationHistory | null>(null);
@@ -96,6 +97,10 @@ export function ChildNotificationHistory({ childId }: { childId: string }) {
   const [error, setError] = useState<MemberApiError | null>(null);
 
   const load = useCallback(async () => {
+    if (!childId || childId === "preview") {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -121,9 +126,10 @@ export function ChildNotificationHistory({ childId }: { childId: string }) {
 
   if (loading && !history) return <div className="mx-auto flex min-h-80 max-w-[1220px] items-center justify-center px-5 text-sm font-bold text-zinc-500"><LoaderCircle className="mr-2 h-5 w-5 animate-spin" /> 알림 이력을 불러오고 있습니다.</div>;
   if (error) {
-    const auth = error.status === 401 || error.status === 403;
+    const auth = error.status === 401;
     return <div className="mx-auto w-full max-w-[1220px] px-5 pt-5"><section className="rounded-2xl border border-red-200 bg-white p-10 text-center dark:border-red-950 dark:bg-[#101419]"><AlertTriangle className="mx-auto h-10 w-10 text-red-500" /><h1 className="mt-4 text-xl font-extrabold">{auth ? "로그인이 필요합니다" : "알림 이력을 불러오지 못했습니다"}</h1><p className="mt-2 text-sm font-medium text-zinc-500">{errorMessage(error)}</p>{auth ? <Link href="/auth/login" className="mt-5 inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 font-bold text-white">로그인</Link> : <button type="button" onClick={() => void load()} className="mt-5 inline-flex h-11 items-center gap-2 rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700"><RefreshCw className="h-4 w-4" /> 다시 시도</button>}</section></div>;
   }
+  if (!hasChild) return <div className="mx-auto flex min-h-80 w-full max-w-[1220px] items-center justify-center px-5"><section className="w-full rounded-2xl border border-dashed border-zinc-300 bg-white p-10 text-center dark:border-zinc-700 dark:bg-[#101419]"><Bell className="mx-auto h-9 w-9 text-zinc-400" /><h1 className="mt-3 text-xl font-extrabold">등록된 자녀를 먼저 선택해 주세요</h1><p className="mt-2 text-sm font-medium text-zinc-500">자녀를 등록하면 급식 알림 발송 이력을 확인할 수 있어요.</p><Link href="/children" className="mt-5 inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 text-sm font-extrabold text-white">자녀 관리로 이동</Link></section></div>;
   if (!child || !history) return null;
 
   return <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">

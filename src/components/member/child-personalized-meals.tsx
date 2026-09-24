@@ -4,7 +4,7 @@ import {
   AlertTriangle, CalendarDays, ChevronDown, Info, LoaderCircle, RefreshCw, Utensils,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ChildProfile, getAllergens, getChild, getPersonalizedMeals, getSchool, MealOrigin, MemberApiError, PersonalizedMeal,
   PersonalizedMealItem, PersonalizedMealMode, PersonalizedMealQuery,
@@ -104,7 +104,8 @@ function MealRow({ item, index, allergenNames }: { item: PersonalizedMealItem; i
   </div>;
 }
 
-export function ChildPersonalizedMeals({ childId }: { childId: string }) {
+export function ChildPersonalizedMeals({ childId }: { childId?: string }) {
+  const hasChild = Boolean(childId && childId !== "preview");
   const [child, setChild] = useState<ChildProfile | null>(null);
   const [schoolName, setSchoolName] = useState("");
   const [allergenNames, setAllergenNames] = useState<ReadonlyMap<number, string>>(() => new Map());
@@ -113,6 +114,7 @@ export function ChildPersonalizedMeals({ childId }: { childId: string }) {
   const [date, setDate] = useState(today);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<MemberApiError | null>(null);
+  const requestSequence = useRef(0);
 
   const selectMode = (nextMode: PersonalizedMealMode) => {
     setMode(nextMode);
@@ -120,17 +122,31 @@ export function ChildPersonalizedMeals({ childId }: { childId: string }) {
   };
 
   const load = useCallback(async () => {
+    const requestId = ++requestSequence.current;
+    if (!childId || childId === "preview") {
+      if (requestId === requestSequence.current) setLoading(false);
+      return;
+    }
     setLoading(true); setError(null);
     try {
       const [profile, meals, allergens] = await Promise.all([getChild(childId), getPersonalizedMeals(childId, mode, date), getAllergens(childId === "preview")]);
       const school = await getSchool(profile.schoolId).catch(() => null);
+      if (requestId !== requestSequence.current) return;
       setChild(profile); setSchoolName(school?.name ?? ""); setAllergenNames(new Map(allergens.map((allergen) => [allergen.code, allergen.name]))); setData(meals);
     } catch (reason) {
+      if (requestId !== requestSequence.current) return;
       setError(reason instanceof MemberApiError ? reason : new MemberApiError(0, "자녀 급식을 불러오지 못했습니다."));
-    } finally { setLoading(false); }
+    } finally {
+      if (requestId === requestSequence.current) setLoading(false);
+    }
   }, [childId, date, mode]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+    return () => {
+      requestSequence.current += 1;
+    };
+  }, [load]);
 
   const summary = useMemo(() => (data?.meals ?? []).flatMap((meal) => meal.items ?? []).reduce((acc, item) => {
     const key = risk(item.riskLevel, item.labelingStatus).label;
@@ -145,9 +161,10 @@ export function ChildPersonalizedMeals({ childId }: { childId: string }) {
 
   if (loading && !data) return <div className="mx-auto flex min-h-80 max-w-[1220px] items-center justify-center px-5 text-sm font-bold text-zinc-500"><LoaderCircle className="mr-2 h-5 w-5 animate-spin" /> 자녀 급식을 불러오고 있습니다.</div>;
   if (error) {
-    const auth = error.status === 401 || error.status === 403;
+    const auth = error.status === 401;
     return <div className="mx-auto w-full max-w-[1220px] px-5 pt-5"><section className="rounded-2xl border border-red-200 bg-white p-10 text-center dark:border-red-950 dark:bg-[#101419]"><AlertTriangle className="mx-auto h-10 w-10 text-red-500" /><h1 className="mt-4 text-xl font-extrabold">{auth ? "로그인이 필요합니다" : "자녀 급식을 불러오지 못했습니다"}</h1><p className="mt-2 text-sm font-medium text-zinc-500">{message(error)}</p>{auth ? <Link href="/auth/login" className="mt-5 inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 font-bold text-white">로그인</Link> : <button type="button" onClick={() => void load()} className="mt-5 inline-flex h-11 items-center gap-2 rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700"><RefreshCw className="h-4 w-4" /> 다시 시도</button>}</section></div>;
   }
+  if (!hasChild) return <div className="mx-auto flex min-h-80 w-full max-w-[1220px] items-center justify-center px-5"><section className="w-full rounded-2xl border border-dashed border-zinc-300 bg-white p-10 text-center dark:border-zinc-700 dark:bg-[#101419]"><Utensils className="mx-auto h-9 w-9 text-zinc-400" /><h1 className="mt-3 text-xl font-extrabold">등록된 자녀를 먼저 선택해 주세요</h1><p className="mt-2 text-sm font-medium text-zinc-500">자녀를 등록하면 알레르기 기준에 맞춘 급식을 확인할 수 있어요.</p><Link href="/children" className="mt-5 inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 text-sm font-extrabold text-white">자녀 관리로 이동</Link></section></div>;
   if (!child || !data) return null;
   const collecting = data.collectionStatus === "COLLECTING";
 

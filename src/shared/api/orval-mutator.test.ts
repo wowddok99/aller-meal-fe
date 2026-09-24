@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiClientError } from "./api-client-error";
 import {
   API_SESSION_EXPIRED_EVENT,
+  API_SESSION_REFRESHED_EVENT,
   orvalFetch,
   resetOrvalMutatorForTests,
 } from "./orval-mutator";
@@ -87,6 +88,28 @@ describe("orvalFetch", () => {
     ).resolves.toEqual([{ id: "first" }, { id: "second" }]);
 
     expect(fetchMock.mock.calls.filter(([url]) => url === "/api/v1/auth/refresh")).toHaveLength(1);
+  });
+
+  it("emits one refresh event before retrying protected requests", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ error: { code: "UNAUTHORIZED" } }, 401))
+      .mockResolvedValueOnce(jsonResponse(undefined, 204))
+      .mockResolvedValueOnce(jsonResponse({ id: "restored" }));
+    const eventTarget = new EventTarget();
+    const sessionRefreshedListener = vi.fn();
+    eventTarget.addEventListener(API_SESSION_REFRESHED_EVENT, sessionRefreshedListener);
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("window", eventTarget);
+
+    await expect(orvalFetch<{ id: string }>("/api/v1/account/withdrawal")).resolves.toEqual({ id: "restored" });
+
+    expect(sessionRefreshedListener).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      "/api/v1/account/withdrawal",
+      "/api/v1/auth/refresh",
+      "/api/v1/account/withdrawal",
+    ]);
   });
 
   it("marks a request as session-expired and emits an event when refresh fails", async () => {
