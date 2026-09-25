@@ -13,7 +13,7 @@ import {
   Utensils,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PublicPageShell } from "@/components/public/public-page-shell";
 import {
   useGetPublicDailyMeal,
@@ -26,6 +26,7 @@ import {
   toPublicSchoolDetail,
   type PublicMeal,
 } from "./school-meals-adapter";
+import { getCollectionRefreshDelay } from "./school-meals-collection-refresh";
 import { getSeoulToday } from "./school-meals-date";
 
 type PublicSchoolMealsPageProps = { schoolId: string };
@@ -165,6 +166,10 @@ export function PublicSchoolMealsPage({
     nutrition: false,
     origin: false,
   });
+  const [collectionRefreshCycle, setCollectionRefreshCycle] = useState(0);
+  const [secondsUntilRefresh, setSecondsUntilRefresh] = useState<number>();
+  const [pageVisible, setPageVisible] = useState(true);
+  const mealRefreshInFlightRef = useRef(false);
   const schoolQuery = useGetPublicSchool(schoolId, { query: { retry: false } });
   const dailyMealQuery = useGetPublicDailyMeal(schoolId, selectedDate, {
     query: { enabled: mode === "daily", retry: false },
@@ -175,6 +180,7 @@ export function PublicSchoolMealsPage({
     { query: { enabled: mode === "weekly", retry: false } },
   );
   const activeMealQuery = mode === "daily" ? dailyMealQuery : weeklyMealQuery;
+  const refetchMeals = activeMealQuery.refetch;
   const school = schoolQuery.data
     ? toPublicSchoolDetail(schoolQuery.data)
     : undefined;
@@ -188,16 +194,70 @@ export function PublicSchoolMealsPage({
   const selectedMeal =
     mealQuery?.meals.find((meal) => meal.id === selectedMealId) ??
     mealQuery?.meals[0];
-  const isCollecting = Boolean(
-    mealQuery?.collectionStatus && mealQuery.collectionStatus !== "READY",
+  const isCollecting = mealQuery?.collectionStatus === "COLLECTING";
+
+  const collectionRefreshDelay = getCollectionRefreshDelay(
+    mealQuery?.retryAfterSeconds,
   );
+
+  const refreshMeals = useCallback(() => {
+    if (mealRefreshInFlightRef.current) return;
+
+    mealRefreshInFlightRef.current = true;
+    void refetchMeals().finally(() => {
+      mealRefreshInFlightRef.current = false;
+      setCollectionRefreshCycle((cycle) => cycle + 1);
+    });
+  }, [refetchMeals]);
 
   useEffect(() => {
     if (selectedMeal && selectedMeal.id !== selectedMealId)
       setSelectedMealId(selectedMeal.id);
   }, [selectedMeal, selectedMealId]);
 
-  const handleRefresh = () => void activeMealQuery.refetch();
+  useEffect(() => {
+    const updatePageVisibility = () => setPageVisible(!document.hidden);
+
+    updatePageVisibility();
+    document.addEventListener("visibilitychange", updatePageVisibility);
+    return () =>
+      document.removeEventListener("visibilitychange", updatePageVisibility);
+  }, []);
+
+  useEffect(() => {
+    if (!isCollecting || !pageVisible || activeMealQuery.isError) {
+      setSecondsUntilRefresh(undefined);
+      return;
+    }
+
+    const refreshSeconds = Math.ceil(collectionRefreshDelay / 1_000);
+    const refreshAt = Date.now() + collectionRefreshDelay;
+    setSecondsUntilRefresh(refreshSeconds);
+
+    const countdownId = window.setInterval(() => {
+      setSecondsUntilRefresh(
+        Math.max(0, Math.ceil((refreshAt - Date.now()) / 1_000)),
+      );
+    }, 1_000);
+    const refreshId = window.setTimeout(refreshMeals, collectionRefreshDelay);
+
+    return () => {
+      window.clearInterval(countdownId);
+      window.clearTimeout(refreshId);
+    };
+  }, [
+    activeMealQuery.isError,
+    collectionRefreshCycle,
+    collectionRefreshDelay,
+    isCollecting,
+    mode,
+    pageVisible,
+    refreshMeals,
+    schoolId,
+    selectedDate,
+  ]);
+
+  const handleRefresh = refreshMeals;
 
   if (isNotFoundError(schoolQuery.error)) {
     return (
@@ -397,9 +457,9 @@ export function PublicSchoolMealsPage({
                 급식 정보를 수집하고 있습니다.
               </p>
               <p className="mt-2 text-sm font-semibold text-zinc-600 dark:text-zinc-300">
-                {mealQuery.retryAfterSeconds
-                  ? `${mealQuery.retryAfterSeconds}초 후 다시 확인해 주세요.`
-                  : "잠시 후 다시 확인해 주세요."}
+                {pageVisible && secondsUntilRefresh !== undefined
+                  ? `${secondsUntilRefresh}초 후 자동으로 다시 확인합니다.`
+                  : "이 탭으로 돌아오면 다시 확인합니다."}
               </p>
               {mealQuery.pendingTargets.length > 0 ? (
                 <p className="mt-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
@@ -412,10 +472,11 @@ export function PublicSchoolMealsPage({
               <button
                 type="button"
                 onClick={handleRefresh}
-                className="mt-4 inline-flex h-10 items-center gap-2 rounded-[10px] border border-amber-500/40 bg-white px-4 text-sm font-bold text-amber-700 dark:bg-[#101419] dark:text-amber-300"
+                disabled={activeMealQuery.isFetching}
+                className="mt-4 inline-flex h-10 items-center gap-2 rounded-[10px] border border-amber-500/40 bg-white px-4 text-sm font-bold text-amber-700 transition-opacity disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#101419] dark:text-amber-300"
               >
                 <RefreshCw className="h-4 w-4" strokeWidth={2.2} />
-                다시 확인
+                지금 다시 확인
               </button>
             </div>
           ) : null}
