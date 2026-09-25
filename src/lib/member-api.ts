@@ -236,8 +236,7 @@ export async function getSchool(schoolId: string): Promise<School> {
   try { return requiredSchool(await requestSchool(schoolId)); }
   catch (error) { throw asMemberApiError(error, "학교 정보를 불러오지 못했습니다."); }
 }
-export async function getAllergens(_review = false): Promise<Allergen[]> {
-  void _review;
+export async function getAllergens(): Promise<Allergen[]> {
   try { return (await requestAllergens()).map(toAllergen).filter((allergen): allergen is Allergen => allergen !== undefined); }
   catch (error) { throw asMemberApiError(error, "알레르기 목록을 불러오지 못했습니다."); }
 }

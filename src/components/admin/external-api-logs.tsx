@@ -13,10 +13,12 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type KeyboardEvent,
 } from "react";
 import { AdminSelectMenu } from "@/components/admin/admin-select-menu";
+import { createLatestAdminOperationRequestTracker, getAdminOperationDisplayId, getAdminOperationItemKey, getCurrentPageFilterState, hasSameAdminOperationId } from "@/components/admin/admin-operation-list-utils";
 import { filterExternalApiLogs } from "@/components/admin/external-api-log-utils";
 import {
   AdminApiError,
@@ -79,21 +81,26 @@ function ErrorState({
   error: AdminApiError;
   retry: () => void;
 }) {
-  const auth = error.status === 401 || error.status === 403;
+  const unauthenticated = error.status === 401;
+  const forbidden = error.status === 403;
   return (
     <section className="rounded-2xl border border-red-200 bg-white p-10 text-center dark:border-red-950 dark:bg-[#101419] dark:text-zinc-50">
       <AlertTriangle className="mx-auto h-10 w-10 text-red-500" />
       <h1 className="mt-4 text-xl font-extrabold">
-        {auth
-          ? "관리자 권한이 필요합니다"
+        {unauthenticated
+          ? "로그인이 필요합니다"
+          : forbidden
+            ? "관리자 권한이 필요합니다"
           : "외부 API 로그를 불러오지 못했습니다"}
       </h1>
       <p className="mt-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">
-        {auth
-          ? "관리자 계정으로 로그인한 후 다시 확인해 주세요."
+        {unauthenticated
+          ? "로그인한 후 다시 확인해 주세요."
+          : forbidden
+            ? "이 화면은 관리자만 확인할 수 있습니다."
           : error.message}
       </p>
-      {!auth ? (
+      {!unauthenticated && !forbidden ? (
         <button
           type="button"
           onClick={retry}
@@ -251,7 +258,7 @@ function LogDetails({ selected }: { selected?: ExternalApiLog }) {
         </h2>
         {selected ? (
           <p className="break-all font-mono text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-            로그 ID: {selected.externalApiLogId}
+            로그 ID: {getAdminOperationDisplayId(selected.externalApiLogId)}
           </p>
         ) : null}
       </div>
@@ -303,32 +310,39 @@ export function ExternalApiLogs() {
   const [method, setMethod] = useState("ALL");
   const [outcome, setOutcome] = useState("ALL");
   const [search, setSearch] = useState("");
+  const latestRequest = useRef(createLatestAdminOperationRequestTracker());
+  const latestQuery = useRef({ page, pageSize });
+  latestQuery.current = { page, pageSize };
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (query = latestQuery.current) => {
+    const requestId = latestRequest.current.begin();
     setLoading(true);
     setError(undefined);
+    setResult(undefined);
     try {
-      const next = await getExternalApiLogs(page, pageSize);
+      const next = await getExternalApiLogs(query.page, query.pageSize);
+      if (!latestRequest.current.isCurrent(requestId)) return;
       setResult(next);
       setSelected((current) =>
         next.items.find(
-          (item) => item.externalApiLogId === current?.externalApiLogId,
+          (item) => hasSameAdminOperationId(item.externalApiLogId, current?.externalApiLogId),
         ),
       );
     } catch (cause) {
+      if (!latestRequest.current.isCurrent(requestId)) return;
       setError(
         cause instanceof AdminApiError
           ? cause
           : new AdminApiError(0, "외부 API 로그를 불러오지 못했습니다."),
       );
     } finally {
-      setLoading(false);
+      if (latestRequest.current.isCurrent(requestId)) setLoading(false);
     }
-  }, [page, pageSize]);
+  }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void load({ page, pageSize });
+  }, [load, page, pageSize]);
 
   const providers = useMemo(
     () => [
@@ -359,14 +373,17 @@ export function ExternalApiLogs() {
     [method, outcome, provider, result, search],
   );
   const totalCount = result?.totalCount ?? 0;
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const totalPages = Math.max(1, Math.ceil(totalCount / (result?.pageSize ?? pageSize)));
   const currentPage = result?.page ?? page;
   const isInitialLoading = loading && !result;
+  const hasActiveFilters = method !== "ALL" || outcome !== "ALL" || Boolean(search.trim());
+  const filterState = getCurrentPageFilterState(result?.items.length ?? 0, items.length, hasActiveFilters);
+  const clearFilters = () => { setMethod("ALL"); setOutcome("ALL"); setSearch(""); };
 
   useEffect(() => {
     setSelected((current) =>
       current &&
-      !items.some((item) => item.externalApiLogId === current.externalApiLogId)
+      !items.some((item) => hasSameAdminOperationId(item.externalApiLogId, current.externalApiLogId))
         ? undefined
         : current,
     );
@@ -398,15 +415,6 @@ export function ExternalApiLogs() {
           </h1>
         </div>
       </header>
-      {error && result ? (
-        <p
-          role="alert"
-          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200"
-        >
-          최신 목록을 갱신하지 못했습니다. 이전 목록을 표시합니다.{" "}
-          {error.message}
-        </p>
-      ) : null}
       <section
         aria-label="외부 API 로그 목록"
         aria-busy={loading}
@@ -481,10 +489,10 @@ export function ExternalApiLogs() {
             </FilterField>
           </div>
           <p className="mt-3 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-            현재 페이지 {result?.items.length ?? 0}건 중 {items.length}건 표시
+            현재 페이지 {result?.items.length ?? 0}건 중 {items.length}건 표시 · 서버 전체 검색이 아닌 현재 페이지 필터입니다.
           </p>
         </div>
-        {items.length ? (
+        {filterState === "items" ? (
           <>
             <div className="hidden overflow-x-auto lg:block">
               <table className="w-full min-w-[900px] table-fixed text-left text-sm">
@@ -517,12 +525,12 @@ export function ExternalApiLogs() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                  {items.map((log) => {
+                  {items.map((log, index) => {
                     const isSelected =
-                      selected?.externalApiLogId === log.externalApiLogId;
+                      hasSameAdminOperationId(selected?.externalApiLogId, log.externalApiLogId);
                     return (
                       <tr
-                        key={log.externalApiLogId}
+                        key={getAdminOperationItemKey("external-api-log", index, log.externalApiLogId)}
                         role="button"
                         tabIndex={0}
                         aria-pressed={isSelected}
@@ -557,11 +565,11 @@ export function ExternalApiLogs() {
               </table>
             </div>
             <div className="lg:hidden">
-              {items.map((log) => (
+              {items.map((log, index) => (
                 <LogCard
-                  key={log.externalApiLogId}
+                  key={getAdminOperationItemKey("external-api-log", index, log.externalApiLogId)}
                   log={log}
-                  selected={selected?.externalApiLogId === log.externalApiLogId}
+                  selected={hasSameAdminOperationId(selected?.externalApiLogId, log.externalApiLogId)}
                   onSelect={setSelected}
                 />
               ))}
@@ -570,12 +578,9 @@ export function ExternalApiLogs() {
         ) : (
           <div className="px-5 py-16 text-center">
             <CheckCircle2 className="mx-auto h-10 w-10 text-mint-500" />
-            <h3 className="mt-4 text-lg font-extrabold">
-              표시할 외부 API 로그가 없습니다
-            </h3>
-            <p className="mt-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">
-              현재 목록 필터 조건을 바꾸거나 다음 페이지를 확인해 주세요.
-            </p>
+            <h3 className="mt-4 text-lg font-extrabold">{filterState === "filter-empty" ? "현재 페이지 필터 결과가 없습니다" : "외부 API 로그가 없습니다"}</h3>
+            <p className="mt-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">{filterState === "filter-empty" ? "서버에서 받은 현재 페이지에는 항목이 있지만, 적용한 화면 필터와 일치하지 않습니다." : "서버에서 현재 페이지에 반환한 외부 API 로그가 없습니다."}</p>
+            {filterState === "filter-empty" ? <button type="button" onClick={clearFilters} className={`mt-5 h-10 rounded-[10px] border border-zinc-300 px-4 text-sm font-extrabold dark:border-zinc-700 ${focusRing}`}>필터 지우기</button> : null}
           </div>
         )}
         <div className="flex justify-center border-t border-zinc-200 px-5 py-4 dark:border-zinc-800">
