@@ -1,6 +1,38 @@
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+export function createLatestAdminRequestTracker() {
+  let latestRequestId = 0;
+
+  return {
+    begin() {
+      latestRequestId += 1;
+      return latestRequestId;
+    },
+    invalidate() {
+      latestRequestId += 1;
+    },
+    isCurrent(requestId: number) {
+      return requestId === latestRequestId;
+    },
+  };
+}
+
+export function isMissingAdminUserResource(...statuses: Array<number | undefined>) {
+  return statuses.includes(404);
+}
+
+export function isAdminAuthenticationError(status: number | undefined) {
+  return status === 401 || status === 403;
+}
+
+export function isCurrentAdminUserSelection(
+  currentUserId: string,
+  targetUserId: string,
+) {
+  return currentUserId === targetUserId;
+}
+
 export function normalizeAdminUserQuery(value: string) {
   const trimmed = value.trim();
   return EMAIL_PATTERN.test(trimmed) ? trimmed.toLowerCase() : trimmed.toLowerCase();

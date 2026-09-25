@@ -12,12 +12,23 @@ import type { AdminRecollectionResponse } from "@/generated/api/admin/models/adm
 import type { AdminUserDetailResponse } from "@/generated/api/admin/models/adminUserDetailResponse";
 import type { AdminUserRoleChangeRequest } from "@/generated/api/admin/models/adminUserRoleChangeRequest";
 import type { AdminUserRoleResponse } from "@/generated/api/admin/models/adminUserRoleResponse";
+import type { AdminUserPageResponse } from "@/generated/api/admin/models/adminUserPageResponse";
+import type { AdminUserAccessHistoryPageResponse } from "@/generated/api/admin/models/adminUserAccessHistoryPageResponse";
+import type { AdminUserSuspensionRequest } from "@/generated/api/admin/models/adminUserSuspensionRequest";
+import type { ListAdminUsersStatus } from "@/generated/api/admin/models/listAdminUsersStatus";
 import {
+  changeAdminUserSuspension as requestUserSuspension,
+  getAdminDashboardSummary as requestDashboardSummary,
+  getAdminUserAccessHistory as requestAdminUserAccessHistory,
   getAdminUser as requestAdminUser,
+  listAdminUsers as requestAdminUsers,
   promoteUserToAdmin as requestUserPromotion,
 } from "@/generated/api/admin";
+import { ApiClientError } from "@/shared/api/api-client-error";
 
 export type DashboardSummary = AdminDashboardSummaryResponse;
+export type AdminUserPage = AdminUserPageResponse;
+export type AdminUserAccessHistoryPage = AdminUserAccessHistoryPageResponse;
 
 // Review fixtures include every field this screen depends on; the boundary
 // stays aligned with the generated OpenAPI contract.
@@ -62,32 +73,6 @@ export type NotificationReprocessResult = Required<
 >;
 export type AdminUserRole = AdminUserRoleResponse;
 export type AdminUserDetail = AdminUserDetailResponse;
-
-const reviewDashboardSummary: DashboardSummary = {
-  generatedAt: "2026-07-13T09:30:00+09:00",
-  collection: {
-    pendingCount: 12,
-    runningCount: 3,
-    succeededCount: 1864,
-    failedCount: 4,
-  },
-  labeling: {
-    pendingCount: 8,
-    labeledCount: 1821,
-    unknownCount: 19,
-    labelingFailedCount: 3,
-  },
-  outbox: { pendingCount: 6, publishedCount: 2410 },
-  dlq: { pendingCount: 2, reprocessedCount: 38 },
-  notifications: {
-    pendingCount: 4,
-    sendingCount: 2,
-    retryPendingCount: 3,
-    sentCount: 2387,
-    failedCount: 5,
-    canceledCount: 1,
-  },
-};
 
 const reviewCollectionJobs: FailedCollectionJob[] = [
   {
@@ -395,8 +380,23 @@ export class AdminApiError extends Error {
   }
 }
 
+function asAdminApiError(cause: unknown, fallback: string): AdminApiError {
+  if (cause instanceof AdminApiError) return cause;
+  if (cause instanceof ApiClientError) {
+    return new AdminApiError(cause.status, cause.message);
+  }
+  return new AdminApiError(
+    0,
+    cause instanceof Error && cause.message.trim() ? cause.message : fallback,
+  );
+}
+
 export async function getDashboardSummary(): Promise<DashboardSummary> {
-  return reviewDashboardSummary;
+  try {
+    return await requestDashboardSummary();
+  } catch (cause) {
+    throw asAdminApiError(cause, "운영 현황을 불러오지 못했습니다.");
+  }
 }
 export async function getFailedCollectionJobs(
   page: number,
@@ -439,14 +439,66 @@ export async function reprocessDeadLetterEvent(
 }
 
 export async function getAdminUserDetail(userId: string): Promise<AdminUserDetail> {
-  return requestAdminUser(userId);
+  try {
+    return await requestAdminUser(userId);
+  } catch (cause) {
+    throw asAdminApiError(cause, "사용자 상세 정보를 불러오지 못했습니다.");
+  }
+}
+
+export async function getAdminUsers(input: {
+  query?: string;
+  status?: ListAdminUsersStatus;
+  page: number;
+  pageSize: number;
+}): Promise<AdminUserPage> {
+  try {
+    return await requestAdminUsers({
+      ...(input.query ? { query: input.query } : {}),
+      ...(input.status ? { status: input.status } : {}),
+      page: String(input.page),
+      pageSize: String(input.pageSize),
+    });
+  } catch (cause) {
+    throw asAdminApiError(cause, "사용자 목록을 불러오지 못했습니다.");
+  }
+}
+
+export async function getAdminUserHistory(
+  userId: string,
+  page: number,
+  pageSize: number,
+): Promise<AdminUserAccessHistoryPage> {
+  try {
+    return await requestAdminUserAccessHistory(userId, {
+      page: String(page),
+      pageSize: String(pageSize),
+    });
+  } catch (cause) {
+    throw asAdminApiError(cause, "사용자 접근 이력을 불러오지 못했습니다.");
+  }
 }
 
 export async function promoteUserToAdmin(
   userId: string,
   request: AdminUserRoleChangeRequest,
 ): Promise<AdminUserRole> {
-  return requestUserPromotion(userId, request);
+  try {
+    return await requestUserPromotion(userId, request);
+  } catch (cause) {
+    throw asAdminApiError(cause, "관리자 권한을 변경하지 못했습니다.");
+  }
+}
+
+export async function changeUserSuspension(
+  userId: string,
+  request: AdminUserSuspensionRequest,
+): Promise<AdminUserRole> {
+  try {
+    return await requestUserSuspension(userId, request);
+  } catch (cause) {
+    throw asAdminApiError(cause, "사용자 이용 상태를 변경하지 못했습니다.");
+  }
 }
 export async function requestRecollection(
   collectionJobId: string,
