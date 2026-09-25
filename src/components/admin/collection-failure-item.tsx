@@ -1,5 +1,5 @@
 import { LoaderCircle, RotateCw } from "lucide-react";
-import type { FailedCollectionJob } from "@/lib/admin-api";
+import { isAdminActionId, type FailedCollectionJob } from "@/lib/admin-api";
 
 const mealLabels: Record<string, string> = {
   BREAKFAST: "아침",
@@ -27,6 +27,7 @@ function RecollectButton({
   pendingId?: string;
   onRecollect: (job: FailedCollectionJob) => void;
 }) {
+  if (!isAdminActionId(job.collectionJobId)) return null;
   const pending = pendingId === job.collectionJobId;
 
   return (
@@ -45,14 +46,18 @@ function RecollectButton({
 export function CollectionFailureTableRow({
   job,
   pendingId,
+  selected,
+  onSelect,
   onRecollect,
 }: {
   job: FailedCollectionJob;
   pendingId?: string;
+  selected: boolean;
+  onSelect: (job: FailedCollectionJob) => void;
   onRecollect: (job: FailedCollectionJob) => void;
 }) {
   return (
-    <tr className="align-top">
+    <tr className={`align-top ${selected ? "bg-mint-500/[0.06]" : "hover:bg-mint-500/[0.03]"}`}>
       <td className="px-5 py-4">
         <p className="text-sm font-bold" title={job.schoolId}>{job.schoolId}</p>
         <p className="mt-1 whitespace-nowrap text-sm font-semibold">{job.mealDate} · {mealLabels[job.mealType] ?? job.mealType}</p>
@@ -68,7 +73,17 @@ export function CollectionFailureTableRow({
         <p className="whitespace-nowrap text-sm font-semibold">{formatDateTime(job.updatedAt)}</p>
       </td>
       <td className="px-5 py-4 text-right">
-        <RecollectButton job={job} pendingId={pendingId} onRecollect={onRecollect} />
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => onSelect(job)}
+            aria-pressed={selected}
+            className="h-10 rounded-[10px] border border-zinc-300 px-3.5 text-sm font-extrabold hover:border-mint-500 hover:text-mint-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mint-500 dark:border-zinc-700 dark:hover:text-mint-300"
+          >
+            {selected ? "선택됨" : "선택"}
+          </button>
+          {selected ? <RecollectButton job={job} pendingId={pendingId} onRecollect={onRecollect} /> : null}
+        </div>
       </td>
     </tr>
   );
@@ -77,14 +92,18 @@ export function CollectionFailureTableRow({
 export function CollectionFailureCard({
   job,
   pendingId,
+  selected,
+  onSelect,
   onRecollect,
 }: {
   job: FailedCollectionJob;
   pendingId?: string;
+  selected: boolean;
+  onSelect: (job: FailedCollectionJob) => void;
   onRecollect: (job: FailedCollectionJob) => void;
 }) {
   return (
-    <article className="border-b border-zinc-200 p-5 last:border-b-0 dark:border-zinc-800">
+    <article className={`border-b border-zinc-200 p-5 last:border-b-0 dark:border-zinc-800 ${selected ? "bg-mint-500/[0.06]" : "hover:bg-mint-500/[0.03]"}`}>
       <div>
         <div className="min-w-0">
           <p className="truncate text-sm font-bold" title={job.schoolId}>{job.schoolId}</p>
@@ -97,7 +116,17 @@ export function CollectionFailureCard({
         <div><dt className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">수집 소요</dt><dd className="mt-1 font-extrabold tabular-nums">{job.collectionDurationMillis.toLocaleString()}ms</dd></div>
         <div className="col-span-2"><dt className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">실패 시각</dt><dd className="mt-1 font-semibold">{formatDateTime(job.updatedAt)}</dd></div>
       </dl>
-      <div className="mt-4"><RecollectButton job={job} pendingId={pendingId} onRecollect={onRecollect} /></div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => onSelect(job)}
+          aria-pressed={selected}
+          className="h-10 rounded-[10px] border border-zinc-300 px-3.5 text-sm font-extrabold hover:border-mint-500 hover:text-mint-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mint-500 dark:border-zinc-700 dark:hover:text-mint-300"
+        >
+          {selected ? "선택됨" : "상세 선택"}
+        </button>
+        {selected ? <RecollectButton job={job} pendingId={pendingId} onRecollect={onRecollect} /> : null}
+      </div>
     </article>
   );
 }

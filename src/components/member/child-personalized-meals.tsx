@@ -105,7 +105,7 @@ function MealRow({ item, index, allergenNames }: { item: PersonalizedMealItem; i
 }
 
 export function ChildPersonalizedMeals({ childId }: { childId?: string }) {
-  const hasChild = Boolean(childId && childId !== "preview");
+  const hasChild = Boolean(childId);
   const [child, setChild] = useState<ChildProfile | null>(null);
   const [schoolName, setSchoolName] = useState("");
   const [allergenNames, setAllergenNames] = useState<ReadonlyMap<number, string>>(() => new Map());
@@ -123,13 +123,13 @@ export function ChildPersonalizedMeals({ childId }: { childId?: string }) {
 
   const load = useCallback(async () => {
     const requestId = ++requestSequence.current;
-    if (!childId || childId === "preview") {
+    if (!childId) {
       if (requestId === requestSequence.current) setLoading(false);
       return;
     }
     setLoading(true); setError(null);
     try {
-      const [profile, meals, allergens] = await Promise.all([getChild(childId), getPersonalizedMeals(childId, mode, date), getAllergens(childId === "preview")]);
+      const [profile, meals, allergens] = await Promise.all([getChild(childId), getPersonalizedMeals(childId, mode, date), getAllergens()]);
       const school = await getSchool(profile.schoolId).catch(() => null);
       if (requestId !== requestSequence.current) return;
       setChild(profile); setSchoolName(school?.name ?? ""); setAllergenNames(new Map(allergens.map((allergen) => [allergen.code, allergen.name]))); setData(meals);

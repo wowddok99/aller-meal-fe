@@ -13,10 +13,12 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type KeyboardEvent,
 } from "react";
 import { AdminSelectMenu } from "@/components/admin/admin-select-menu";
+import { createLatestAdminOperationRequestTracker, getAdminOperationDisplayId, getAdminOperationItemKey, getCurrentPageFilterState, hasSameAdminOperationId } from "@/components/admin/admin-operation-list-utils";
 import { filterFailedNotifications } from "@/components/admin/failed-notification-utils";
 import {
   AdminApiError,
@@ -82,22 +84,27 @@ function ErrorState({
   error: AdminApiError;
   retry: () => void;
 }) {
-  const auth = error.status === 401 || error.status === 403;
+  const unauthenticated = error.status === 401;
+  const forbidden = error.status === 403;
 
   return (
     <section className="rounded-2xl border border-red-200 bg-white p-10 text-center dark:border-red-950 dark:bg-[#101419] dark:text-zinc-50">
       <AlertTriangle className="mx-auto h-10 w-10 text-red-500" />
       <h1 className="mt-4 text-xl font-extrabold">
-        {auth
-          ? "관리자 권한이 필요합니다"
+        {unauthenticated
+          ? "로그인이 필요합니다"
+          : forbidden
+            ? "관리자 권한이 필요합니다"
           : "실패 알림을 불러오지 못했습니다"}
       </h1>
       <p className="mt-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">
-        {auth
-          ? "관리자 계정으로 로그인한 후 다시 확인해 주세요."
+        {unauthenticated
+          ? "로그인한 후 다시 확인해 주세요."
+          : forbidden
+            ? "이 화면은 관리자만 확인할 수 있습니다."
           : error.message}
       </p>
-      {!auth ? (
+      {!unauthenticated && !forbidden ? (
         <button
           type="button"
           onClick={retry}
@@ -206,7 +213,7 @@ function FailureCard({
 function NotificationDetails({ selected }: { selected?: FailedNotification }) {
   const details = selected
     ? [
-        ["알림 ID", selected.notificationId],
+        ["알림 ID", getAdminOperationDisplayId(selected.notificationId)],
         ["대상 ID", selected.notificationTargetId],
         ["사용자 ID", selected.userId || "-"],
         ["자녀 ID", selected.childId || "-"],
@@ -237,7 +244,7 @@ function NotificationDetails({ selected }: { selected?: FailedNotification }) {
         </h2>
         {selected ? (
           <p className="break-all font-mono text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-            알림 ID: {selected.notificationId}
+            알림 ID: {getAdminOperationDisplayId(selected.notificationId)}
           </p>
         ) : null}
       </div>
@@ -288,32 +295,39 @@ export function FailedNotifications() {
   const [reason, setReason] = useState("ALL");
   const [status, setStatus] = useState("ALL");
   const [search, setSearch] = useState("");
+  const latestRequest = useRef(createLatestAdminOperationRequestTracker());
+  const latestQuery = useRef({ page, pageSize });
+  latestQuery.current = { page, pageSize };
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (query = latestQuery.current) => {
+    const requestId = latestRequest.current.begin();
     setLoading(true);
     setError(undefined);
+    setResult(undefined);
     try {
-      const next = await getFailedNotifications(page, pageSize);
+      const next = await getFailedNotifications(query.page, query.pageSize);
+      if (!latestRequest.current.isCurrent(requestId)) return;
       setResult(next);
       setSelected((current) =>
         next.items.find(
-          (item) => item.notificationId === current?.notificationId,
+          (item) => hasSameAdminOperationId(item.notificationId, current?.notificationId),
         ),
       );
     } catch (cause) {
+      if (!latestRequest.current.isCurrent(requestId)) return;
       setError(
         cause instanceof AdminApiError
           ? cause
           : new AdminApiError(0, "실패 알림을 불러오지 못했습니다."),
       );
     } finally {
-      setLoading(false);
+      if (latestRequest.current.isCurrent(requestId)) setLoading(false);
     }
-  }, [page, pageSize]);
+  }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void load({ page, pageSize });
+  }, [load, page, pageSize]);
 
   const reasonOptions = useMemo(
     () => [
@@ -343,12 +357,15 @@ export function FailedNotifications() {
     [reason, result, search, status],
   );
   const totalCount = result?.totalCount ?? 0;
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const totalPages = Math.max(1, Math.ceil(totalCount / (result?.pageSize ?? pageSize)));
   const currentPage = result?.page ?? page;
   const isInitialLoading = loading && !result;
+  const hasActiveFilters = reason !== "ALL" || status !== "ALL" || Boolean(search.trim());
+  const filterState = getCurrentPageFilterState(result?.items.length ?? 0, items.length, hasActiveFilters);
+  const clearFilters = () => { setReason("ALL"); setStatus("ALL"); setSearch(""); };
   useEffect(() => {
     setSelected((current) =>
-      current && !items.some((item) => item.notificationId === current.notificationId)
+      current && !items.some((item) => hasSameAdminOperationId(item.notificationId, current.notificationId))
         ? undefined
         : current,
     );
@@ -380,14 +397,6 @@ export function FailedNotifications() {
           실패 알림 목록
         </h1>
       </header>
-      {error && result ? (
-        <p
-          role="alert"
-          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200"
-        >
-          최신 목록을 갱신하지 못했습니다. 이전 목록을 표시합니다. {error.message}
-        </p>
-      ) : null}
       <section
         aria-label="실패 알림 목록"
         aria-busy={loading}
@@ -450,10 +459,10 @@ export function FailedNotifications() {
             </FilterField>
           </div>
           <p className="mt-3 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-            현재 페이지 {result?.items.length ?? 0}건 중 {items.length}건 표시
+            현재 페이지 {result?.items.length ?? 0}건 중 {items.length}건 표시 · 서버 전체 검색이 아닌 현재 페이지 필터입니다.
           </p>
         </div>
-        {items.length ? (
+        {filterState === "items" ? (
           <>
             <div className="hidden overflow-x-auto lg:block">
               <table className="w-full min-w-[920px] table-fixed text-left text-sm">
@@ -488,12 +497,12 @@ export function FailedNotifications() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                  {items.map((item) => {
-                    const isSelected = selected?.notificationId === item.notificationId;
+                  {items.map((item, index) => {
+                    const isSelected = hasSameAdminOperationId(selected?.notificationId, item.notificationId);
 
                     return (
                       <tr
-                        key={item.notificationId}
+                        key={getAdminOperationItemKey("failed-notification", index, item.notificationId)}
                         role="button"
                         tabIndex={0}
                         aria-pressed={isSelected}
@@ -536,11 +545,11 @@ export function FailedNotifications() {
               </table>
             </div>
             <div className="lg:hidden">
-              {items.map((item) => (
+              {items.map((item, index) => (
                 <FailureCard
-                  key={item.notificationId}
+                  key={getAdminOperationItemKey("failed-notification", index, item.notificationId)}
                   item={item}
-                  selected={selected?.notificationId === item.notificationId}
+                  selected={hasSameAdminOperationId(selected?.notificationId, item.notificationId)}
                   onSelect={setSelected}
                 />
               ))}
@@ -549,12 +558,9 @@ export function FailedNotifications() {
         ) : (
           <div className="px-5 py-16 text-center">
             <CheckCircle2 className="mx-auto h-10 w-10 text-mint-500" />
-            <h3 className="mt-4 text-lg font-extrabold">
-              표시할 실패 알림이 없습니다
-            </h3>
-            <p className="mt-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">
-              현재 목록 필터 조건을 바꾸거나 다음 페이지를 확인해 주세요.
-            </p>
+            <h3 className="mt-4 text-lg font-extrabold">{filterState === "filter-empty" ? "현재 페이지 필터 결과가 없습니다" : "실패 알림이 없습니다"}</h3>
+            <p className="mt-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">{filterState === "filter-empty" ? "서버에서 받은 현재 페이지에는 항목이 있지만, 적용한 화면 필터와 일치하지 않습니다." : "서버에서 현재 페이지에 반환한 실패 알림이 없습니다."}</p>
+            {filterState === "filter-empty" ? <button type="button" onClick={clearFilters} className={`mt-5 h-10 rounded-[10px] border border-zinc-300 px-4 text-sm font-extrabold dark:border-zinc-700 ${focusRing}`}>필터 지우기</button> : null}
           </div>
         )}
         <div className="flex justify-center border-t border-zinc-200 px-5 py-4 dark:border-zinc-800">

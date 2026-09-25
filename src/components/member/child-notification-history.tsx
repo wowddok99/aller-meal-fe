@@ -88,7 +88,7 @@ function Detail({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 export function ChildNotificationHistory({ childId }: { childId?: string }) {
-  const hasChild = Boolean(childId && childId !== "preview");
+  const hasChild = Boolean(childId);
   const [child, setChild] = useState<ChildProfile | null>(null);
   const [schoolName, setSchoolName] = useState("");
   const [history, setHistory] = useState<NotificationHistory | null>(null);
@@ -97,7 +97,7 @@ export function ChildNotificationHistory({ childId }: { childId?: string }) {
   const [error, setError] = useState<MemberApiError | null>(null);
 
   const load = useCallback(async () => {
-    if (!childId || childId === "preview") {
+    if (!childId) {
       setLoading(false);
       return;
     }

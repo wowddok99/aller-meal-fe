@@ -41,7 +41,7 @@ function errorMessage(cause: unknown, fallback: string) {
   return cause instanceof Error && cause.message.trim() ? cause.message : fallback;
 }
 
-export function AdminUserRole({ userId = "", preview = false }: { userId?: string; preview?: boolean }) {
+export function AdminUserRole({ userId = "" }: { userId?: string }) {
   const [input, setInput] = useState(userId);
   const [fieldError, setFieldError] = useState("");
   const [reason, setReason] = useState("");
@@ -58,7 +58,6 @@ export function AdminUserRole({ userId = "", preview = false }: { userId?: strin
   const reset = () => { setInput(userId); setFieldError(""); setReason(""); setReasonError(""); setTarget(undefined); setConfirming(false); setError(""); setResult(undefined); };
   const lookup = async () => {
     if (!validateUserId(targetUserId)) { setFieldError("UUID 형식의 사용자 ID를 입력해 주세요."); return; }
-    if (preview) { setError("미리보기에서는 사용자를 조회하거나 권한을 변경하지 않습니다."); return; }
     setLoadingTarget(true); setFieldError(""); setError(""); setConfirming(false); setTarget(undefined);
     try {
       const response = await getAdminUserDetail(targetUserId);
