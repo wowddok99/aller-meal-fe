@@ -1,9 +1,5 @@
-import type { Metadata } from "next";
-import { AdminShell } from "@/components/admin/admin-shell";
-import { FailedNotifications } from "@/components/admin/failed-notifications";
-
-export const metadata: Metadata = { description: "실패한 알림 요청을 확인하고 DLQ 재처리 화면으로 이동합니다." };
+import { redirect } from "next/navigation";
 
 export default function NotificationFailuresPage() {
-  return <AdminShell><FailedNotifications /></AdminShell>;
+  redirect("/admin/notification-requests?status=FAILED");
 }

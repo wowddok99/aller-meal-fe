@@ -7,6 +7,10 @@ const adminApi = vi.hoisted(() => ({
   getAdminUser: vi.fn(),
   getAdminUserAccessHistory: vi.fn(),
   listAdminUsers: vi.fn(),
+  listAdminCollectionJobs: vi.fn(),
+  listAdminMealItemLabelings: vi.fn(),
+  listAdminNotificationRequests: vi.fn(),
+  listAdminOutboxEvents: vi.fn(),
   listExternalApiLogs: vi.fn(),
   listFailedCollectionJobs: vi.fn(),
   listFailedNotifications: vi.fn(),
@@ -21,10 +25,16 @@ vi.mock("@/generated/api/admin", () => adminApi);
 import {
   AdminApiError,
   getAdminUsers,
+  getAllDeadLetterEvents,
+  getAllExternalApiLogs,
+  getCollectionJobs,
   getDeadLetterEvents,
   getExternalApiLogs,
   getFailedCollectionJobs,
   getFailedNotifications,
+  getMealItemLabelings,
+  getNotificationRequests,
+  getOutboxEvents,
   isAdminActionId,
   reprocessDeadLetterEvent,
   requestRecollection,
@@ -89,5 +99,32 @@ describe("PR-06 admin operation adapters", () => {
     adminApi.listAdminUsers.mockResolvedValueOnce({ items: [], page: 2, pageSize: 20, totalCount: 21 });
     await getAdminUsers({ query: "member@example.com", status: "SUSPENDED", page: 2, pageSize: 20 });
     expect(adminApi.listAdminUsers).toHaveBeenCalledWith({ query: "member@example.com", status: "SUSPENDED", page: "2", pageSize: "20" });
+  });
+
+  it("serializes canonical operation filters and preserves server pagination", async () => {
+    const page = { items: [], page: 2, pageSize: 50, totalCount: 51 };
+    adminApi.listAdminCollectionJobs.mockResolvedValueOnce(page);
+    adminApi.listAdminMealItemLabelings.mockResolvedValueOnce(page);
+    adminApi.listAdminOutboxEvents.mockResolvedValueOnce(page);
+    adminApi.listAdminNotificationRequests.mockResolvedValueOnce(page);
+    adminApi.listNotificationDeadLetterEvents.mockResolvedValueOnce(page);
+    adminApi.listExternalApiLogs.mockResolvedValueOnce(page);
+
+    const [collection] = await Promise.all([
+      getCollectionJobs({ page: 2, pageSize: 50, status: "FAILED", schoolId: "school-1", query: "상명초" }),
+      getMealItemLabelings({ page: 2, pageSize: 50, status: "PENDING", mealType: "LUNCH", query: "김치" }),
+      getOutboxEvents({ page: 2, pageSize: 50, status: "PUBLISHED", eventType: "MealCollected", query: "event-1" }),
+      getNotificationRequests({ page: 2, pageSize: 50, status: "RETRY_PENDING", channel: "EMAIL", reason: "MEAL", query: "notification-1" }),
+      getAllDeadLetterEvents({ page: 2, pageSize: 50, status: "PENDING", eventType: "NotificationRequested", query: "message-1" }),
+      getAllExternalApiLogs({ page: 2, pageSize: 50, provider: "NEIS", method: "GET", outcome: "SUCCESS", query: "school-1" }),
+    ]);
+
+    expect(adminApi.listAdminCollectionJobs).toHaveBeenCalledWith({ page: 2, pageSize: 50, status: "FAILED", schoolId: "school-1", query: "상명초" });
+    expect(adminApi.listAdminMealItemLabelings).toHaveBeenCalledWith({ page: 2, pageSize: 50, status: "PENDING", mealType: "LUNCH", query: "김치" });
+    expect(adminApi.listAdminOutboxEvents).toHaveBeenCalledWith({ page: 2, pageSize: 50, status: "PUBLISHED", eventType: "MealCollected", query: "event-1" });
+    expect(adminApi.listAdminNotificationRequests).toHaveBeenCalledWith({ page: 2, pageSize: 50, status: "RETRY_PENDING", channel: "EMAIL", reason: "MEAL", query: "notification-1" });
+    expect(adminApi.listNotificationDeadLetterEvents).toHaveBeenCalledWith({ page: 2, pageSize: 50, status: "PENDING", eventType: "NotificationRequested", query: "message-1" });
+    expect(adminApi.listExternalApiLogs).toHaveBeenCalledWith({ page: 2, pageSize: 50, provider: "NEIS", method: "GET", outcome: "SUCCESS", query: "school-1" });
+    expect(collection).toMatchObject({ page: 2, pageSize: 50, totalCount: 51 });
   });
 });

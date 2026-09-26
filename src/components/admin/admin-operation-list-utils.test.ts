@@ -7,6 +7,7 @@ import {
   getAdminOperationLoadErrorState,
   getCurrentPageFilterState,
   hasSameAdminOperationId,
+  getSchoolSearchQuery,
 } from "@/components/admin/admin-operation-list-utils";
 
 describe("admin operation list utilities", () => {
@@ -46,5 +47,12 @@ describe("admin operation list utilities", () => {
     expect(getAdminOperationLoadErrorState(401)).toBe("login-required");
     expect(getAdminOperationLoadErrorState(403)).toBe("admin-forbidden");
     expect(getAdminOperationLoadErrorState(500)).toBe("generic-error");
+  });
+
+  it("uses one school search value for either an exact school ID or a school-name query", () => {
+    expect(getSchoolSearchQuery("550e8400-e29b-41d4-a716-446655440000")).toEqual({
+      schoolId: "550e8400-e29b-41d4-a716-446655440000",
+    });
+    expect(getSchoolSearchQuery("  목포항도여자중학교 ")).toEqual({ query: "목포항도여자중학교" });
   });
 });

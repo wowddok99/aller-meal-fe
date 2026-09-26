@@ -1,4 +1,8 @@
 import type { AdminDashboardSummaryResponse } from "@/generated/api/admin/models/adminDashboardSummaryResponse";
+import type { AdminCollectionJobItemResponse } from "@/generated/api/admin/models/adminCollectionJobItemResponse";
+import type { AdminMealItemLabelingItemResponse } from "@/generated/api/admin/models/adminMealItemLabelingItemResponse";
+import type { AdminNotificationRequestItemResponse } from "@/generated/api/admin/models/adminNotificationRequestItemResponse";
+import type { AdminOutboxEventItemResponse } from "@/generated/api/admin/models/adminOutboxEventItemResponse";
 import type { AdminDeadLetterEventItemResponse } from "@/generated/api/admin/models/adminDeadLetterEventItemResponse";
 import type { AdminExternalApiLogItemResponse } from "@/generated/api/admin/models/adminExternalApiLogItemResponse";
 import type { AdminFailedCollectionJobItemResponse } from "@/generated/api/admin/models/adminFailedCollectionJobItemResponse";
@@ -17,6 +21,10 @@ import {
   getAdminDashboardSummary as requestDashboardSummary,
   getAdminUser as requestAdminUser,
   getAdminUserAccessHistory as requestAdminUserAccessHistory,
+  listAdminCollectionJobs as requestCollectionJobs,
+  listAdminMealItemLabelings as requestMealItemLabelings,
+  listAdminNotificationRequests as requestNotificationRequests,
+  listAdminOutboxEvents as requestOutboxEvents,
   listAdminUsers as requestAdminUsers,
   listExternalApiLogs as requestExternalApiLogs,
   listFailedCollectionJobs as requestFailedCollectionJobs,
@@ -52,6 +60,21 @@ export type DeadLetterEvent = Omit<AdminDeadLetterEventItemResponse, "messageId"
 export type DeadLetterEventPage = { items: DeadLetterEvent[]; page: number; pageSize: number; totalCount: number };
 export type RecollectionResult = AdminRecollectionResponse;
 export type NotificationReprocessResult = AdminNotificationReprocessResponse;
+
+export type AdminOperationItem = {
+  id?: string;
+  title: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  fields: Array<[string, string]>;
+  actionId?: string;
+};
+export type AdminOperationPage = { items: AdminOperationItem[]; page: number; pageSize: number; totalCount: number };
+export type AdminOperationQuery = {
+  page: number; pageSize: number; status?: string; schoolId?: string; mealDate?: string; mealType?: string;
+  eventType?: string; channel?: string; reason?: string; provider?: string; method?: string; outcome?: string; query?: string;
+};
 
 export class AdminApiError extends Error {
   constructor(public readonly status: number, message: string) {
@@ -93,6 +116,53 @@ function mapFailedNotification(item: AdminFailedNotificationItemResponse): Faile
 
 function mapDeadLetterEvent(item: AdminDeadLetterEventItemResponse): DeadLetterEvent {
   return { ...item, messageId: item.messageId ?? "미제공", eventType: item.eventType ?? "미제공", retryCount: item.retryCount ?? 0, status: item.status ?? "미제공", reprocessedByUserId: item.reprocessedByUserId ?? "미제공", reprocessedAt: item.reprocessedAt ?? "미제공", createdAt: item.createdAt ?? "미제공", updatedAt: item.updatedAt ?? "미제공" };
+}
+
+function display(value: string | number | undefined) { return value === undefined || value === "" ? "미제공" : String(value); }
+function operationPage(page: number, pageSize: number, response: { page?: number; pageSize?: number; totalCount?: number; items?: unknown[] }, items: AdminOperationItem[]): AdminOperationPage {
+  return { ...pageMeta(page, pageSize, response), items };
+}
+
+function mapCollectionJob(item: AdminCollectionJobItemResponse): AdminOperationItem {
+  return { id: item.collectionJobId, actionId: item.collectionJobId, title: display(item.schoolName), status: display(item.status), createdAt: display(item.createdAt), updatedAt: display(item.updatedAt), fields: [["학교", display(item.schoolName)], ["식사일", display(item.mealDate)], ["식사", display(item.mealType)], ["상태", display(item.status)], ["실패 코드", display(item.failureCode)], ["실패 사유", display(item.failureMessage)]] };
+}
+function mapMealItemLabeling(item: AdminMealItemLabelingItemResponse): AdminOperationItem {
+  return { id: item.mealItemId, title: display(item.name), status: display(item.status), createdAt: display(item.createdAt), updatedAt: display(item.updatedAt), fields: [["메뉴", display(item.name)], ["학교", display(item.schoolName)], ["식사일", display(item.mealDate)], ["식사", display(item.mealType)], ["표시 순서", display(item.displayOrder)], ["상태", display(item.status)]] };
+}
+function mapOutboxEvent(item: AdminOutboxEventItemResponse): AdminOperationItem {
+  return { id: item.eventId, title: display(item.eventType), status: display(item.status), createdAt: display(item.createdAt ?? item.occurredAt), updatedAt: display(item.updatedAt ?? item.publishedAt), fields: [["이벤트 ID", display(item.eventId)], ["이벤트 타입", display(item.eventType)], ["상태", display(item.status)], ["발생 시각", display(item.occurredAt)], ["발행 시각", display(item.publishedAt)]] };
+}
+function mapNotificationRequest(item: AdminNotificationRequestItemResponse): AdminOperationItem {
+  return { id: item.notificationId, title: display(item.notificationId), status: display(item.status), createdAt: display(item.createdAt), updatedAt: display(item.updatedAt), fields: [["알림 ID", display(item.notificationId)], ["채널", display(item.channel)], ["사유", display(item.reason)], ["상태", display(item.status)], ["재시도", `${item.attemptCount ?? 0}/${item.maxAttempts ?? 0}`], ["다음 시도", display(item.nextAttemptAt)], ["실패 코드", display(item.failureCode)], ["실패 사유", display(item.failureMessage)]] };
+}
+function mapDeadLetterOperation(item: AdminDeadLetterEventItemResponse): AdminOperationItem {
+  return { id: item.deadLetterEventId, actionId: item.deadLetterEventId, title: display(item.eventType), status: display(item.status), createdAt: display(item.createdAt), updatedAt: display(item.updatedAt), fields: [["이벤트 ID", display(item.deadLetterEventId)], ["메시지 ID", display(item.messageId)], ["이벤트 타입", display(item.eventType)], ["재시도", `${item.retryCount ?? 0}회`], ["상태", display(item.status)], ["재처리 담당", display(item.reprocessedByUserId)], ["재처리 시각", display(item.reprocessedAt)]] };
+}
+function mapExternalApiLogOperation(item: AdminExternalApiLogItemResponse): AdminOperationItem {
+  return { id: item.externalApiLogId, title: `${display(item.provider)} · ${display(item.operation)}`, status: display(item.outcome), createdAt: display(item.createdAt), updatedAt: display(item.createdAt), fields: [["로그 ID", display(item.externalApiLogId)], ["제공자", display(item.provider)], ["작업", display(item.operation)], ["메서드", display(item.method)], ["엔드포인트", display(item.endpoint)], ["결과", display(item.outcome)], ["HTTP 상태", display(item.httpStatus)], ["응답 시간", `${item.responseTimeMillis ?? 0}ms`], ["학교 ID", display(item.schoolId)]] };
+}
+
+function optionalQuery(input: AdminOperationQuery) {
+  return Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined && value !== "")) as AdminOperationQuery;
+}
+
+export async function getCollectionJobs(input: AdminOperationQuery): Promise<AdminOperationPage> {
+  try { const response = await requestCollectionJobs(optionalQuery(input)); return operationPage(input.page, input.pageSize, response, (response.items ?? []).map(mapCollectionJob)); } catch (cause) { throw asAdminApiError(cause, "급식 수집 작업을 불러오지 못했습니다."); }
+}
+export async function getMealItemLabelings(input: AdminOperationQuery): Promise<AdminOperationPage> {
+  try { const response = await requestMealItemLabelings(optionalQuery(input)); return operationPage(input.page, input.pageSize, response, (response.items ?? []).map(mapMealItemLabeling)); } catch (cause) { throw asAdminApiError(cause, "라벨링 작업을 불러오지 못했습니다."); }
+}
+export async function getOutboxEvents(input: AdminOperationQuery): Promise<AdminOperationPage> {
+  try { const response = await requestOutboxEvents(optionalQuery(input)); return operationPage(input.page, input.pageSize, response, (response.items ?? []).map(mapOutboxEvent)); } catch (cause) { throw asAdminApiError(cause, "이벤트 발행 작업을 불러오지 못했습니다."); }
+}
+export async function getNotificationRequests(input: AdminOperationQuery): Promise<AdminOperationPage> {
+  try { const response = await requestNotificationRequests(optionalQuery(input)); return operationPage(input.page, input.pageSize, response, (response.items ?? []).map(mapNotificationRequest)); } catch (cause) { throw asAdminApiError(cause, "알림 발송 작업을 불러오지 못했습니다."); }
+}
+export async function getAllDeadLetterEvents(input: AdminOperationQuery): Promise<AdminOperationPage> {
+  try { const response = await requestDeadLetterEvents(optionalQuery(input)); return operationPage(input.page, input.pageSize, response, (response.items ?? []).map(mapDeadLetterOperation)); } catch (cause) { throw asAdminApiError(cause, "DLQ 이벤트를 불러오지 못했습니다."); }
+}
+export async function getAllExternalApiLogs(input: AdminOperationQuery): Promise<AdminOperationPage> {
+  try { const response = await requestExternalApiLogs(optionalQuery(input)); return operationPage(input.page, input.pageSize, response, (response.items ?? []).map(mapExternalApiLogOperation)); } catch (cause) { throw asAdminApiError(cause, "외부 API 로그를 불러오지 못했습니다."); }
 }
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {

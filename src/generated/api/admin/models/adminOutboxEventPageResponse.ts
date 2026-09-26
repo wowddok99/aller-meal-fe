@@ -5,12 +5,11 @@
  * Aller Meal Release 1 public, member, and admin API contract.
  * OpenAPI spec version: 1.0.0
  */
+import type { AdminOutboxEventItemResponse } from "./adminOutboxEventItemResponse";
 
-export type ListExternalApiLogsParams = {
+export interface AdminOutboxEventPageResponse {
+  items?: AdminOutboxEventItemResponse[];
   page?: number;
   pageSize?: number;
-  provider?: string;
-  method?: string;
-  outcome?: string;
-  query?: string;
-};
+  totalCount?: number;
+}
