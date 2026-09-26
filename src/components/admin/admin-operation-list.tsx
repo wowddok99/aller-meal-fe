@@ -5,18 +5,25 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type Keybo
 import { usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { AdminSelectMenu } from "@/components/admin/admin-select-menu";
-import { createLatestAdminOperationRequestTracker, getAdminOperationDisplayId, getAdminOperationFailureKind, getAdminOperationItemKey, getAdminOperationLoadErrorState, hasSameAdminOperationId } from "@/components/admin/admin-operation-list-utils";
+import { createLatestAdminOperationRequestTracker, getAdminOperationDisplayId, getAdminOperationFailureKind, getAdminOperationItemKey, getAdminOperationLoadErrorState, getSchoolSearchQuery, hasSameAdminOperationId } from "@/components/admin/admin-operation-list-utils";
 import { AdminApiError, createIdempotencyKey, type AdminOperationItem, type AdminOperationPage, type AdminOperationQuery, isAdminActionId, reprocessDeadLetterEvent, requestRecollection } from "@/lib/admin-api";
 
 const PAGE_SIZES = [10, 20, 50];
 const focusRing = "focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#101419]";
 
-type Filter = { key: Exclude<keyof AdminOperationQuery, "page" | "pageSize" | "query">; label: string; options?: Array<{ value: string; label: string }>; freeText?: boolean };
+type Filter = { key: Exclude<keyof AdminOperationQuery, "page" | "pageSize" | "query">; label: string; options?: Array<{ value: string; label: string }>; freeText?: boolean; inputType?: "date" };
 type Action = { status: string; label: string; run: (id: string, idempotencyKey: string) => Promise<unknown>; success: string };
 export type AdminOperationListProps = {
   title: string; description: string; itemName: string; statusOptions: Array<{ value: string; label: string }>;
-  filters?: Filter[]; load: (query: AdminOperationQuery) => Promise<AdminOperationPage>; action?: Action;
+  filters?: Filter[]; schoolSearch?: boolean; load: (query: AdminOperationQuery) => Promise<AdminOperationPage>; action?: Action;
 };
+
+function getFilterGridClass(filterCount: number) {
+  if (filterCount >= 3) return "md:grid-cols-2 xl:grid-cols-4";
+  if (filterCount === 2) return "md:grid-cols-2 xl:grid-cols-4";
+  if (filterCount === 1) return "md:grid-cols-2 xl:grid-cols-3";
+  return "md:grid-cols-2";
+}
 
 function formatDateTime(value: string) {
   if (!value || value === "미제공") return "미제공";
@@ -41,21 +48,22 @@ export function AdminOperationList(props: AdminOperationListProps) {
   return <Suspense fallback={<AdminOperationListLoading itemName={props.itemName} />}><AdminOperationListContent {...props} /></Suspense>;
 }
 
-function AdminOperationListContent({ title, description, itemName, statusOptions, filters = [], load, action }: AdminOperationListProps) {
+function AdminOperationListContent({ title, description, itemName, statusOptions, filters = [], schoolSearch = false, load, action }: AdminOperationListProps) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  const renderedFilters = schoolSearch ? filters.filter((filter) => filter.key !== "schoolId") : filters;
   const initial = useMemo(() => {
     const status = searchParams.get("status") ?? "ALL";
     const pageValue = Number(searchParams.get("page"));
     const pageSizeValue = Number(searchParams.get("pageSize"));
     return {
       status: statusOptions.some((option) => option.value === status) ? status : "ALL",
-      values: Object.fromEntries(filters.map((filter) => [filter.key, filter.freeText ? (searchParams.get(filter.key) ?? "") : (filter.options?.some((option) => option.value === searchParams.get(filter.key)) ? searchParams.get(filter.key)! : "ALL")])) as Record<string, string>,
-      query: searchParams.get("query") ?? "",
+      values: Object.fromEntries(renderedFilters.map((filter) => [filter.key, filter.freeText ? (searchParams.get(filter.key) ?? "") : (filter.options?.some((option) => option.value === searchParams.get(filter.key)) ? searchParams.get(filter.key)! : "ALL")])) as Record<string, string>,
+      query: searchParams.get("query") ?? (schoolSearch ? searchParams.get("schoolId") ?? "" : ""),
       page: Number.isInteger(pageValue) && pageValue > 0 ? pageValue : 1,
       pageSize: PAGE_SIZES.includes(pageSizeValue) ? pageSizeValue : 20,
     };
-  }, [filters, searchParams, statusOptions]);
+  }, [renderedFilters, schoolSearch, searchParams, statusOptions]);
   const [result, setResult] = useState<AdminOperationPage>();
   const [page, setPage] = useState(initial.page);
   const [pageSize, setPageSize] = useState(initial.pageSize);
@@ -70,22 +78,23 @@ function AdminOperationListContent({ title, description, itemName, statusOptions
   const [processingId, setProcessingId] = useState<string>();
   const tracker = useRef(createLatestAdminOperationRequestTracker());
 
+  const searchQuery = useMemo(() => schoolSearch ? getSchoolSearchQuery(submittedSearch) : (submittedSearch ? { query: submittedSearch } : {}), [schoolSearch, submittedSearch]);
   const query = useMemo<AdminOperationQuery>(() => ({
     page, pageSize,
     ...(status !== "ALL" ? { status } : {}),
     ...Object.fromEntries(Object.entries(filterValues).filter(([, value]) => value && value !== "ALL")),
-    ...(submittedSearch ? { query: submittedSearch } : {}),
-  }), [filterValues, page, pageSize, status, submittedSearch]);
+    ...searchQuery,
+  }), [filterValues, page, pageSize, searchQuery, status]);
   const loginHref = useMemo(() => {
     const params = new URLSearchParams();
     if (page > 1) params.set("page", String(page));
     if (pageSize !== 20) params.set("pageSize", String(pageSize));
     if (status !== "ALL") params.set("status", status);
     Object.entries(filterValues).forEach(([key, value]) => { if (value && value !== "ALL") params.set(key, value); });
-    if (submittedSearch) params.set("query", submittedSearch);
+    Object.entries(searchQuery).forEach(([key, value]) => params.set(key, value));
     const next = params.toString() ? `${pathname}?${params}` : pathname;
     return `/auth/login?next=${encodeURIComponent(next)}`;
-  }, [filterValues, page, pageSize, pathname, status, submittedSearch]);
+  }, [filterValues, page, pageSize, pathname, searchQuery, status]);
   const latestQuery = useRef(query); latestQuery.current = query;
 
   const loadCurrent = useCallback(async (requested = latestQuery.current) => {
@@ -114,11 +123,14 @@ function AdminOperationListContent({ title, description, itemName, statusOptions
   }, [filterValues, page, pageSize, pathname, status, submittedSearch]);
 
   const changeFilter = (key: string, value: string) => { setPage(1); setSelected(undefined); setFilterValues((current) => ({ ...current, [key]: value })); };
-  const clearFilters = () => { setPage(1); setStatus("ALL"); setFilterValues(Object.fromEntries(filters.map((filter) => [filter.key, filter.freeText ? "" : "ALL"]))); setSearch(""); setSubmittedSearch(""); };
+  const clearFilters = () => { setPage(1); setStatus("ALL"); setFilterValues(Object.fromEntries(renderedFilters.map((filter) => [filter.key, filter.freeText ? "" : "ALL"]))); setSearch(""); setSubmittedSearch(""); };
   const totalCount = result?.totalCount ?? 0;
   const currentPage = result?.page ?? page;
   const totalPages = Math.max(1, Math.ceil(totalCount / (result?.pageSize ?? pageSize)));
   const items = result?.items ?? [];
+  const filterGridClass = getFilterGridClass(renderedFilters.length);
+  const searchGridClass = renderedFilters.length >= 3 ? "xl:col-span-2" : "";
+  const applySearch = () => { setPage(1); setSubmittedSearch(search.trim()); };
   const actionItem = selected && selected.status === action?.status && isAdminActionId(selected.actionId) ? selected : undefined;
   const runAction = async () => {
     if (!action || !actionItem?.actionId || processingId) return;
@@ -141,7 +153,7 @@ function AdminOperationListContent({ title, description, itemName, statusOptions
     <header><p className="text-base font-medium leading-6 text-zinc-500 dark:text-zinc-400">{description}</p><h1 className="mt-3 text-2xl font-extrabold tracking-[-0.02em]">{title}</h1></header>
     <section aria-label={`${itemName} 목록`} aria-busy={loading} className="overflow-visible rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-[#101419] dark:text-zinc-50">
       <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-5 md:px-6"><p className="text-sm font-bold text-zinc-500 dark:text-zinc-400">총 {totalCount.toLocaleString()}건</p><div className="flex items-center gap-2"><span className="text-sm font-bold">목록 표시 수</span><AdminSelectMenu label="목록 표시 수" value={String(pageSize)} options={PAGE_SIZES.map((size) => ({ value: String(size), label: `${size}개` }))} onChange={(value) => { setPage(1); setPageSize(Number(value)); }} compact /></div></div>
-      <form onSubmit={(event) => { event.preventDefault(); setPage(1); setSubmittedSearch(search.trim()); }} className="border-y border-zinc-100 px-5 py-5 dark:border-zinc-800 md:px-6"><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><div><p className="mb-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">상태</p><AdminSelectMenu label={`${itemName} 상태`} value={status} options={[{ value: "ALL", label: "전체" }, ...statusOptions]} onChange={(value) => { setPage(1); setSelected(undefined); setStatus(value); }} /></div>{filters.map((filter) => <div key={filter.key}><label className="mb-2 block text-xs font-semibold text-zinc-500 dark:text-zinc-400" htmlFor={`${title}-${filter.key}`}>{filter.label}</label>{filter.freeText ? <input id={`${title}-${filter.key}`} value={filterValues[filter.key] ?? ""} onChange={(event) => changeFilter(filter.key, event.target.value)} placeholder={`${filter.label} 입력`} className={`h-11 w-full rounded-[10px] border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-950 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-50 ${focusRing}`} /> : <AdminSelectMenu label={filter.label} value={filterValues[filter.key] ?? "ALL"} options={[{ value: "ALL", label: "전체" }, ...(filter.options ?? [])]} onChange={(value) => changeFilter(filter.key, value)} />}</div>)}<div><label className="mb-2 block text-xs font-semibold text-zinc-500 dark:text-zinc-400" htmlFor={`${title}-query`}>검색</label><div className="flex gap-2"><div className="relative min-w-0 flex-1"><Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" /><input id={`${title}-query`} type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="검색어 입력" className={`h-11 w-full rounded-[10px] border border-zinc-300 bg-white pl-9 pr-3 text-sm font-medium text-zinc-950 placeholder:text-zinc-400 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-50 ${focusRing}`} /></div><button type="submit" className={`min-h-11 rounded-[10px] border border-zinc-300 px-3 text-sm font-extrabold dark:border-zinc-700 ${focusRing}`}>검색</button></div></div></div></form>
+      <form onSubmit={(event) => { event.preventDefault(); applySearch(); }} className="border-y border-zinc-100 p-5 dark:border-zinc-800 md:px-6"><div className={`grid gap-3 ${filterGridClass}`}><div><p className="text-sm font-bold">상태</p><div className="mt-2"><AdminSelectMenu label={`${itemName} 상태`} value={status} options={[{ value: "ALL", label: "전체" }, ...statusOptions]} onChange={(value) => { setPage(1); setSelected(undefined); setStatus(value); }} /></div></div>{renderedFilters.map((filter) => <div key={filter.key}>{filter.freeText ? <><label className="block text-sm font-bold" htmlFor={`${title}-${filter.key}`}>{filter.label}</label><input id={`${title}-${filter.key}`} type={filter.inputType ?? "text"} value={filterValues[filter.key] ?? ""} onChange={(event) => changeFilter(filter.key, event.target.value)} placeholder={filter.inputType ? undefined : `${filter.label} 입력`} className={`mt-2 h-11 w-full rounded-[10px] border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-950 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-50 ${focusRing}`} /></> : <><p className="text-sm font-bold">{filter.label}</p><div className="mt-2"><AdminSelectMenu label={filter.label} value={filterValues[filter.key] ?? "ALL"} options={[{ value: "ALL", label: "전체" }, ...(filter.options ?? [])]} onChange={(value) => changeFilter(filter.key, value)} /></div></>}</div>)}<div className={searchGridClass}><label className="block text-sm font-bold" htmlFor={`${title}-query`}>{schoolSearch ? "학교" : "검색"}</label><div className="relative mt-2"><Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" /><input id={`${title}-query`} type="search" enterKeyHint="search" value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); applySearch(); } }} placeholder={schoolSearch ? "학교명 또는 학교 ID" : "검색어 입력"} className={`h-11 w-full rounded-[10px] border border-zinc-300 bg-white pl-9 pr-3 text-sm font-medium text-zinc-950 placeholder:text-zinc-400 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-50 ${focusRing}`} /></div></div></div></form>
       {items.length ? <><div className="hidden overflow-x-auto lg:block"><table className="w-full min-w-[760px] table-fixed text-left text-sm"><thead className="bg-zinc-50 text-zinc-500 dark:bg-zinc-900/50 dark:text-zinc-400"><tr>{["항목", "상태", "생성 시각", "갱신 시각"].map((label) => <th key={label} scope="col" className="px-5 py-3 font-extrabold">{label}</th>)}</tr></thead><tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">{items.map((item, index) => <tr key={getAdminOperationItemKey(title, index, item.id)} onClick={() => setSelected(item)} className={`cursor-pointer align-top transition-colors ${hasSameAdminOperationId(selected?.id, item.id) ? "bg-mint-500/[0.06]" : "hover:bg-mint-500/[0.03]"}`}><td className="break-all px-5 py-4 font-bold"><button type="button" onClick={() => setSelected(item)} aria-pressed={hasSameAdminOperationId(selected?.id, item.id)} aria-label={`${item.title} 상세 보기`} className={`w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 focus-visible:ring-offset-2 ${focusRing}`}>{item.title}<span className="mt-1 block font-mono text-xs font-medium text-zinc-500">{getAdminOperationDisplayId(item.id)}</span></button></td><td className="px-5 py-4 font-bold">{item.status}</td><td className="px-5 py-4 font-semibold">{formatDateTime(item.createdAt)}</td><td className="px-5 py-4 font-semibold">{formatDateTime(item.updatedAt)}</td></tr>)}</tbody></table></div><div className="lg:hidden">{items.map((item, index) => <article key={getAdminOperationItemKey(title, index, item.id)} role="button" tabIndex={0} aria-pressed={hasSameAdminOperationId(selected?.id, item.id)} onClick={() => setSelected(item)} onKeyDown={(event) => selectWithKeyboard(event, () => setSelected(item))} className={`cursor-pointer border-b border-zinc-200 p-5 last:border-b-0 dark:border-zinc-800 ${hasSameAdminOperationId(selected?.id, item.id) ? "bg-mint-500/[0.06]" : "hover:bg-mint-500/[0.03]"}`}><div className="flex items-start justify-between gap-3"><p className="break-all font-bold">{item.title}</p><strong className="text-sm">{item.status}</strong></div><p className="mt-2 break-all font-mono text-xs text-zinc-500">{getAdminOperationDisplayId(item.id)}</p><p className="mt-4 text-sm font-semibold text-zinc-500">{formatDateTime(item.updatedAt)}</p></article>)}</div></> : <div className="px-5 py-16 text-center"><Inbox className="mx-auto h-10 w-10 text-zinc-400" /><h2 className="mt-4 text-lg font-extrabold">조건에 맞는 {itemName}이 없습니다</h2><p className="mt-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">서버 전체 결과에서 조건에 맞는 항목을 찾지 못했습니다.</p><button type="button" onClick={clearFilters} className={`mt-5 min-h-11 rounded-[10px] border border-zinc-300 px-4 text-sm font-extrabold dark:border-zinc-700 ${focusRing}`}>필터 지우기</button></div>}
       <div className="flex justify-center border-t border-zinc-200 px-5 py-4 dark:border-zinc-800"><div className="flex items-center gap-2"><button type="button" aria-label="이전 페이지" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={currentPage <= 1 || loading} className={`flex h-11 w-11 items-center justify-center rounded-[10px] border border-zinc-300 disabled:opacity-40 dark:border-zinc-700 ${focusRing}`}><ChevronLeft className="h-4 w-4" /></button><span className="min-w-20 text-center text-sm font-bold">{currentPage} / {totalPages}</span><button type="button" aria-label="다음 페이지" onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={currentPage >= totalPages || loading} className={`flex h-11 w-11 items-center justify-center rounded-[10px] border border-zinc-300 disabled:opacity-40 dark:border-zinc-700 ${focusRing}`}><ChevronRight className="h-4 w-4" /></button></div></div>
     </section>

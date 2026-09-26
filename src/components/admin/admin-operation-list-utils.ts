@@ -62,3 +62,11 @@ export function getAdminOperationLoadErrorState(status: number | undefined): Adm
   if (status === 403) return "admin-forbidden";
   return "generic-error";
 }
+
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function getSchoolSearchQuery(value: string) {
+  const normalized = value.trim();
+  if (!normalized) return {};
+  return uuidPattern.test(normalized) ? { schoolId: normalized } : { query: normalized };
+}
