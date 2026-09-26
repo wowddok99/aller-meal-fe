@@ -22,12 +22,16 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AdminCollectionJobPageResponse,
   AdminDashboardSummaryResponse,
   AdminDeadLetterEventPageResponse,
   AdminExternalApiLogPageResponse,
   AdminFailedCollectionJobPageResponse,
   AdminFailedNotificationPageResponse,
+  AdminMealItemLabelingPageResponse,
   AdminNotificationReprocessResponse,
+  AdminNotificationRequestPageResponse,
+  AdminOutboxEventPageResponse,
   AdminRecollectionResponse,
   AdminUserAccessHistoryPageResponse,
   AdminUserDetailResponse,
@@ -37,6 +41,10 @@ import type {
   AdminUserSuspensionRequest,
   ApiErrorResponse,
   GetAdminUserAccessHistoryParams,
+  ListAdminCollectionJobsParams,
+  ListAdminMealItemLabelingsParams,
+  ListAdminNotificationRequestsParams,
+  ListAdminOutboxEventsParams,
   ListAdminUsersParams,
   ListExternalApiLogsParams,
   ListFailedCollectionJobsParams,
@@ -966,6 +974,184 @@ export function useGetAdminUserAccessHistory<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
+export const getListAdminOutboxEventsUrl = (
+  params?: ListAdminOutboxEventsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/admin/outbox-events?${stringifiedParams}`
+    : `/api/v1/admin/outbox-events`;
+};
+
+export const listAdminOutboxEvents = async (
+  params?: ListAdminOutboxEventsParams,
+  options?: Parameters<typeof orvalFetch>[1],
+): Promise<AdminOutboxEventPageResponse> => {
+  return orvalFetch<AdminOutboxEventPageResponse>(
+    getListAdminOutboxEventsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListAdminOutboxEventsQueryKey = (
+  params?: ListAdminOutboxEventsParams,
+) => {
+  return [`/api/v1/admin/outbox-events`, ...(params ? [params] : [])] as const;
+};
+
+export const getListAdminOutboxEventsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAdminOutboxEvents>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: ListAdminOutboxEventsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminOutboxEvents>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListAdminOutboxEventsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAdminOutboxEvents>>
+  > = ({ signal }) =>
+    listAdminOutboxEvents(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminOutboxEvents>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListAdminOutboxEventsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAdminOutboxEvents>>
+>;
+export type ListAdminOutboxEventsQueryError = ErrorType<ApiErrorResponse>;
+
+export function useListAdminOutboxEvents<
+  TData = Awaited<ReturnType<typeof listAdminOutboxEvents>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params: undefined | ListAdminOutboxEventsParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminOutboxEvents>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminOutboxEvents>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminOutboxEvents>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useListAdminOutboxEvents<
+  TData = Awaited<ReturnType<typeof listAdminOutboxEvents>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: ListAdminOutboxEventsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminOutboxEvents>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminOutboxEvents>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminOutboxEvents>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useListAdminOutboxEvents<
+  TData = Awaited<ReturnType<typeof listAdminOutboxEvents>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: ListAdminOutboxEventsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminOutboxEvents>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+
+export function useListAdminOutboxEvents<
+  TData = Awaited<ReturnType<typeof listAdminOutboxEvents>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: ListAdminOutboxEventsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminOutboxEvents>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getListAdminOutboxEventsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
 export const getListFailedNotificationsUrl = (
   params?: ListFailedNotificationsParams,
 ) => {
@@ -984,6 +1170,9 @@ export const getListFailedNotificationsUrl = (
     : `/api/v1/admin/notifications/failed`;
 };
 
+/**
+ * @deprecated
+ */
 export const listFailedNotifications = async (
   params?: ListFailedNotificationsParams,
   options?: Parameters<typeof orvalFetch>[1],
@@ -1117,6 +1306,9 @@ export function useListFailedNotifications<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 };
+/**
+ * @deprecated
+ */
 
 export function useListFailedNotifications<
   TData = Awaited<ReturnType<typeof listFailedNotifications>>,
@@ -1138,6 +1330,191 @@ export function useListFailedNotifications<
   queryKey: DataTag<QueryKey, TData, TError>;
 } {
   const queryOptions = getListFailedNotificationsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getListAdminNotificationRequestsUrl = (
+  params?: ListAdminNotificationRequestsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/admin/notification-requests?${stringifiedParams}`
+    : `/api/v1/admin/notification-requests`;
+};
+
+export const listAdminNotificationRequests = async (
+  params?: ListAdminNotificationRequestsParams,
+  options?: Parameters<typeof orvalFetch>[1],
+): Promise<AdminNotificationRequestPageResponse> => {
+  return orvalFetch<AdminNotificationRequestPageResponse>(
+    getListAdminNotificationRequestsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListAdminNotificationRequestsQueryKey = (
+  params?: ListAdminNotificationRequestsParams,
+) => {
+  return [
+    `/api/v1/admin/notification-requests`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getListAdminNotificationRequestsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAdminNotificationRequests>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: ListAdminNotificationRequestsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminNotificationRequests>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListAdminNotificationRequestsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAdminNotificationRequests>>
+  > = ({ signal }) =>
+    listAdminNotificationRequests(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminNotificationRequests>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListAdminNotificationRequestsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAdminNotificationRequests>>
+>;
+export type ListAdminNotificationRequestsQueryError =
+  ErrorType<ApiErrorResponse>;
+
+export function useListAdminNotificationRequests<
+  TData = Awaited<ReturnType<typeof listAdminNotificationRequests>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params: undefined | ListAdminNotificationRequestsParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminNotificationRequests>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminNotificationRequests>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminNotificationRequests>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useListAdminNotificationRequests<
+  TData = Awaited<ReturnType<typeof listAdminNotificationRequests>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: ListAdminNotificationRequestsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminNotificationRequests>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminNotificationRequests>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminNotificationRequests>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useListAdminNotificationRequests<
+  TData = Awaited<ReturnType<typeof listAdminNotificationRequests>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: ListAdminNotificationRequestsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminNotificationRequests>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+
+export function useListAdminNotificationRequests<
+  TData = Awaited<ReturnType<typeof listAdminNotificationRequests>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: ListAdminNotificationRequestsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminNotificationRequests>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getListAdminNotificationRequestsQueryOptions(
+    params,
+    options,
+  );
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,
@@ -1321,6 +1698,190 @@ export function useListNotificationDeadLetterEvents<
   queryKey: DataTag<QueryKey, TData, TError>;
 } {
   const queryOptions = getListNotificationDeadLetterEventsQueryOptions(
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getListAdminMealItemLabelingsUrl = (
+  params?: ListAdminMealItemLabelingsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/admin/meal-item-labelings?${stringifiedParams}`
+    : `/api/v1/admin/meal-item-labelings`;
+};
+
+export const listAdminMealItemLabelings = async (
+  params?: ListAdminMealItemLabelingsParams,
+  options?: Parameters<typeof orvalFetch>[1],
+): Promise<AdminMealItemLabelingPageResponse> => {
+  return orvalFetch<AdminMealItemLabelingPageResponse>(
+    getListAdminMealItemLabelingsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListAdminMealItemLabelingsQueryKey = (
+  params?: ListAdminMealItemLabelingsParams,
+) => {
+  return [
+    `/api/v1/admin/meal-item-labelings`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getListAdminMealItemLabelingsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAdminMealItemLabelings>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: ListAdminMealItemLabelingsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminMealItemLabelings>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListAdminMealItemLabelingsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAdminMealItemLabelings>>
+  > = ({ signal }) =>
+    listAdminMealItemLabelings(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminMealItemLabelings>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListAdminMealItemLabelingsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAdminMealItemLabelings>>
+>;
+export type ListAdminMealItemLabelingsQueryError = ErrorType<ApiErrorResponse>;
+
+export function useListAdminMealItemLabelings<
+  TData = Awaited<ReturnType<typeof listAdminMealItemLabelings>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params: undefined | ListAdminMealItemLabelingsParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminMealItemLabelings>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminMealItemLabelings>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminMealItemLabelings>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useListAdminMealItemLabelings<
+  TData = Awaited<ReturnType<typeof listAdminMealItemLabelings>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: ListAdminMealItemLabelingsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminMealItemLabelings>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminMealItemLabelings>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminMealItemLabelings>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useListAdminMealItemLabelings<
+  TData = Awaited<ReturnType<typeof listAdminMealItemLabelings>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: ListAdminMealItemLabelingsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminMealItemLabelings>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+
+export function useListAdminMealItemLabelings<
+  TData = Awaited<ReturnType<typeof listAdminMealItemLabelings>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: ListAdminMealItemLabelingsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminMealItemLabelings>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getListAdminMealItemLabelingsQueryOptions(
     params,
     options,
   );
@@ -1667,6 +2228,187 @@ export function useGetAdminDashboardSummary<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
+export const getListAdminCollectionJobsUrl = (
+  params?: ListAdminCollectionJobsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/admin/collection-jobs?${stringifiedParams}`
+    : `/api/v1/admin/collection-jobs`;
+};
+
+export const listAdminCollectionJobs = async (
+  params?: ListAdminCollectionJobsParams,
+  options?: Parameters<typeof orvalFetch>[1],
+): Promise<AdminCollectionJobPageResponse> => {
+  return orvalFetch<AdminCollectionJobPageResponse>(
+    getListAdminCollectionJobsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListAdminCollectionJobsQueryKey = (
+  params?: ListAdminCollectionJobsParams,
+) => {
+  return [
+    `/api/v1/admin/collection-jobs`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getListAdminCollectionJobsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAdminCollectionJobs>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: ListAdminCollectionJobsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminCollectionJobs>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListAdminCollectionJobsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAdminCollectionJobs>>
+  > = ({ signal }) =>
+    listAdminCollectionJobs(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminCollectionJobs>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListAdminCollectionJobsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAdminCollectionJobs>>
+>;
+export type ListAdminCollectionJobsQueryError = ErrorType<ApiErrorResponse>;
+
+export function useListAdminCollectionJobs<
+  TData = Awaited<ReturnType<typeof listAdminCollectionJobs>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params: undefined | ListAdminCollectionJobsParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminCollectionJobs>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminCollectionJobs>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminCollectionJobs>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useListAdminCollectionJobs<
+  TData = Awaited<ReturnType<typeof listAdminCollectionJobs>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: ListAdminCollectionJobsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminCollectionJobs>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminCollectionJobs>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminCollectionJobs>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useListAdminCollectionJobs<
+  TData = Awaited<ReturnType<typeof listAdminCollectionJobs>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: ListAdminCollectionJobsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminCollectionJobs>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+
+export function useListAdminCollectionJobs<
+  TData = Awaited<ReturnType<typeof listAdminCollectionJobs>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: ListAdminCollectionJobsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminCollectionJobs>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getListAdminCollectionJobsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
 export const getListFailedCollectionJobsUrl = (
   params?: ListFailedCollectionJobsParams,
 ) => {
@@ -1685,6 +2427,9 @@ export const getListFailedCollectionJobsUrl = (
     : `/api/v1/admin/collection-jobs/failed`;
 };
 
+/**
+ * @deprecated
+ */
 export const listFailedCollectionJobs = async (
   params?: ListFailedCollectionJobsParams,
   options?: Parameters<typeof orvalFetch>[1],
@@ -1818,6 +2563,9 @@ export function useListFailedCollectionJobs<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 };
+/**
+ * @deprecated
+ */
 
 export function useListFailedCollectionJobs<
   TData = Awaited<ReturnType<typeof listFailedCollectionJobs>>,

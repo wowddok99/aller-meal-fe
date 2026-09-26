@@ -6,11 +6,11 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type ListExternalApiLogsParams = {
+export type ListAdminNotificationRequestsParams = {
   page?: number;
   pageSize?: number;
-  provider?: string;
-  method?: string;
-  outcome?: string;
+  status?: string;
+  channel?: string;
+  reason?: string;
   query?: string;
 };

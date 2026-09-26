@@ -9,4 +9,7 @@
 export type ListNotificationDeadLetterEventsParams = {
   page?: number;
   pageSize?: number;
+  status?: string;
+  eventType?: string;
+  query?: string;
 };
