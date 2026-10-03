@@ -34,7 +34,7 @@ export function AdminSelectMenu({
   useEffect(() => {
     if (!open) return;
 
-    optionRefs.current[selectedIndex]?.focus();
+    optionRefs.current[selectedIndex]?.focus({ preventScroll: true });
   }, [open, selectedIndex]);
 
   useEffect(() => {
@@ -49,7 +49,7 @@ export function AdminSelectMenu({
 
   const closeMenu = () => {
     setOpen(false);
-    triggerRef.current?.focus();
+    triggerRef.current?.focus({ preventScroll: true });
   };
 
   const moveFocus = (currentIndex: number, key: string) => {

@@ -61,7 +61,7 @@ function AdminOperationListContent({ title, description, itemName, statusOptions
       values: Object.fromEntries(renderedFilters.map((filter) => [filter.key, filter.freeText ? (searchParams.get(filter.key) ?? "") : (filter.options?.some((option) => option.value === searchParams.get(filter.key)) ? searchParams.get(filter.key)! : "ALL")])) as Record<string, string>,
       query: searchParams.get("query") ?? (schoolSearch ? searchParams.get("schoolId") ?? "" : ""),
       page: Number.isInteger(pageValue) && pageValue > 0 ? pageValue : 1,
-      pageSize: PAGE_SIZES.includes(pageSizeValue) ? pageSizeValue : 20,
+      pageSize: PAGE_SIZES.includes(pageSizeValue) ? pageSizeValue : 10,
     };
   }, [renderedFilters, schoolSearch, searchParams, statusOptions]);
   const [result, setResult] = useState<AdminOperationPage>();
@@ -88,7 +88,7 @@ function AdminOperationListContent({ title, description, itemName, statusOptions
   const loginHref = useMemo(() => {
     const params = new URLSearchParams();
     if (page > 1) params.set("page", String(page));
-    if (pageSize !== 20) params.set("pageSize", String(pageSize));
+    if (pageSize !== 10) params.set("pageSize", String(pageSize));
     if (status !== "ALL") params.set("status", status);
     Object.entries(filterValues).forEach(([key, value]) => { if (value && value !== "ALL") params.set(key, value); });
     Object.entries(searchQuery).forEach(([key, value]) => params.set(key, value));
@@ -98,7 +98,7 @@ function AdminOperationListContent({ title, description, itemName, statusOptions
   const latestQuery = useRef(query); latestQuery.current = query;
 
   const loadCurrent = useCallback(async (requested = latestQuery.current) => {
-    const requestId = tracker.current.begin(); setLoading(true); setError(undefined); setResult(undefined);
+    const requestId = tracker.current.begin(); setLoading(true); setError(undefined);
     try {
       const next = await load(requested);
       if (!tracker.current.isCurrent(requestId)) return;
@@ -114,7 +114,7 @@ function AdminOperationListContent({ title, description, itemName, statusOptions
   useEffect(() => {
     const params = new URLSearchParams();
     if (page > 1) params.set("page", String(page));
-    if (pageSize !== 20) params.set("pageSize", String(pageSize));
+    if (pageSize !== 10) params.set("pageSize", String(pageSize));
     if (status !== "ALL") params.set("status", status);
     Object.entries(filterValues).forEach(([key, value]) => { if (value && value !== "ALL") params.set(key, value); });
     if (submittedSearch) params.set("query", submittedSearch);
@@ -151,6 +151,7 @@ function AdminOperationListContent({ title, description, itemName, statusOptions
 
   return <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">
     <header><p className="text-base font-medium leading-6 text-zinc-500 dark:text-zinc-400">{description}</p><h1 className="mt-3 text-2xl font-extrabold tracking-[-0.02em]">{title}</h1></header>
+    {error ? <ErrorState error={error} retry={() => void loadCurrent()} loginHref={loginHref} /> : null}
     <section aria-label={`${itemName} 목록`} aria-busy={loading} className="overflow-visible rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-[#101419] dark:text-zinc-50">
       <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-5 md:px-6"><p className="text-sm font-bold text-zinc-500 dark:text-zinc-400">총 {totalCount.toLocaleString()}건</p><div className="flex items-center gap-2"><span className="text-sm font-bold">목록 표시 수</span><AdminSelectMenu label="목록 표시 수" value={String(pageSize)} options={PAGE_SIZES.map((size) => ({ value: String(size), label: `${size}개` }))} onChange={(value) => { setPage(1); setPageSize(Number(value)); }} compact /></div></div>
       <form onSubmit={(event) => { event.preventDefault(); applySearch(); }} className="border-y border-zinc-100 p-5 dark:border-zinc-800 md:px-6"><div className={`grid gap-3 ${filterGridClass}`}><div><p className="text-sm font-bold">상태</p><div className="mt-2"><AdminSelectMenu label={`${itemName} 상태`} value={status} options={[{ value: "ALL", label: "전체" }, ...statusOptions]} onChange={(value) => { setPage(1); setSelected(undefined); setStatus(value); }} /></div></div>{renderedFilters.map((filter) => <div key={filter.key}>{filter.freeText ? <><label className="block text-sm font-bold" htmlFor={`${title}-${filter.key}`}>{filter.label}</label><input id={`${title}-${filter.key}`} type={filter.inputType ?? "text"} value={filterValues[filter.key] ?? ""} onChange={(event) => changeFilter(filter.key, event.target.value)} placeholder={filter.inputType ? undefined : `${filter.label} 입력`} className={`mt-2 h-11 w-full rounded-[10px] border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-950 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-50 ${focusRing}`} /></> : <><p className="text-sm font-bold">{filter.label}</p><div className="mt-2"><AdminSelectMenu label={filter.label} value={filterValues[filter.key] ?? "ALL"} options={[{ value: "ALL", label: "전체" }, ...(filter.options ?? [])]} onChange={(value) => changeFilter(filter.key, value)} /></div></>}</div>)}<div className={searchGridClass}><label className="block text-sm font-bold" htmlFor={`${title}-query`}>{schoolSearch ? "학교" : "검색"}</label><div className="relative mt-2"><Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" /><input id={`${title}-query`} type="search" enterKeyHint="search" value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); applySearch(); } }} placeholder={schoolSearch ? "학교명 또는 학교 ID" : "검색어 입력"} className={`h-11 w-full rounded-[10px] border border-zinc-300 bg-white pl-9 pr-3 text-sm font-medium text-zinc-950 placeholder:text-zinc-400 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-50 ${focusRing}`} /></div></div></div></form>
