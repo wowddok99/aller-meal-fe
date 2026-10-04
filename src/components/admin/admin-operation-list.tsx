@@ -163,5 +163,5 @@ function AdminOperationListContent({ title, description, itemName, statusOptions
   </div>;
 }
 
-export const collectionRecollectionAction: Action = { status: "FAILED", label: "이 작업 재수집", success: "재수집 요청을 등록하고 최신 목록을 불러왔습니다.", run: requestRecollection };
+export const collectionRecollectionAction: Action = { status: "FAILED", label: "재수집 요청", success: "재수집 요청을 등록하고 최신 목록을 불러왔습니다.", run: requestRecollection };
 export const dlqReprocessAction: Action = { status: "PENDING", label: "이 이벤트 재처리", success: "재처리 요청을 등록하고 최신 목록을 불러왔습니다.", run: reprocessDeadLetterEvent };
