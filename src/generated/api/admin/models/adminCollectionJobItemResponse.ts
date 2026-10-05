@@ -5,8 +5,10 @@
  * Aller Meal Release 1 public, member, and admin API contract.
  * OpenAPI spec version: 1.0.0
  */
+import type { AdminCollectionAvailableActionsResponse } from "./adminCollectionAvailableActionsResponse";
 import type { AdminCollectionJobItemResponseMealType } from "./adminCollectionJobItemResponseMealType";
 import type { AdminCollectionJobItemResponseStatus } from "./adminCollectionJobItemResponseStatus";
+import type { AdminCollectionRecoveryResponse } from "./adminCollectionRecoveryResponse";
 
 export interface AdminCollectionJobItemResponse {
   collectionJobId?: string;
@@ -23,4 +25,7 @@ export interface AdminCollectionJobItemResponse {
   failureMessage?: string;
   createdAt?: string;
   updatedAt?: string;
+  unresolvedFailure: boolean;
+  recovery: AdminCollectionRecoveryResponse;
+  availableActions: AdminCollectionAvailableActionsResponse;
 }

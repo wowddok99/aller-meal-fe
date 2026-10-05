@@ -22,6 +22,7 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AdminCollectionJobItemResponse,
   AdminCollectionJobPageResponse,
   AdminDashboardSummaryResponse,
   AdminDeadLetterEventPageResponse,
@@ -266,6 +267,100 @@ export const useRequestCollectionRecollection = <
 > => {
   return useMutation(
     getRequestCollectionRecollectionMutationOptions(options),
+    queryClient,
+  );
+};
+
+export const getRequestCollectionExecutionUrl = (collectionJobId: string) => {
+  return `/api/v1/admin/collection-jobs/${collectionJobId}/execution`;
+};
+
+export const requestCollectionExecution = async (
+  collectionJobId: string,
+  options?: Parameters<typeof orvalFetch>[1],
+): Promise<AdminRecollectionResponse> => {
+  return orvalFetch<AdminRecollectionResponse>(
+    getRequestCollectionExecutionUrl(collectionJobId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getRequestCollectionExecutionMutationKey = () =>
+  ["requestCollectionExecution"] as const;
+
+export const getRequestCollectionExecutionMutationOptions = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestCollectionExecution>>,
+    TError,
+    RequestCollectionExecutionMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestCollectionExecution>>,
+  TError,
+  RequestCollectionExecutionMutationVariables,
+  TContext
+> => {
+  const mutationKey = getRequestCollectionExecutionMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestCollectionExecution>>,
+    RequestCollectionExecutionMutationVariables
+  > = (props) => {
+    const { collectionJobId } = props ?? {};
+
+    return requestCollectionExecution(collectionJobId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestCollectionExecutionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestCollectionExecution>>
+>;
+
+export type RequestCollectionExecutionMutationError =
+  ErrorType<ApiErrorResponse>;
+export type RequestCollectionExecutionMutationVariables = {
+  collectionJobId: string;
+};
+
+export const useRequestCollectionExecution = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof requestCollectionExecution>>,
+      TError,
+      RequestCollectionExecutionMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof requestCollectionExecution>>,
+  TError,
+  RequestCollectionExecutionMutationVariables,
+  TContext
+> => {
+  return useMutation(
+    getRequestCollectionExecutionMutationOptions(options),
     queryClient,
   );
 };
@@ -2400,6 +2495,176 @@ export function useListAdminCollectionJobs<
   queryKey: DataTag<QueryKey, TData, TError>;
 } {
   const queryOptions = getListAdminCollectionJobsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getGetAdminCollectionJobUrl = (collectionJobId: string) => {
+  return `/api/v1/admin/collection-jobs/${collectionJobId}`;
+};
+
+export const getAdminCollectionJob = async (
+  collectionJobId: string,
+  options?: Parameters<typeof orvalFetch>[1],
+): Promise<AdminCollectionJobItemResponse> => {
+  return orvalFetch<AdminCollectionJobItemResponse>(
+    getGetAdminCollectionJobUrl(collectionJobId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetAdminCollectionJobQueryKey = (collectionJobId: string) => {
+  return [`/api/v1/admin/collection-jobs/${collectionJobId}`] as const;
+};
+
+export const getGetAdminCollectionJobQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAdminCollectionJob>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  collectionJobId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAdminCollectionJob>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetAdminCollectionJobQueryKey(collectionJobId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAdminCollectionJob>>
+  > = ({ signal }) =>
+    getAdminCollectionJob(collectionJobId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: collectionJobId !== null && collectionJobId !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminCollectionJob>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetAdminCollectionJobQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAdminCollectionJob>>
+>;
+export type GetAdminCollectionJobQueryError = ErrorType<ApiErrorResponse>;
+
+export function useGetAdminCollectionJob<
+  TData = Awaited<ReturnType<typeof getAdminCollectionJob>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  collectionJobId: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAdminCollectionJob>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminCollectionJob>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminCollectionJob>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetAdminCollectionJob<
+  TData = Awaited<ReturnType<typeof getAdminCollectionJob>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  collectionJobId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAdminCollectionJob>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminCollectionJob>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminCollectionJob>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetAdminCollectionJob<
+  TData = Awaited<ReturnType<typeof getAdminCollectionJob>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  collectionJobId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAdminCollectionJob>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+
+export function useGetAdminCollectionJob<
+  TData = Awaited<ReturnType<typeof getAdminCollectionJob>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  collectionJobId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAdminCollectionJob>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getGetAdminCollectionJobQueryOptions(
+    collectionJobId,
+    options,
+  );
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,

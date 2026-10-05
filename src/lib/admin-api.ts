@@ -16,9 +16,12 @@ import type { AdminUserRoleChangeRequest } from "@/generated/api/admin/models/ad
 import type { AdminUserRoleResponse } from "@/generated/api/admin/models/adminUserRoleResponse";
 import type { AdminUserSuspensionRequest } from "@/generated/api/admin/models/adminUserSuspensionRequest";
 import type { ListAdminUsersStatus } from "@/generated/api/admin/models/listAdminUsersStatus";
+import { ListAdminCollectionJobsStatus, ListAdminCollectionJobsMealType, ListAdminMealItemLabelingsStatus, ListAdminMealItemLabelingsMealType, ListAdminOutboxEventsStatus, ListAdminNotificationRequestsStatus, ListAdminNotificationRequestsChannel, ListAdminNotificationRequestsReason, ListNotificationDeadLetterEventsStatus } from "@/generated/api/admin/models";
 import {
   changeAdminUserSuspension as requestUserSuspension,
   getAdminDashboardSummary as requestDashboardSummary,
+  getAdminCollectionJob as requestCollectionJob,
+  requestCollectionExecution as requestExecutionOperation,
   getAdminUser as requestAdminUser,
   getAdminUserAccessHistory as requestAdminUserAccessHistory,
   listAdminCollectionJobs as requestCollectionJobs,
@@ -59,6 +62,7 @@ export type DeadLetterEvent = Omit<AdminDeadLetterEventItemResponse, "messageId"
 };
 export type DeadLetterEventPage = { items: DeadLetterEvent[]; page: number; pageSize: number; totalCount: number };
 export type RecollectionResult = AdminRecollectionResponse;
+export type CollectionJob = AdminCollectionJobItemResponse;
 export type NotificationReprocessResult = AdminNotificationReprocessResponse;
 
 export type AdminOperationItem = {
@@ -69,11 +73,13 @@ export type AdminOperationItem = {
   updatedAt: string;
   fields: Array<[string, string]>;
   actionId?: string;
+  collection?: CollectionJob;
 };
 export type AdminOperationPage = { items: AdminOperationItem[]; page: number; pageSize: number; totalCount: number };
 export type AdminOperationQuery = {
   page: number; pageSize: number; status?: string; schoolId?: string; mealDate?: string; mealType?: string;
   eventType?: string; channel?: string; reason?: string; provider?: string; method?: string; outcome?: string; query?: string;
+  unresolvedFailure?: boolean;
 };
 
 export class AdminApiError extends Error {
@@ -124,7 +130,7 @@ function operationPage(page: number, pageSize: number, response: { page?: number
 }
 
 function mapCollectionJob(item: AdminCollectionJobItemResponse): AdminOperationItem {
-  return { id: item.collectionJobId, actionId: item.collectionJobId, title: display(item.schoolName), status: display(item.status), createdAt: display(item.createdAt), updatedAt: display(item.updatedAt), fields: [["학교", display(item.schoolName)], ["식사일", display(item.mealDate)], ["식사", display(item.mealType)], ["상태", display(item.status)], ["실패 코드", display(item.failureCode)], ["실패 사유", display(item.failureMessage)]] };
+  return { collection: item, id: item.collectionJobId, actionId: item.collectionJobId, title: display(item.schoolName), status: display(item.status), createdAt: display(item.createdAt), updatedAt: display(item.updatedAt), fields: [["학교", display(item.schoolName)], ["식사일", display(item.mealDate)], ["식사", display(item.mealType)], ["상태", display(item.status)], ["실패 코드", display(item.failureCode)], ["실패 사유", display(item.failureMessage)]] };
 }
 function mapMealItemLabeling(item: AdminMealItemLabelingItemResponse): AdminOperationItem {
   return { id: item.mealItemId, title: display(item.name), status: display(item.status), createdAt: display(item.createdAt), updatedAt: display(item.updatedAt), fields: [["메뉴", display(item.name)], ["학교", display(item.schoolName)], ["식사일", display(item.mealDate)], ["식사", display(item.mealType)], ["표시 순서", display(item.displayOrder)], ["상태", display(item.status)]] };
@@ -142,24 +148,38 @@ function mapExternalApiLogOperation(item: AdminExternalApiLogItemResponse): Admi
   return { id: item.externalApiLogId, title: `${display(item.provider)} · ${display(item.operation)}`, status: display(item.outcome), createdAt: display(item.createdAt), updatedAt: display(item.createdAt), fields: [["로그 ID", display(item.externalApiLogId)], ["제공자", display(item.provider)], ["작업", display(item.operation)], ["메서드", display(item.method)], ["엔드포인트", display(item.endpoint)], ["결과", display(item.outcome)], ["HTTP 상태", display(item.httpStatus)], ["응답 시간", `${item.responseTimeMillis ?? 0}ms`], ["학교 ID", display(item.schoolId)]] };
 }
 
+function allowedValue<T extends string>(value: string | undefined, options: Record<string, T>): T | undefined {
+  return Object.values(options).find((option) => option === value);
+}
+
 function optionalQuery(input: AdminOperationQuery) {
-  return Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined && value !== "")) as AdminOperationQuery;
+  return { ...input, page: String(input.page), pageSize: String(input.pageSize) };
 }
 
 export async function getCollectionJobs(input: AdminOperationQuery): Promise<AdminOperationPage> {
-  try { const response = await requestCollectionJobs(optionalQuery(input)); return operationPage(input.page, input.pageSize, response, (response.items ?? []).map(mapCollectionJob)); } catch (cause) { throw asAdminApiError(cause, "급식 수집 작업을 불러오지 못했습니다."); }
+  try { const response = await requestCollectionJobs({ ...optionalQuery(input), status: allowedValue(input.status, ListAdminCollectionJobsStatus), mealType: allowedValue(input.mealType, ListAdminCollectionJobsMealType) }); return operationPage(input.page, input.pageSize, response, (response.items ?? []).map(mapCollectionJob)); } catch (cause) { throw asAdminApiError(cause, "급식 수집 작업을 불러오지 못했습니다."); }
 }
+export async function getCollectionJob(collectionJobId: string, signal?: AbortSignal): Promise<CollectionJob> {
+  if (!isAdminActionId(collectionJobId)) throw new AdminApiError(400, "올바른 수집 작업 ID가 아닙니다.");
+  try { return await requestCollectionJob(collectionJobId, { signal }); } catch (cause) { throw asAdminApiError(cause, "수집 작업 상세를 불러오지 못했습니다."); }
+}
+
+export async function requestCollectionExecution(collectionJobId: string, idempotencyKey: string): Promise<RecollectionResult> {
+  if (!isAdminActionId(collectionJobId)) throw new AdminApiError(400, "올바른 수집 작업 ID가 아닙니다.");
+  try { return await requestExecutionOperation(collectionJobId, { headers: { "Idempotency-Key": idempotencyKey } }); } catch (cause) { throw asAdminApiError(cause, "수집 실행 요청을 처리하지 못했습니다."); }
+}
+
 export async function getMealItemLabelings(input: AdminOperationQuery): Promise<AdminOperationPage> {
-  try { const response = await requestMealItemLabelings(optionalQuery(input)); return operationPage(input.page, input.pageSize, response, (response.items ?? []).map(mapMealItemLabeling)); } catch (cause) { throw asAdminApiError(cause, "라벨링 작업을 불러오지 못했습니다."); }
+  try { const response = await requestMealItemLabelings({ ...optionalQuery(input), status: allowedValue(input.status, ListAdminMealItemLabelingsStatus), mealType: allowedValue(input.mealType, ListAdminMealItemLabelingsMealType) }); return operationPage(input.page, input.pageSize, response, (response.items ?? []).map(mapMealItemLabeling)); } catch (cause) { throw asAdminApiError(cause, "라벨링 작업을 불러오지 못했습니다."); }
 }
 export async function getOutboxEvents(input: AdminOperationQuery): Promise<AdminOperationPage> {
-  try { const response = await requestOutboxEvents(optionalQuery(input)); return operationPage(input.page, input.pageSize, response, (response.items ?? []).map(mapOutboxEvent)); } catch (cause) { throw asAdminApiError(cause, "이벤트 발행 작업을 불러오지 못했습니다."); }
+  try { const response = await requestOutboxEvents({ ...optionalQuery(input), status: allowedValue(input.status, ListAdminOutboxEventsStatus) }); return operationPage(input.page, input.pageSize, response, (response.items ?? []).map(mapOutboxEvent)); } catch (cause) { throw asAdminApiError(cause, "이벤트 발행 작업을 불러오지 못했습니다."); }
 }
 export async function getNotificationRequests(input: AdminOperationQuery): Promise<AdminOperationPage> {
-  try { const response = await requestNotificationRequests(optionalQuery(input)); return operationPage(input.page, input.pageSize, response, (response.items ?? []).map(mapNotificationRequest)); } catch (cause) { throw asAdminApiError(cause, "알림 발송 작업을 불러오지 못했습니다."); }
+  try { const response = await requestNotificationRequests({ ...optionalQuery(input), status: allowedValue(input.status, ListAdminNotificationRequestsStatus), channel: allowedValue(input.channel, ListAdminNotificationRequestsChannel), reason: allowedValue(input.reason, ListAdminNotificationRequestsReason) }); return operationPage(input.page, input.pageSize, response, (response.items ?? []).map(mapNotificationRequest)); } catch (cause) { throw asAdminApiError(cause, "알림 발송 작업을 불러오지 못했습니다."); }
 }
 export async function getAllDeadLetterEvents(input: AdminOperationQuery): Promise<AdminOperationPage> {
-  try { const response = await requestDeadLetterEvents(optionalQuery(input)); return operationPage(input.page, input.pageSize, response, (response.items ?? []).map(mapDeadLetterOperation)); } catch (cause) { throw asAdminApiError(cause, "DLQ 이벤트를 불러오지 못했습니다."); }
+  try { const response = await requestDeadLetterEvents({ ...optionalQuery(input), status: allowedValue(input.status, ListNotificationDeadLetterEventsStatus) }); return operationPage(input.page, input.pageSize, response, (response.items ?? []).map(mapDeadLetterOperation)); } catch (cause) { throw asAdminApiError(cause, "DLQ 이벤트를 불러오지 못했습니다."); }
 }
 export async function getAllExternalApiLogs(input: AdminOperationQuery): Promise<AdminOperationPage> {
   try { const response = await requestExternalApiLogs(optionalQuery(input)); return operationPage(input.page, input.pageSize, response, (response.items ?? []).map(mapExternalApiLogOperation)); } catch (cause) { throw asAdminApiError(cause, "외부 API 로그를 불러오지 못했습니다."); }
@@ -174,7 +194,7 @@ export async function getFailedCollectionJobs(page: number, pageSize: number): P
 }
 
 export async function getExternalApiLogs(page: number, pageSize: number): Promise<ExternalApiLogPage> {
-  try { const response = await requestExternalApiLogs({ page, pageSize }); return { ...pageMeta(page, pageSize, response), items: (response.items ?? []).map(mapExternalApiLog) }; } catch (cause) { throw asAdminApiError(cause, "외부 API 로그를 불러오지 못했습니다."); }
+  try { const response = await requestExternalApiLogs({ page: String(page), pageSize: String(pageSize) }); return { ...pageMeta(page, pageSize, response), items: (response.items ?? []).map(mapExternalApiLog) }; } catch (cause) { throw asAdminApiError(cause, "외부 API 로그를 불러오지 못했습니다."); }
 }
 
 export async function getFailedNotifications(page: number, pageSize: number): Promise<FailedNotificationPage> {
@@ -182,10 +202,11 @@ export async function getFailedNotifications(page: number, pageSize: number): Pr
 }
 
 export async function getDeadLetterEvents(page: number, pageSize: number): Promise<DeadLetterEventPage> {
-  try { const response = await requestDeadLetterEvents({ page, pageSize }); return { ...pageMeta(page, pageSize, response), items: (response.items ?? []).map(mapDeadLetterEvent) }; } catch (cause) { throw asAdminApiError(cause, "DLQ 이벤트를 불러오지 못했습니다."); }
+  try { const response = await requestDeadLetterEvents({ page: String(page), pageSize: String(pageSize) }); return { ...pageMeta(page, pageSize, response), items: (response.items ?? []).map(mapDeadLetterEvent) }; } catch (cause) { throw asAdminApiError(cause, "DLQ 이벤트를 불러오지 못했습니다."); }
 }
 
 export async function requestRecollection(collectionJobId: string, idempotencyKey = createIdempotencyKey()): Promise<RecollectionResult> {
+  if (!isAdminActionId(collectionJobId)) throw new AdminApiError(400, "올바른 수집 작업 ID가 아닙니다.");
   try { return await requestRecollectionOperation(collectionJobId, { headers: { "Idempotency-Key": idempotencyKey } }); } catch (cause) { throw asAdminApiError(cause, "재수집 요청을 처리하지 못했습니다."); }
 }
 
