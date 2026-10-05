@@ -1,10 +1,12 @@
 "use client";
 
-import { AdminOperationList, collectionRecollectionAction } from "@/components/admin/admin-operation-list";
+import { AdminOperationList } from "@/components/admin/admin-operation-list";
+import { CollectionJobDetail } from "./collection-job-detail";
+import { CollectionJobStatus } from "./collection-job-status";
 import { getCollectionJobs } from "@/lib/admin-api";
 
 export function CollectionFailures() {
-  return <AdminOperationList title="급식 수집 작업" description="급식 수집 작업의 상태와 재수집 결과를 확인하세요." itemName="급식 수집 작업" load={getCollectionJobs} action={collectionRecollectionAction}
+  return <AdminOperationList title="급식 수집 작업" description="급식 수집 작업의 상태와 재수집 결과를 확인하세요." itemName="급식 수집 작업" load={getCollectionJobs} renderDetail={(_, refreshList) => <CollectionJobDetail refreshList={refreshList} />} renderStatus={(item) => item.collection ? <CollectionJobStatus job={item.collection} /> : item.status}
     statusOptions={[{ value: "PENDING", label: "대기" }, { value: "RUNNING", label: "수집 중" }, { value: "SUCCEEDED", label: "완료" }, { value: "FAILED", label: "실패" }]}
-    schoolSearch filters={[{ key: "schoolId", label: "학교 ID", freeText: true }, { key: "mealDate", label: "급식 날짜", freeText: true, inputType: "date" }, { key: "mealType", label: "급식 구분", options: [{ value: "BREAKFAST", label: "아침" }, { value: "LUNCH", label: "점심" }, { value: "DINNER", label: "저녁" }] }]} />;
+    schoolSearch filters={[{ key: "unresolvedFailure", label: "실패 해결 여부", options: [{ value: "true", label: "미해결 실패만" }, { value: "false", label: "미해결 실패 제외" }] }, { key: "schoolId", label: "학교 ID", freeText: true }, { key: "mealDate", label: "급식 날짜", freeText: true, inputType: "date" }, { key: "mealType", label: "급식 구분", options: [{ value: "BREAKFAST", label: "아침" }, { value: "LUNCH", label: "점심" }, { value: "DINNER", label: "저녁" }] }]} />;
 }
