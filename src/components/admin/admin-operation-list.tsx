@@ -18,6 +18,7 @@ export type AdminOperationListProps = {
   filters?: Filter[]; schoolSearch?: boolean; load: (query: AdminOperationQuery) => Promise<AdminOperationPage>; action?: Action;
   renderDetail?: (selected: AdminOperationItem | undefined, refresh: () => Promise<void>) => ReactNode;
   renderStatus?: (item: AdminOperationItem) => ReactNode;
+  getInitialStatus?: (params: Pick<URLSearchParams, "get">) => string;
 };
 
 function getFilterGridClass(filterCount: number) {
@@ -50,13 +51,13 @@ export function AdminOperationList(props: AdminOperationListProps) {
   return <Suspense fallback={<AdminOperationListLoading itemName={props.itemName} />}><AdminOperationListContent {...props} /></Suspense>;
 }
 
-function AdminOperationListContent({ title, description, itemName, statusOptions, filters = [], schoolSearch = false, load, action, renderDetail, renderStatus }: AdminOperationListProps) {
+function AdminOperationListContent({ title, description, itemName, statusOptions, filters = [], schoolSearch = false, load, action, renderDetail, renderStatus, getInitialStatus }: AdminOperationListProps) {
   const customDetail = Boolean(renderDetail);
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const renderedFilters = schoolSearch ? filters.filter((filter) => filter.key !== "schoolId") : filters;
   const initial = useMemo(() => {
-    const status = searchParams.get("status") ?? "ALL";
+    const status = getInitialStatus?.(searchParams) ?? searchParams.get("status") ?? "ALL";
     const pageValue = Number(searchParams.get("page"));
     const pageSizeValue = Number(searchParams.get("pageSize"));
     return {
@@ -66,7 +67,7 @@ function AdminOperationListContent({ title, description, itemName, statusOptions
       page: Number.isInteger(pageValue) && pageValue > 0 ? pageValue : 1,
       pageSize: PAGE_SIZES.includes(pageSizeValue) ? pageSizeValue : 10,
     };
-  }, [renderedFilters, schoolSearch, searchParams, statusOptions]);
+  }, [getInitialStatus, renderedFilters, schoolSearch, searchParams, statusOptions]);
   const [result, setResult] = useState<AdminOperationPage>();
   const [page, setPage] = useState(initial.page);
   const [pageSize, setPageSize] = useState(initial.pageSize);
