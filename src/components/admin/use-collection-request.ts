@@ -6,7 +6,7 @@ import { AdminApiError, createIdempotencyKey, getCollectionJob, isAdminActionId,
 type RequestKind = "recollection" | "execution";
 type Intent = { sourceId: string; kind: RequestKind; key: string };
 type Tracking = { id: string; kind: RequestKind; token: number };
-export type CollectionNotice = { error: boolean; text: string };
+export type CollectionNotice = { error: boolean; text: string; kind: "accepted" | "request-error" | "information"; title?: string };
 
 export function useCollectionRequest(refresh: () => Promise<void>) {
   const [processing, setProcessing] = useState(false);
@@ -20,7 +20,7 @@ export function useCollectionRequest(refresh: () => Promise<void>) {
   const guard = useRef(false);
   const mounted = useRef(false);
   const sequence = useRef(0);
-  const terminalAnnounced = useRef<number | undefined>(undefined);
+  const terminalRefreshed = useRef<number | undefined>(undefined);
   const refreshRef = useRef(refresh); refreshRef.current = refresh;
 
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
@@ -33,10 +33,10 @@ export function useCollectionRequest(refresh: () => Promise<void>) {
       if (!mounted.current) return;
       if (!isAdminActionId(result.collectionJobId)) {
         setRetryIntent(intent);
-        setNotice({ error: true, text: "요청 응답에 작업 ID가 없어 결과를 확인할 수 없습니다. 상태를 새로고침해 주세요." });
+        setNotice({ kind: "information", title: "결과 확인 안내", error: true, text: "요청 응답에 작업 ID가 없어 결과를 확인할 수 없습니다. 상태를 새로고침해 주세요." });
         await refreshRef.current(); return;
       }
-      setNotice({ error: false, text: result.duplicate ? "이미 접수된 요청입니다. 기존 작업의 결과를 확인합니다." : intent.kind === "recollection" ? "재수집 요청을 접수했습니다." : "수집 실행 요청을 접수했습니다." });
+      setNotice({ kind: "accepted", title: intent.kind === "recollection" ? "재수집 요청 접수" : "수집 실행 요청 접수", error: false, text: result.duplicate ? "이미 접수된 요청입니다." : intent.kind === "recollection" ? "재수집 요청이 접수되었습니다." : "수집 실행 요청이 접수되었습니다." });
       setTrackedJob(undefined); setPaused(undefined);
       setTracking({ id: result.collectionJobId!, kind: intent.kind, token: ++sequence.current });
       await refreshRef.current();
@@ -44,7 +44,7 @@ export function useCollectionRequest(refresh: () => Promise<void>) {
       if (!mounted.current) return;
       const error = cause instanceof AdminApiError ? cause : new AdminApiError(0, "요청을 처리하지 못했습니다.");
       if (error.status === 401 || error.status === 403) setAuthStatus(error.status);
-      setNotice({ error: true, text: error.status === 401 ? "로그인한 후 다시 요청해 주세요." : error.status === 403 ? "관리자 권한이 필요합니다." : error.status === 409 ? "상태가 변경되어 요청하지 못했습니다. 최신 상태를 다시 확인해 주세요." : error.status === 404 ? "수집 작업을 찾을 수 없습니다." : "요청 결과를 확인하지 못했습니다. 다시 시도하면 같은 요청으로 확인합니다." });
+      setNotice({ kind: "request-error", title: error.status === 0 || error.status >= 500 ? "결과 확인 안내" : "요청 실패", error: true, text: error.status === 401 ? "로그인한 후 다시 요청해 주세요." : error.status === 403 ? "관리자 권한이 필요합니다." : error.status === 409 ? "상태가 변경되어 요청하지 못했습니다. 최신 상태를 다시 확인해 주세요." : error.status === 404 ? "수집 작업을 찾을 수 없습니다." : "요청 결과를 확인하지 못했습니다. 다시 시도하면 같은 요청으로 확인합니다." });
       if (error.status === 0 || error.status >= 500) setRetryIntent(intent);
       if (error.status === 409 || error.status === 404) await refreshRef.current();
     } finally {
@@ -54,10 +54,10 @@ export function useCollectionRequest(refresh: () => Promise<void>) {
   }, []);
 
   const run = useCallback((job: CollectionJob, kind: RequestKind) => {
-    if (guard.current || (tracking && (!trackedJob || !["SUCCEEDED", "FAILED"].includes(trackedJob.status ?? "")))) return;
+    if (guard.current) return;
     if (!job.collectionJobId || (kind === "recollection" ? !job.availableActions?.canRecollect : !job.availableActions?.canExecute)) return;
     return runIntent({ sourceId: job.collectionJobId, kind, key: createIdempotencyKey() });
-  }, [runIntent, trackedJob, tracking]);
+  }, [runIntent]);
 
   // Schedule the next GET only after the current GET resolves; cleanup aborts it on unmount.
   // https://react.dev/reference/react/useEffect#fetching-data-with-effects
@@ -66,6 +66,7 @@ export function useCollectionRequest(refresh: () => Promise<void>) {
     let active = true;
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let previousStatus: string | null | undefined;
     const deadline = setTimeout(() => {
       if (!active) return;
       active = false; controller.abort(); if (timer) clearTimeout(timer);
@@ -77,14 +78,20 @@ export function useCollectionRequest(refresh: () => Promise<void>) {
         const next = await getCollectionJob(tracking.id, controller.signal);
         if (!active) return;
         setTrackedJob(next); setPaused(undefined); setAuthStatus(undefined);
+        const statusChanged = previousStatus !== next.status;
+        const hadStatus = previousStatus !== undefined;
+        previousStatus = next.status;
         if (next.status === "SUCCEEDED" || next.status === "FAILED") {
           clearTimeout(deadline);
-          if (terminalAnnounced.current !== tracking.token) {
-            terminalAnnounced.current = tracking.token;
-            setNotice({ error: next.status === "FAILED", text: next.status === "FAILED" ? "급식 수집에 실패했습니다. 상세에서 실패 사유를 확인해 주세요." : tracking.kind === "recollection" ? "급식 재수집이 완료되었습니다." : "급식 수집이 완료되었습니다." });
+          if (terminalRefreshed.current !== tracking.token) {
+            terminalRefreshed.current = tracking.token;
             await refreshRef.current();
           }
           return;
+        }
+        if (statusChanged && (hadStatus || next.status === "RUNNING")) {
+          await refreshRef.current();
+          if (!active) return;
         }
         timer = setTimeout(() => void poll(), 2000);
       } catch (cause) {
@@ -99,7 +106,7 @@ export function useCollectionRequest(refresh: () => Promise<void>) {
   }, [tracking, check]);
 
   return { processing, tracking, trackedJob, paused, notice, authStatus, retryIntent,
-    busy: processing || Boolean(tracking && (!trackedJob || !["SUCCEEDED", "FAILED"].includes(trackedJob.status ?? ""))),
+    busy: processing,
     run, retry: () => retryIntent ? runIntent(retryIntent) : undefined,
     recheck: () => { setPaused(undefined); setCheck((value) => value + 1); },
     dismiss: () => setNotice(undefined),
