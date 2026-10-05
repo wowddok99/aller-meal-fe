@@ -5,13 +5,25 @@
  * Aller Meal Release 1 public, member, and admin API contract.
  * OpenAPI spec version: 1.0.0
  */
+import type { ListAdminMealItemLabelingsMealType } from "./listAdminMealItemLabelingsMealType";
+import type { ListAdminMealItemLabelingsStatus } from "./listAdminMealItemLabelingsStatus";
 
 export type ListAdminMealItemLabelingsParams = {
-  page?: number;
-  pageSize?: number;
-  status?: string;
+  /**
+   * @minimum 1
+   */
+  page?: string;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  pageSize?: string;
+  status?: ListAdminMealItemLabelingsStatus;
   schoolId?: string;
   mealDate?: string;
-  mealType?: string;
+  mealType?: ListAdminMealItemLabelingsMealType;
+  /**
+   * @maxLength 100
+   */
   query?: string;
 };

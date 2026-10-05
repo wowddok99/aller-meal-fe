@@ -5,13 +5,29 @@
  * Aller Meal Release 1 public, member, and admin API contract.
  * OpenAPI spec version: 1.0.0
  */
+import type { ListAdminCollectionJobsMealType } from "./listAdminCollectionJobsMealType";
+import type { ListAdminCollectionJobsStatus } from "./listAdminCollectionJobsStatus";
 
 export type ListAdminCollectionJobsParams = {
-  page?: number;
-  pageSize?: number;
-  status?: string;
+  /**
+   * @minimum 1
+   */
+  page?: string;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  pageSize?: string;
+  status?: ListAdminCollectionJobsStatus;
   schoolId?: string;
   mealDate?: string;
-  mealType?: string;
+  mealType?: ListAdminCollectionJobsMealType;
+  /**
+   * @maxLength 100
+   */
   query?: string;
+  /**
+   * true는 미해결 실패, false는 그 외 작업입니다.
+   */
+  unresolvedFailure?: boolean;
 };

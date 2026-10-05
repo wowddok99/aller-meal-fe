@@ -7,10 +7,29 @@
  */
 
 export type ListExternalApiLogsParams = {
-  page?: number;
-  pageSize?: number;
+  /**
+   * @minimum 1
+   */
+  page?: string;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  pageSize?: string;
+  /**
+   * @maxLength 100
+   */
   provider?: string;
+  /**
+   * @maxLength 100
+   */
   method?: string;
+  /**
+   * @maxLength 100
+   */
   outcome?: string;
+  /**
+   * @maxLength 100
+   */
   query?: string;
 };

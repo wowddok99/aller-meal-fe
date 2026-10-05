@@ -11,4 +11,6 @@ export interface AdminDashboardCollectionSummaryResponse {
   runningCount?: number;
   succeededCount?: number;
   failedCount?: number;
+  /** @minimum 0 */
+  unresolvedFailedCount: number;
 }

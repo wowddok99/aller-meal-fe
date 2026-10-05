@@ -5,12 +5,22 @@
  * Aller Meal Release 1 public, member, and admin API contract.
  * OpenAPI spec version: 1.0.0
  */
+import type { ListAdminNotificationRequestsChannel } from "./listAdminNotificationRequestsChannel";
+import type { ListAdminNotificationRequestsReason } from "./listAdminNotificationRequestsReason";
+import type { ListAdminNotificationRequestsStatus } from "./listAdminNotificationRequestsStatus";
 
 export type ListAdminNotificationRequestsParams = {
-  page?: number;
-  pageSize?: number;
-  status?: string;
-  channel?: string;
-  reason?: string;
+  /**
+   * @minimum 1
+   */
+  page?: string;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  pageSize?: string;
+  status?: ListAdminNotificationRequestsStatus;
+  channel?: ListAdminNotificationRequestsChannel;
+  reason?: ListAdminNotificationRequestsReason;
   query?: string;
 };

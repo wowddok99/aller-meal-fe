@@ -5,11 +5,25 @@
  * Aller Meal Release 1 public, member, and admin API contract.
  * OpenAPI spec version: 1.0.0
  */
+import type { ListNotificationDeadLetterEventsStatus } from "./listNotificationDeadLetterEventsStatus";
 
 export type ListNotificationDeadLetterEventsParams = {
-  page?: number;
-  pageSize?: number;
-  status?: string;
+  /**
+   * @minimum 1
+   */
+  page?: string;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  pageSize?: string;
+  status?: ListNotificationDeadLetterEventsStatus;
+  /**
+   * @maxLength 100
+   */
   eventType?: string;
+  /**
+   * @maxLength 100
+   */
   query?: string;
 };
