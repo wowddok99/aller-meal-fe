@@ -1,5 +1,7 @@
 "use client";
 
+import { PageHeading } from "@/components/page-heading";
+
 import {
   AlertTriangle,
   CheckCircle2,
@@ -9,9 +11,9 @@ import {
   LockKeyhole,
   RefreshCw,
 } from "lucide-react";
-import Link from "next/link";
+import { GuardedLink as Link } from "./guarded-link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ChildNotificationPreference,
   ChildProfile,
@@ -21,12 +23,14 @@ import {
   MemberApiError,
   updateChildNotificationPreference,
 } from "@/lib/member-api";
-import { UnsavedChangesDialog } from "@/components/member/unsaved-changes-dialog";
+import { useUnsavedChangesGuard } from "./edit-navigation-guard";
 
 const DEFAULT_TIMEZONE = "Asia/Seoul";
 const DEFAULT_TIME = "08:30";
 
 type FormValue = { emailEnabled: boolean; notificationTime: string; timezone: string };
+
+function normalizeTime(value: string) { return (value.length === 5 ? `${value}:00` : value).replace(/\.0+$/, ""); }
 
 function errorMessage(error: MemberApiError) {
   if (error.status === 401) return "로그인이 필요합니다.";
@@ -69,88 +73,84 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [notice, setNotice] = useState("");
-  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
+  const generationRef = useRef(0);
+  const savingRef = useRef(false);
 
   const load = useCallback(async () => {
+    const generation = ++generationRef.current;
+    savingRef.current = false;
+    setSaving(false); setChild(null); setNotice(""); setSaveError("");
     setLoading(true);
     setLoadError(null);
     try {
       const profile = await getChild(childId);
-      setChild(profile);
+      let schoolName = "";
       try {
         const school = await getSchool(profile.schoolId);
-        setSchoolName(school.name);
+        schoolName = school.name;
       } catch {
-        setSchoolName("");
+        // School lookup failure does not prevent preference editing.
       }
+      let result: ChildNotificationPreference | null = null;
       try {
-        const result = await getChildNotificationPreference(childId);
-        const next = {
-          emailEnabled: result.emailEnabled,
-          notificationTime: result.notificationTime,
-          timezone: result.timezone,
-        };
-        setPreference(result);
-        setForm(next);
-        setSaved(next);
+        result = await getChildNotificationPreference(childId);
       } catch (reason) {
         if (!(reason instanceof MemberApiError) || reason.status !== 404) throw reason;
-        const initial = { emailEnabled: false, notificationTime: DEFAULT_TIME, timezone: DEFAULT_TIMEZONE };
-        setPreference(null);
-        setForm(initial);
-        setSaved(initial);
       }
+      if (generation !== generationRef.current) return;
+      const next = result ? { emailEnabled: result.emailEnabled, notificationTime: normalizeTime(result.notificationTime), timezone: result.timezone } : { emailEnabled: false, notificationTime: DEFAULT_TIME, timezone: DEFAULT_TIMEZONE };
+      setChild(profile); setSchoolName(schoolName); setPreference(result); setForm(next); setSaved(next);
     } catch (reason) {
+      if (generation !== generationRef.current) return;
       setLoadError(
         reason instanceof MemberApiError
           ? reason
           : new MemberApiError(0, "알림 설정을 불러오지 못했습니다."),
       );
     } finally {
-      setLoading(false);
+      if (generation === generationRef.current) setLoading(false);
     }
   }, [childId]);
 
   useEffect(() => {
     void load();
+    return () => { generationRef.current += 1; };
   }, [load]);
 
   const dirty = useMemo(
-    () => form.emailEnabled !== saved.emailEnabled || form.notificationTime !== saved.notificationTime || form.timezone !== saved.timezone,
-    [form, saved],
+    () => Boolean(!loading && child?.id === childId && (form.emailEnabled !== saved.emailEnabled || normalizeTime(form.notificationTime) !== normalizeTime(saved.notificationTime) || form.timezone !== saved.timezone)),
+    [form, saved, loading, child, childId],
   );
 
-  useEffect(() => {
-    if (!dirty) return;
-    const preventUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    window.addEventListener("beforeunload", preventUnload);
-    return () => window.removeEventListener("beforeunload", preventUnload);
-  }, [dirty]);
+  const navigation = useUnsavedChangesGuard({ dirty, busy: saving });
 
   function updateForm(next: Partial<FormValue>) {
+    if (savingRef.current) return;
     setForm((current) => ({ ...current, ...next }));
     setSaveError("");
     setNotice("");
   }
 
   async function save() {
+    if (savingRef.current || !dirty || child?.id !== childId) return;
     if (!/^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,3})?)?$/.test(form.notificationTime)) {
       setSaveError("알림 시간을 올바르게 입력해 주세요.");
       return;
     }
+    savingRef.current = true;
+    const generation = generationRef.current;
     setSaving(true);
     setSaveError("");
     setNotice("");
     try {
       const result = await updateChildNotificationPreference(childId, {
         ...form,
+        notificationTime: normalizeTime(form.notificationTime),
       });
+      if (generation !== generationRef.current) return;
       const next = {
         emailEnabled: result.emailEnabled,
-        notificationTime: result.notificationTime,
+        notificationTime: normalizeTime(result.notificationTime),
         timezone: result.timezone,
       };
       setPreference(result);
@@ -158,54 +158,39 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
       setSaved(next);
       setNotice("알림 설정을 저장했습니다.");
     } catch (reason) {
+      if (generation !== generationRef.current) return;
       setSaveError(
         reason instanceof MemberApiError
           ? errorMessage(reason)
           : "알림 설정을 저장하지 못했습니다.",
       );
     } finally {
-      setSaving(false);
+      if (generation === generationRef.current) { savingRef.current = false; setSaving(false); }
     }
   }
 
   function requestLeave() {
-    if (dirty) {
-      setLeaveConfirmOpen(true);
-      return;
-    }
-    navigateAway();
+    navigation.requestLeave(() => router.push(`/children/${childId}`));
   }
 
-  function leaveWithoutSaving() {
-    setLeaveConfirmOpen(false);
-    navigateAway();
-  }
-
-  function navigateAway() {
-    if (window.history.length > 1) {
-      router.back();
-      return;
-    }
-    router.push(`/children/${childId}`);
-  }
-
-  if (loading) {
+  const heading = <PageHeading title="알림 설정" description="급식 알림을 받을 시간과 사용 여부를 설정하세요." parents={[{ label: "자녀 관리", href: "/children" }, { label: "자녀 정보", href: `/children/${childId}` }]} />;
+  if (loading || (child && child.id !== childId)) {
     return (
-      <div className="mx-auto flex min-h-80 max-w-[1220px] items-center justify-center px-5 text-sm font-bold text-zinc-500">
-        <LoaderCircle className="mr-2 h-5 w-5 animate-spin" /> 알림 설정을 불러오고 있습니다.
-      </div>
+      <div className="mx-auto w-full max-w-[1220px] px-5 pb-12 pt-5">{heading}<div role="status" className="flex min-h-80 items-center justify-center text-sm font-bold text-zinc-500">
+        <LoaderCircle aria-hidden="true" className="mr-2 h-5 w-5 animate-spin" /> 알림 설정을 불러오고 있습니다.
+      </div></div>
     );
   }
 
   if (loadError) {
     const loginRequired = loadError.status === 401;
     return (
-      <div className="mx-auto w-full max-w-[1220px] px-5 pt-5">
+      <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">{heading}
         <section className="rounded-2xl border border-red-200 bg-white p-10 text-center dark:border-red-950 dark:bg-[#101419]">
           <AlertTriangle className="mx-auto h-10 w-10 text-red-500" />
-          <h1 className="mt-4 text-xl font-extrabold">
+          <h2 className="mt-4 text-xl font-extrabold">
             {loadError.status === 404 ? "자녀 정보를 찾을 수 없습니다" : loadError.status === 403 ? "알림 설정에 접근할 수 없습니다" : loginRequired ? "로그인이 필요합니다" : "알림 설정을 불러오지 못했습니다"}
-          </h1>
+          </h2>
           <p className="mt-2 text-sm font-medium text-zinc-500">{errorMessage(loadError)}</p>
           {loginRequired ? (
             <Link href="/auth/login" className="mt-5 inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 font-bold text-white">로그인</Link>
@@ -230,13 +215,12 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
 
   return (
     <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">
-      <h1 className="sr-only">알림 설정</h1>
-      <p className="text-base font-medium leading-6 text-zinc-500 dark:text-zinc-400">급식 알림을 받을 시간과 사용 여부를 설정하세요.</p>
+      {heading}
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 md:p-6 dark:border-zinc-800 dark:bg-[#101419]">
         <div>
           <div className="flex flex-wrap items-center gap-2.5">
-            <h2 className="text-2xl font-extrabold tracking-[-0.02em]">{child.name}</h2>
+            <h2 className="min-w-0 break-keep text-2xl font-extrabold tracking-[-0.02em] [overflow-wrap:anywhere]">{child.name}</h2>
             <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-bold text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">{child.grade}학년 {child.classNumber}반</span>
           </div>
           {schoolName && <p className="mt-1.5 text-sm font-medium text-zinc-500 dark:text-zinc-400">{schoolName}</p>}
@@ -279,7 +263,6 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
         </div>
       </div>
 
-      <UnsavedChangesDialog open={leaveConfirmOpen} onStay={() => setLeaveConfirmOpen(false)} onLeave={leaveWithoutSaving} />
     </div>
   );
 }

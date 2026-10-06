@@ -12,7 +12,8 @@ import {
   Soup,
   X,
 } from "lucide-react";
-import Link from "next/link";
+import { GuardedLink as Link } from "@/components/member/guarded-link";
+import { useEditNavigation } from "@/components/member/edit-navigation-guard";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { AllerMealLogo } from "@/components/allermeal-logo";
@@ -49,6 +50,8 @@ function isProtectedRoute(pathname: string) {
 
 export function AppHeader() {
   const pathname = usePathname();
+  const navigation = useEditNavigation();
+  const logoutPendingRef = useRef(false);
   const serviceMenuRef = useRef<HTMLDivElement>(null);
   const mobileMenuTriggerRef = useRef<HTMLButtonElement>(null);
   const mobileMenuDialogRef = useRef<HTMLDivElement>(null);
@@ -72,6 +75,7 @@ export function AppHeader() {
   ];
 
   function closeMobileMenu(restoreFocus = true) {
+    if (mobileMenuOpen) mobileMenuTriggerRef.current?.focus({ preventScroll: true });
     shouldRestoreMobileMenuFocus.current = restoreFocus;
     setMobileMenuOpen(false);
   }
@@ -136,6 +140,7 @@ export function AppHeader() {
     function trapFocus(event: KeyboardEvent) {
       if (event.key === "Escape") {
         event.preventDefault();
+        mobileMenuTriggerRef.current?.focus({ preventScroll: true });
         shouldRestoreMobileMenuFocus.current = true;
         setMobileMenuOpen(false);
         return;
@@ -186,24 +191,31 @@ export function AppHeader() {
   }, [serviceMenuOpen]);
 
   async function handleLogout() {
-    if (isLoggingOut) return;
+    if (logoutPendingRef.current) return;
+    logoutPendingRef.current = true;
     closeMobileMenu();
     setLogoutError("");
     setIsLoggingOut(true);
     try {
       await logout();
       setIsAuthenticated(false);
-      window.dispatchEvent(new Event(API_SESSION_EXPIRED_EVENT));
+      navigation.runTerminalExit(() => window.dispatchEvent(new Event(API_SESSION_EXPIRED_EVENT)));
     } catch (error) {
       if (shouldTerminateSessionAfterLogout(error)) {
         setIsAuthenticated(false);
-        window.dispatchEvent(new Event(API_SESSION_EXPIRED_EVENT));
+        navigation.runTerminalExit(() => window.dispatchEvent(new Event(API_SESSION_EXPIRED_EVENT)));
       } else {
         setLogoutError("로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.");
       }
     } finally {
+      logoutPendingRef.current = false;
       setIsLoggingOut(false);
     }
+  }
+
+  function requestLogout() {
+    closeMobileMenu(false);
+    navigation.requestLeave(() => { void handleLogout(); });
   }
 
   return (
@@ -275,7 +287,7 @@ export function AppHeader() {
           {!authRoute && (isAuthenticated ?? protectedRoute) ? (
             <button
               type="button"
-              onClick={() => void handleLogout()}
+              onClick={requestLogout}
               disabled={isLoggingOut}
               className="inline-flex h-9 items-center gap-1.5 rounded-[10px] px-2.5 text-sm font-semibold text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 disabled:opacity-50 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white dark:focus-visible:ring-zinc-700"
             >
@@ -403,7 +415,7 @@ export function AppHeader() {
               {!authRoute && (isAuthenticated ?? protectedRoute) ? (
                 <button
                   type="button"
-                  onClick={() => void handleLogout()}
+                  onClick={requestLogout}
                   disabled={isLoggingOut}
                   className="flex h-[52px] w-full items-center gap-3 rounded-[10px] px-3 text-[16px] font-bold text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 dark:text-zinc-300 dark:hover:bg-zinc-900"
                 >
