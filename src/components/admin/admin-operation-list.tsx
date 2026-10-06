@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Inbox, LoaderCi
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { PageHeading } from "@/components/page-heading";
 import { AdminSelectMenu } from "@/components/admin/admin-select-menu";
 import { createLatestAdminOperationRequestTracker, getAdminOperationDisplayId, getAdminOperationFailureKind, getAdminOperationItemKey, getAdminOperationLoadErrorState, getSchoolSearchQuery, hasSameAdminOperationId } from "@/components/admin/admin-operation-list-utils";
 import { AdminApiError, createIdempotencyKey, type AdminOperationItem, type AdminOperationPage, type AdminOperationQuery, isAdminActionId, reprocessDeadLetterEvent, requestRecollection } from "@/lib/admin-api";
@@ -40,15 +41,15 @@ function ErrorState({ error, retry, loginHref }: { error: AdminApiError; retry: 
   const state = getAdminOperationLoadErrorState(error.status);
   const title = state === "login-required" ? "로그인이 필요합니다" : state === "admin-forbidden" ? "관리자 권한이 필요합니다" : "목록을 불러오지 못했습니다";
   const copy = state === "login-required" ? "로그인한 후 다시 확인해 주세요." : state === "admin-forbidden" ? "이 화면은 관리자만 확인할 수 있습니다." : error.message;
-  return <section role="alert" className="rounded-2xl border border-red-200 bg-white p-10 text-center dark:border-red-950 dark:bg-[#101419]"><AlertTriangle className="mx-auto h-10 w-10 text-red-500" /><h1 className="mt-4 text-xl font-extrabold">{title}</h1><p className="mt-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">{copy}</p>{state === "login-required" ? <Link href={loginHref} className={`mt-5 inline-flex min-h-11 items-center rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700 ${focusRing}`}>로그인</Link> : state === "generic-error" ? <button type="button" onClick={retry} className={`mt-5 min-h-11 rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700 ${focusRing}`}>다시 시도</button> : null}</section>;
+  return <section role="alert" className="rounded-2xl border border-red-200 bg-white p-10 text-center dark:border-red-950 dark:bg-[#101419]"><AlertTriangle className="mx-auto h-10 w-10 text-red-500" /><h2 className="mt-4 text-xl font-extrabold">{title}</h2><p className="mt-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">{copy}</p>{state === "login-required" ? <Link href={loginHref} className={`mt-5 inline-flex min-h-11 items-center rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700 ${focusRing}`}>로그인</Link> : state === "generic-error" ? <button type="button" onClick={retry} className={`mt-5 min-h-11 rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700 ${focusRing}`}>다시 시도</button> : null}</section>;
 }
 
-function AdminOperationListLoading({ itemName }: Pick<AdminOperationListProps, "itemName">) {
-  return <div role="status" aria-live="polite" aria-busy="true" className="mx-auto flex min-h-[calc(100dvh-50px)] max-w-[1220px] items-center justify-center px-5 text-sm font-bold text-zinc-500"><LoaderCircle className="mr-2 h-5 w-5 animate-spin" /> {itemName} 목록을 준비하고 있습니다.</div>;
+function AdminOperationListLoading({ title, description, itemName }: Pick<AdminOperationListProps, "title" | "description" | "itemName">) {
+  return <div className="mx-auto w-full max-w-[1220px] px-5 pb-12 pt-5"><PageHeading title={title} description={description} parents={[{ label: "서비스 관리", href: "/admin" }]} /><div role="status" aria-live="polite" aria-busy="true" className="flex min-h-64 items-center justify-center text-sm font-bold text-zinc-500"><LoaderCircle aria-hidden="true" className="mr-2 h-5 w-5 animate-spin" /> {itemName} 목록을 불러오고 있습니다.</div></div>;
 }
 
 export function AdminOperationList(props: AdminOperationListProps) {
-  return <Suspense fallback={<AdminOperationListLoading itemName={props.itemName} />}><AdminOperationListContent {...props} /></Suspense>;
+  return <Suspense fallback={<AdminOperationListLoading title={props.title} description={props.description} itemName={props.itemName} />}><AdminOperationListContent {...props} /></Suspense>;
 }
 
 function AdminOperationListContent({ title, description, itemName, statusOptions, filters = [], schoolSearch = false, load, action, renderDetail, renderStatus, getInitialStatus }: AdminOperationListProps) {
@@ -164,11 +165,11 @@ function AdminOperationListContent({ title, description, itemName, statusOptions
     finally { setProcessingId(undefined); }
   };
 
-  if (loading && !result) return <div role="status" aria-busy="true" className="mx-auto flex min-h-[calc(100dvh-50px)] max-w-[1220px] items-center justify-center px-5 text-sm font-bold text-zinc-500"><LoaderCircle className="mr-2 h-5 w-5 animate-spin" /> {itemName} 목록을 불러오고 있습니다.</div>;
-  if (error && !result) return <div className="mx-auto w-full max-w-[1220px] px-5 pt-5"><ErrorState error={error} retry={() => void loadCurrent()} loginHref={loginHref} /></div>;
+  if (loading && !result) return <AdminOperationListLoading title={title} description={description} itemName={itemName} />;
+  if (error && !result) return <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5"><PageHeading title={title} description={description} parents={[{ label: "서비스 관리", href: "/admin" }]} /><ErrorState error={error} retry={() => void loadCurrent()} loginHref={loginHref} /></div>;
 
   return <div className={`mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pt-5 ${customDetail ? "pb-40" : "pb-12"}`}>
-    <header><p className="text-base font-medium leading-6 text-zinc-500 dark:text-zinc-400">{description}</p><h1 className="mt-3 text-2xl font-extrabold tracking-[-0.02em]">{title}</h1></header>
+    <PageHeading title={title} description={description} parents={[{ label: "서비스 관리", href: "/admin" }]} />
     {error ? <ErrorState error={error} retry={() => void loadCurrent()} loginHref={loginHref} /> : null}
     <section aria-label={`${itemName} 목록`} aria-busy={loading} className="overflow-visible rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-[#101419] dark:text-zinc-50">
       <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-5 md:px-6"><p className="text-sm font-bold text-zinc-500 dark:text-zinc-400">총 {totalCount.toLocaleString()}건</p><div className="flex items-center gap-2"><span className="text-sm font-bold">목록 표시 수</span><AdminSelectMenu label="목록 표시 수" value={String(pageSize)} options={PAGE_SIZES.map((size) => ({ value: String(size), label: `${size}개` }))} onChange={(value) => { setPage(1); setPageSize(Number(value)); }} compact /></div></div>

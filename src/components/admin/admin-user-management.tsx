@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, MoreVertical, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, LoaderCircle, MoreVertical, Search } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -12,6 +12,8 @@ import {
   normalizeAdminUserQuery,
   type AdminUserAction,
 } from "@/components/admin/admin-user-management-utils";
+import { ModalDialog } from "@/components/modal-dialog";
+import { PageHeading } from "@/components/page-heading";
 import { AdminSelectMenu } from "@/components/admin/admin-select-menu";
 import type { AdminUserAccessHistoryItemResponse } from "@/generated/api/admin/models/adminUserAccessHistoryItemResponse";
 import type { AdminUserDetailResponse } from "@/generated/api/admin/models/adminUserDetailResponse";
@@ -107,75 +109,31 @@ function ActionDialog({
   action,
   target,
   pending,
+  requestError,
   onClose,
   onSubmit,
 }: {
   action: AdminUserAction;
   target: AdminUserDetailResponse;
   pending: boolean;
+  requestError: string;
   onClose: () => void;
   onSubmit: (reason: string) => void;
 }) {
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
-  const dialogRef = useRef<HTMLDivElement>(null);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
-  const returnFocus = useRef<HTMLElement | null>(null);
   const title =
     action === "promote"
       ? "관리자 권한 부여"
       : action === "suspend"
         ? "이용 제한"
         : "이용 제한 해제";
-  useEffect(() => {
-    returnFocus.current =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null;
-    cancelButtonRef.current?.focus();
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !pending) onClose();
-      if (event.key !== "Tab" || !dialogRef.current) return;
-      const elements = Array.from(
-        dialogRef.current.querySelectorAll<HTMLElement>(
-          "textarea:not([disabled]),button:not([disabled])",
-        ),
-      );
-      if (!elements.length) return;
-      const first = elements[0];
-      const last = elements.at(-1);
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last?.focus();
-      }
-      if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      returnFocus.current?.focus();
-    };
-  }, [onClose, pending]);
   return (
-    <div
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !pending) onClose();
-      }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/45 p-5"
-    >
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="admin-user-action-title"
-        className="my-auto w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl dark:bg-[#101419]"
-      >
+    <ModalDialog open busy={pending} onClose={onClose} initialFocusRef={cancelButtonRef} labelledBy="admin-user-action-title">
+      <div className="p-6">
         <div className="-mx-6 border-b border-zinc-200 px-6 pb-4 dark:border-zinc-800">
-          <h2 id="admin-user-action-title" className="text-xl font-extrabold">
+          <h2 id="admin-user-action-title" className="break-keep text-xl font-extrabold">
             {title}
           </h2>
         </div>
@@ -193,7 +151,9 @@ function ActionDialog({
         <textarea
           id="admin-user-action-reason"
           value={reason}
+          disabled={pending}
           onChange={(event) => {
+            if (pending) return;
             setReason(event.target.value);
             setError("");
           }}
@@ -208,6 +168,7 @@ function ActionDialog({
         >
           {error || `${reason.length}/500`}
         </p>
+        {requestError && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm font-bold text-red-700 dark:bg-red-950/30 dark:text-red-300">{requestError}</p>}
         <div className="mt-4 flex justify-end gap-3">
           <button
             ref={cancelButtonRef}
@@ -221,7 +182,9 @@ function ActionDialog({
           <button
             type="button"
             disabled={pending}
+            aria-label={pending ? "처리 중" : "확인"}
             onClick={() => {
+              if (pending) return;
               const result = buildAdminUserActionPayload(
                 action,
                 target.availableActions,
@@ -236,11 +199,11 @@ function ActionDialog({
             }}
             className={`inline-flex h-11 w-16 items-center justify-center rounded-[10px] px-4 text-sm font-extrabold text-white disabled:opacity-50 ${action === "suspend" ? "bg-red-600" : "bg-mint-500"} ${focusRing}`}
           >
-            {pending ? "처리 중" : "확인"}
+            {pending ? <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" /> : "확인"}
           </button>
         </div>
       </div>
-    </div>
+    </ModalDialog>
   );
 }
 function History({
@@ -377,6 +340,8 @@ export function AdminUserManagement() {
   const [action, setAction] = useState<AdminUserAction>();
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [mutationPending, setMutationPending] = useState(false);
+  const [actionError, setActionError] = useState("");
+  const mutationPendingRef = useRef(false);
   const [notice, setNotice] = useState("");
   const listRequestId = useRef(0);
   const selectionRequests = useRef(createLatestAdminRequestTracker());
@@ -577,7 +542,9 @@ export function AdminUserManagement() {
     return loadSelected(targetUserId, historyPage);
   }, [historyPage, loadList, loadSelected]);
   const submitAction = async (reason: string) => {
-    if (!detail || !action) return;
+    if (!detail || !action || mutationPendingRef.current) return;
+    mutationPendingRef.current = true;
+    setActionError("");
     setMutationPending(true);
     try {
       if (action === "promote")
@@ -611,9 +578,10 @@ export function AdminUserManagement() {
             : "다른 변경이 감지됐지만 최신 상태를 불러오지 못했습니다. 다시 시도해 주세요.",
         );
       } else {
-        setNotice(errorText(cause, "사용자 상태를 변경하지 못했습니다."));
+        setActionError(errorText(cause, "사용자 상태를 변경하지 못했습니다."));
       }
     } finally {
+      mutationPendingRef.current = false;
       setMutationPending(false);
     }
   };
@@ -626,12 +594,7 @@ export function AdminUserManagement() {
   return (
     <>
       <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">
-        <header>
-          <p className="text-base font-medium text-zinc-500 dark:text-zinc-400">
-            사용자 계정 정보와 권한을 조회하고 관리합니다.
-          </p>
-          <h1 className="mt-3 text-2xl font-extrabold">사용자 관리</h1>
-        </header>
+        <PageHeading title="사용자 관리" description="사용자 계정 정보와 권한을 조회하고 관리합니다." parents={[{ label: "서비스 관리", href: "/admin" }]} />
         {notice ? (
           <p
             role="status"
@@ -915,6 +878,7 @@ export function AdminUserManagement() {
                               role="menuitem"
                               onClick={() => {
                                 setActionMenuOpen(false);
+                                setActionError("");
                                 setAction("promote");
                               }}
                               className="flex h-10 w-full items-center rounded-lg px-3 text-left text-sm font-bold text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
@@ -928,6 +892,7 @@ export function AdminUserManagement() {
                               role="menuitem"
                               onClick={() => {
                                 setActionMenuOpen(false);
+                                setActionError("");
                                 setAction("suspend");
                               }}
                               className="flex h-10 w-full items-center rounded-lg px-3 text-left text-sm font-bold text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/20"
@@ -941,6 +906,7 @@ export function AdminUserManagement() {
                               role="menuitem"
                               onClick={() => {
                                 setActionMenuOpen(false);
+                                setActionError("");
                                 setAction("unsuspend");
                               }}
                               className="flex h-10 w-full items-center rounded-lg px-3 text-left text-sm font-bold text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
@@ -1014,7 +980,8 @@ export function AdminUserManagement() {
           action={action}
           target={detail}
           pending={mutationPending}
-          onClose={() => setAction(undefined)}
+          requestError={actionError}
+          onClose={() => { if (!mutationPendingRef.current) setAction(undefined); }}
           onSubmit={(reason) => void submitAction(reason)}
         />
       ) : null}

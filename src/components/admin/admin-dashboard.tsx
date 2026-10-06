@@ -4,6 +4,7 @@ import { AlertTriangle, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AdminApiError, type DashboardSummary, getDashboardSummary } from "@/lib/admin-api";
+import { PageHeading } from "@/components/page-heading";
 
 const numberFormatter = new Intl.NumberFormat("ko-KR");
 const panel = "rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-[#101419]";
@@ -82,7 +83,7 @@ export function AdminDashboard() {
 
   return (
     <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">
-      <header><p className="text-base font-medium leading-6 text-zinc-500 dark:text-zinc-400">서비스 운영 현황을 확인하세요.</p><h1 className="mt-4 text-2xl font-extrabold tracking-[-0.02em]">관리자 대시보드</h1></header>
+      <PageHeading title="관리자 대시보드" description="서비스 운영 현황을 확인하세요." />
       <p role="status" className="sr-only">{loading ? "운영 현황을 불러오고 있습니다." : ""}</p>
 
       {error && <section role="alert" className={`${panel} mb-5 p-6`}><div className="flex items-start gap-3"><AlertTriangle aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-zinc-500 dark:text-zinc-400" /><div><h2 className="text-base font-bold">{forbidden ? "관리자 권한이 필요합니다" : unauthenticated ? "로그인이 필요합니다" : "운영 현황을 불러오지 못했습니다"}</h2><p className="mt-2 text-sm leading-6 text-zinc-500 dark:text-zinc-400">{forbidden ? "관리자만 운영 현황을 확인할 수 있습니다." : unauthenticated ? "로그인한 후 다시 확인해 주세요." : error.message}</p>{unauthenticated ? <Link href="/auth/login?next=/admin" className={`${buttonStyle} mt-4`}>로그인</Link> : !forbidden ? <button type="button" onClick={() => void load()} className={`${buttonStyle} mt-4`}>다시 시도</button> : null}</div></div></section>}

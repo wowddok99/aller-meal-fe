@@ -2,6 +2,7 @@
 
 import { AlertTriangle, CheckCircle2, LoaderCircle, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ModalDialog } from "@/components/modal-dialog";
 import {
   cancelAccountWithdrawal,
   getAccountWithdrawal,
@@ -45,10 +46,10 @@ export function AccountWithdrawalPage() {
   const [result, setResult] = useState<WithdrawalResult>("idle");
   const [loadError, setLoadError] = useState("");
   const [error, setError] = useState("");
-  const withdrawalButtonRef = useRef<HTMLButtonElement>(null);
-  const dialogRef = useRef<HTMLDivElement>(null);
   const backButtonRef = useRef<HTMLButtonElement>(null);
   const withdrawalLoadGeneration = useRef(0);
+  const mutationGeneration = useRef(0);
+  const pendingRef = useRef(false);
 
   const loadWithdrawal = useCallback(async (requirePending = false) => {
     const generation = ++withdrawalLoadGeneration.current;
@@ -87,58 +88,25 @@ export function AccountWithdrawalPage() {
     void loadWithdrawal();
     return () => {
       withdrawalLoadGeneration.current += 1;
+      mutationGeneration.current += 1;
+      pendingRef.current = false;
     };
   }, [loadWithdrawal]);
 
-  useEffect(() => {
-    if (!confirming) return;
-    const previousOverflow = document.body.style.overflow;
-    const returnFocusElement = withdrawalButtonRef.current;
-    document.body.style.overflow = "hidden";
-    backButtonRef.current?.focus();
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      returnFocusElement?.focus();
-    };
-  }, [confirming]);
-
-  useEffect(() => {
-    if (!confirming) return;
-    function keepFocusInDialog(event: KeyboardEvent) {
-      if (event.key === "Escape" && !pending) {
-        setConfirming(false);
-        return;
-      }
-      if (event.key !== "Tab") return;
-      const focusableElements =
-        dialogRef.current?.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-        );
-      if (!focusableElements?.length) return;
-      const firstElement = focusableElements[0];
-      const lastElement = focusableElements[focusableElements.length - 1];
-      if (event.shiftKey && document.activeElement === firstElement) {
-        event.preventDefault();
-        lastElement.focus();
-      } else if (!event.shiftKey && document.activeElement === lastElement) {
-        event.preventDefault();
-        firstElement.focus();
-      }
-    }
-    window.addEventListener("keydown", keepFocusInDialog);
-    return () => window.removeEventListener("keydown", keepFocusInDialog);
-  }, [confirming, pending]);
-
   async function handleWithdrawal() {
-    if (pending || loadingWithdrawal || loadError) return;
+    if (pendingRef.current || loadingWithdrawal || loadError) return;
+    pendingRef.current = true;
+    const generation = ++mutationGeneration.current;
     setPending(true);
     setError("");
     try {
       const response = await requestAccountWithdrawal();
+      if (generation !== mutationGeneration.current) return;
       setWithdrawal(response);
       setResult("idle");
       setConfirming(false);
     } catch (reason) {
+      if (generation !== mutationGeneration.current) return;
       if (reason instanceof MemberApiError && reason.status === 409) {
         setConfirming(false);
         await loadWithdrawal(true);
@@ -150,26 +118,36 @@ export function AccountWithdrawalPage() {
           : "회원 탈퇴를 예약하지 못했습니다. 잠시 후 다시 시도해 주세요.",
       );
     } finally {
-      setPending(false);
+      if (generation === mutationGeneration.current) {
+        pendingRef.current = false;
+        setPending(false);
+      }
     }
   }
 
   async function handleCancellation() {
-    if (pending || loadingWithdrawal || loadError) return;
+    if (pendingRef.current || loadingWithdrawal || loadError) return;
+    pendingRef.current = true;
+    const generation = ++mutationGeneration.current;
     setPending(true);
     setError("");
     try {
       await cancelAccountWithdrawal();
+      if (generation !== mutationGeneration.current) return;
       setWithdrawal(undefined);
       setResult("cancelled");
     } catch (reason) {
+      if (generation !== mutationGeneration.current) return;
       setError(
         reason instanceof MemberApiError
           ? errorMessage(reason, "cancel")
           : "회원 탈퇴 예약을 취소하지 못했습니다. 잠시 후 다시 시도해 주세요.",
       );
     } finally {
-      setPending(false);
+      if (generation === mutationGeneration.current) {
+        pendingRef.current = false;
+        setPending(false);
+      }
     }
   }
 
@@ -191,7 +169,7 @@ export function AccountWithdrawalPage() {
       </header>
 
       <div className="mt-7 space-y-4">
-        {error ? (
+        {error && !confirming ? (
           <div
             role="alert"
             className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300"
@@ -343,7 +321,6 @@ export function AccountWithdrawalPage() {
                   탈퇴 예약과 취소는 현재 계정의 실제 상태에 따라 처리됩니다.
                 </p>
                 <button
-                  ref={withdrawalButtonRef}
                   type="button"
                   disabled={!canMutateWithdrawal}
                   onClick={() => {
@@ -360,62 +337,19 @@ export function AccountWithdrawalPage() {
         )}
       </div>
 
-      {confirming ? (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-5"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="withdrawal-confirm-title"
-          aria-describedby="withdrawal-confirm-description"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget && !pending)
-              setConfirming(false);
-          }}
-        >
-          <div
-            ref={dialogRef}
-            className="w-full max-w-md rounded-t-2xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-2xl sm:p-6 dark:bg-[#101419]"
-          >
-            <h2
-              id="withdrawal-confirm-title"
-              className="text-xl font-extrabold tracking-[-0.02em]"
-            >
-              회원 탈퇴를 예약할까요?
-            </h2>
-            <p
-              id="withdrawal-confirm-description"
-              className="mt-2 text-sm font-medium leading-6 text-zinc-500 dark:text-zinc-400"
-            >
-              예약 후 예정일 전까지는 이 화면에서 직접 취소할 수 있어요.
-            </p>
-            <div className="mt-6 grid grid-cols-2 gap-2">
-              <button
-                ref={backButtonRef}
-                type="button"
-                disabled={pending}
-                onClick={() => setConfirming(false)}
-                className="h-12 rounded-xl bg-zinc-100 px-4 text-sm font-extrabold text-zinc-700 transition-colors hover:bg-zinc-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 disabled:opacity-50 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
-              >
-                돌아가기
-              </button>
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => void handleWithdrawal()}
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 text-sm font-extrabold text-white transition-colors hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:opacity-50 dark:focus-visible:ring-offset-[#101419]"
-              >
-                {pending ? (
-                  <>
-                    <LoaderCircle className="h-4 w-4 animate-spin" /> 처리 중
-                  </>
-                ) : (
-                  "탈퇴 예약하기"
-                )}
-              </button>
-            </div>
+      <ModalDialog open={confirming} busy={pending} onClose={() => { if (!pendingRef.current) setConfirming(false); }} initialFocusRef={backButtonRef} labelledBy="withdrawal-confirm-title" describedBy="withdrawal-confirm-description">
+        <div className="border-b border-zinc-200 px-6 pb-4 pt-6 dark:border-zinc-800">
+          <h2 id="withdrawal-confirm-title" className="break-keep text-xl font-extrabold">회원 탈퇴를 예약할까요?</h2>
+        </div>
+        <div className="px-6 pb-6 pt-5">
+          <p id="withdrawal-confirm-description" className="text-sm leading-6 text-zinc-600 dark:text-zinc-300">예약 후 예정일 전까지는 이 화면에서 직접 취소할 수 있어요.</p>
+          {error && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm font-bold text-red-700 dark:bg-red-950/30 dark:text-red-300">{error}</p>}
+          <div className="mt-6 flex flex-wrap justify-end gap-3">
+            <button ref={backButtonRef} type="button" disabled={pending} onClick={() => setConfirming(false)} className="h-11 min-w-16 rounded-[10px] border border-zinc-300 px-4 text-sm font-bold transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900">취소</button>
+            <button type="button" disabled={pending} onClick={() => void handleWithdrawal()} className="inline-flex h-11 min-w-16 items-center justify-center rounded-[10px] bg-red-600 px-4 text-sm font-extrabold text-white transition-colors hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:opacity-50">{pending ? <><LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /><span className="sr-only">처리 중</span></> : "확인"}</button>
           </div>
         </div>
-      ) : null}
+      </ModalDialog>
     </main>
   );
 }
