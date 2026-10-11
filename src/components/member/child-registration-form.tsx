@@ -5,10 +5,11 @@ import { PageHeading } from "@/components/page-heading";
 import { AlertTriangle, Check, Info, LoaderCircle, School as SchoolIcon, Search } from "lucide-react";
 import { GuardedLink as Link } from "./guarded-link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
 import { createChild, MemberApiError, School, searchSchools } from "@/lib/member-api";
 import { useUnsavedChangesGuard } from "./edit-navigation-guard";
 import { NumberStepper } from "./number-stepper";
+import { createChildRegistrationNotice } from "./allergen-save-notice";
 
 const inputClass = "h-12 w-full rounded-[10px] border border-zinc-300 bg-white px-4 font-semibold outline-none transition focus:border-mint-500 focus:ring-2 focus:ring-mint-500/20 dark:border-zinc-700 dark:bg-[#0b0f13]";
 
@@ -84,10 +85,20 @@ export function ChildRegistrationForm() {
       if (!mountedRef.current) return;
       completed = true;
       setCreated(true);
-      router.push(`/children/${child.id}/allergens`);
+      navigation.runTerminalExit(() => {
+        const registered = createChildRegistrationNotice(child.id);
+        router.push(`/children/${child.id}/allergens?${new URLSearchParams({ registered })}`);
+      });
       router.refresh();
     } catch (reason) { if (mountedRef.current) setFormError(reason instanceof MemberApiError ? messageFor(reason) : "자녀를 등록하지 못했습니다."); }
     finally { if (mountedRef.current && !completed) { savingRef.current = false; setSaving(false); } }
+  }
+
+  function handleSchoolSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
+    void handleSearch(event);
   }
 
   function requestLeave() {
@@ -111,7 +122,7 @@ export function ChildRegistrationForm() {
         <StepTitle step={2}>학교 선택</StepTitle>
         <div className="mt-5 flex flex-col gap-3">
           <div className="flex gap-2">
-            <label className="flex h-12 min-w-0 flex-1 items-center gap-2 rounded-[10px] border border-zinc-300 px-4 transition focus-within:border-mint-500 focus-within:ring-2 focus-within:ring-mint-500/20 dark:border-zinc-700"><Search className="h-4 w-4 shrink-0 text-zinc-400" /><span className="sr-only">학교명</span><input type="search" className="h-full min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none" value={keyword} disabled={saving} onChange={(event) => setKeyword(event.target.value)} placeholder="학교명을 입력해 주세요" /></label>
+            <label className="flex h-12 min-w-0 flex-1 items-center gap-2 rounded-[10px] border border-zinc-300 px-4 transition focus-within:border-mint-500 focus-within:ring-2 focus-within:ring-mint-500/20 dark:border-zinc-700"><Search className="h-4 w-4 shrink-0 text-zinc-400" /><span className="sr-only">학교명</span><input type="search" onKeyDown={handleSchoolSearchKeyDown} className="h-full min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none" value={keyword} disabled={saving} onChange={(event) => setKeyword(event.target.value)} placeholder="학교명을 입력해 주세요" /></label>
             <button type="button" onClick={(event) => void handleSearch(event)} disabled={searching || saving} className="h-12 w-20 shrink-0 rounded-[10px] bg-mint-500 px-3 text-sm font-bold text-white transition-colors hover:bg-mint-600 disabled:opacity-50">{searching ? "검색 중" : "검색"}</button>
           </div>
           {searchError && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700 dark:bg-red-950/30 dark:text-red-300"><AlertTriangle className="mr-2 inline h-4 w-4" />{searchError}</p>}
