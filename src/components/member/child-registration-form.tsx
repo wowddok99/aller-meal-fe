@@ -9,6 +9,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { createChild, MemberApiError, School, searchSchools } from "@/lib/member-api";
 import { useUnsavedChangesGuard } from "./edit-navigation-guard";
 import { NumberStepper } from "./number-stepper";
+import { createChildRegistrationNotice } from "./allergen-save-notice";
 
 const inputClass = "h-12 w-full rounded-[10px] border border-zinc-300 bg-white px-4 font-semibold outline-none transition focus:border-mint-500 focus:ring-2 focus:ring-mint-500/20 dark:border-zinc-700 dark:bg-[#0b0f13]";
 
@@ -84,7 +85,10 @@ export function ChildRegistrationForm() {
       if (!mountedRef.current) return;
       completed = true;
       setCreated(true);
-      router.push(`/children/${child.id}/allergens`);
+      navigation.runTerminalExit(() => {
+        const registered = createChildRegistrationNotice(child.id);
+        router.push(`/children/${child.id}/allergens?${new URLSearchParams({ registered })}`);
+      });
       router.refresh();
     } catch (reason) { if (mountedRef.current) setFormError(reason instanceof MemberApiError ? messageFor(reason) : "자녀를 등록하지 못했습니다."); }
     finally { if (mountedRef.current && !completed) { savingRef.current = false; setSaving(false); } }
