@@ -1,6 +1,7 @@
 "use client";
 
 import { PageHeading } from "@/components/page-heading";
+import { DatePicker } from "@/components/date-picker";
 
 import {
   CalendarDays,
@@ -360,19 +361,7 @@ export function PublicSchoolMealsPage({
                 );
               })}
             </div>
-            <label className="relative flex h-12 items-center rounded-[10px] border border-zinc-200 bg-white px-4 dark:border-zinc-700 dark:bg-[#0f1318]">
-              <span className="sr-only">급식 날짜</span>
-              <CalendarDays
-                className="mr-3 h-5 w-5 shrink-0 text-zinc-600 dark:text-zinc-300"
-                strokeWidth={2}
-              />
-              <input
-                type="date"
-                className="h-full min-w-0 flex-1 bg-transparent text-base font-semibold text-zinc-800 outline-none dark:text-zinc-100"
-                value={selectedDate}
-                onChange={(event) => setSelectedDate(event.target.value)}
-              />
-            </label>
+            <DatePicker label="급식 날짜" value={selectedDate} onChange={setSelectedDate} className="h-12" />
             <span
               className={`inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border px-4 text-sm font-extrabold ${isCollecting ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400" : "border-mint-500/25 bg-mint-500/10 text-mint-600 dark:text-mint-400"}`}
             >

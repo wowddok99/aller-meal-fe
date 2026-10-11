@@ -11,6 +11,7 @@
     "api:generate": "orval --config ./orval.config.ts"
   },
   "dependencies": {
+    "@daypicker/react": "^10.0.2",
     "@tanstack/react-query": "^5.102.8",
     "lucide-react": "^0.468.0",
     "next": "^15.3.5",

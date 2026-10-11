@@ -1,9 +1,10 @@
 "use client";
 
 import { PageHeading } from "@/components/page-heading";
+import { DatePicker } from "@/components/date-picker";
 
 import {
-  AlertTriangle, CalendarDays, ChevronDown, Info, LoaderCircle, RefreshCw, Utensils,
+  AlertTriangle, ChevronDown, Info, LoaderCircle, RefreshCw, Utensils,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -176,7 +177,7 @@ export function ChildPersonalizedMeals({ childId }: { childId?: string }) {
     <section className="rounded-2xl border border-zinc-200 bg-white px-6 py-5 md:px-8 md:py-6 dark:border-zinc-800 dark:bg-[#101419]">
       <div className="grid gap-5 lg:grid-cols-[minmax(220px,0.7fr)_minmax(460px,1.3fr)] lg:items-center">
         <div><div className="flex flex-wrap items-center gap-2.5"><h2 className="min-w-0 break-keep text-2xl font-extrabold tracking-[-0.02em] [overflow-wrap:anywhere]">{child.name}</h2><span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-bold text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">{child.grade}학년 {child.classNumber}반</span></div>{schoolName && <p className="mt-1.5 text-sm font-medium text-zinc-500 dark:text-zinc-400">{schoolName}</p>}</div>
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_190px]"><div className="grid h-11 grid-cols-3 rounded-[10px] border border-zinc-300 p-0.5 dark:border-zinc-700">{[["today","오늘"],["daily","일간"],["weekly","주간"]].map(([value,label]) => <button key={value} type="button" aria-pressed={mode === value} onClick={() => selectMode(value as PersonalizedMealMode)} className={`rounded-[8px] text-sm font-extrabold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 ${mode === value ? "bg-mint-500 text-white" : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"}`}>{label}</button>)}</div><label className="flex h-11 items-center gap-2 rounded-[10px] border border-zinc-300 bg-white px-3 transition focus-within:border-mint-500 focus-within:ring-2 focus-within:ring-mint-500/20 dark:border-zinc-700 dark:bg-[#0b0f13]"><CalendarDays className="h-4 w-4 shrink-0 text-zinc-500" /><input aria-label={mode === "weekly" ? "기준 날짜" : "조회 날짜"} type="date" value={date} disabled={mode === "today"} onChange={(event) => setDate(event.target.value)} className="min-w-0 flex-1 bg-transparent text-sm font-bold outline-none disabled:cursor-not-allowed disabled:opacity-45" /></label></div>
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_190px]"><div className="grid h-11 grid-cols-3 rounded-[10px] border border-zinc-300 p-0.5 dark:border-zinc-700">{[["today","오늘"],["daily","일간"],["weekly","주간"]].map(([value,label]) => <button key={value} type="button" aria-pressed={mode === value} onClick={() => selectMode(value as PersonalizedMealMode)} className={`rounded-[8px] text-sm font-extrabold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 ${mode === value ? "bg-mint-500 text-white" : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"}`}>{label}</button>)}</div><DatePicker label={mode === "weekly" ? "기준 날짜" : "조회 날짜"} value={date} disabled={mode === "today"} onChange={setDate} /></div>
       </div>
       <div className="mt-4 border-t border-zinc-200 pt-4 text-sm dark:border-zinc-800"><p className="font-medium text-zinc-500 dark:text-zinc-400">{mode === "weekly" ? "조회 기간" : "조회 날짜"} <span className="font-bold text-zinc-700 dark:text-zinc-200">{mode === "weekly" ? `${data.rangeStart} ~ ${data.rangeEnd}` : data.rangeStart}</span></p></div>
     </section>
