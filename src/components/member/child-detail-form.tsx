@@ -1,8 +1,10 @@
 "use client";
 
+import { SuccessToast, useSuccessToast } from "@/components/success-toast";
+
 import { PageHeading } from "@/components/page-heading";
 
-import { AlertTriangle, CheckCircle2, LoaderCircle, RefreshCw, School as SchoolIcon, Search } from "lucide-react";
+import { AlertTriangle, LoaderCircle, RefreshCw, School as SchoolIcon, Search } from "lucide-react";
 import { GuardedLink as Link } from "./guarded-link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
@@ -32,7 +34,7 @@ export function ChildDetailForm({ childId }: { childId: string }) {
   const [loadError, setLoadError] = useState<MemberApiError | null>(null);
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
-  const [notice, setNotice] = useState("");
+  const { notice, notify: setNotice } = useSuccessToast();
   const [formError, setFormError] = useState("");
   const [changingSchool, setChangingSchool] = useState(false);
   const [keyword, setKeyword] = useState("");
@@ -59,7 +61,7 @@ export function ChildDetailForm({ childId }: { childId: string }) {
     } catch (reason) {
       if (generation === generationRef.current) setLoadError(reason instanceof MemberApiError ? reason : new MemberApiError(0, "자녀 정보를 불러오지 못했습니다."));
     } finally { if (generation === generationRef.current) setLoading(false); }
-  }, [childId]);
+  }, [childId, setNotice]);
 
   useEffect(() => { void load(); return () => { generationRef.current += 1; searchGenerationRef.current += 1; }; }, [load]);
 
@@ -121,7 +123,7 @@ export function ChildDetailForm({ childId }: { childId: string }) {
       </div>
     </section>
 
-    {notice && <div role="status" className="flex items-center gap-2 rounded-xl border border-mint-200 bg-mint-50 px-4 py-3 text-sm font-bold text-mint-700 dark:border-mint-900 dark:bg-mint-950/30 dark:text-mint-300"><CheckCircle2 className="h-4 w-4" />{notice}</div>}
+    <SuccessToast notice={notice} />
     <section className="rounded-2xl border border-zinc-200 bg-white p-5 md:p-7 dark:border-zinc-800 dark:bg-[#101419]">
       <h2 className="text-xl font-extrabold tracking-[-0.02em]">기본 정보</h2>
       <p className="mt-1 text-sm font-medium text-zinc-500 dark:text-zinc-400">이름, 학년·반과 소속 학교를 수정할 수 있어요.</p>

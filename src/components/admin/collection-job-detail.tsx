@@ -1,5 +1,7 @@
 "use client";
 
+import { SuccessToast } from "@/components/success-toast";
+
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -52,7 +54,7 @@ export function CollectionJobDetail({ refreshList }: { refreshList: () => Promis
     return () => { active = false; controller.abort(); };
   }, [selectedId, revision]);
 
-  return <><section aria-labelledby="collection-detail-title" aria-busy={loading} className={collectionPanelStyle}>
+  return <><SuccessToast notice={operation.successNotice} /><section aria-labelledby="collection-detail-title" aria-busy={loading} className={collectionPanelStyle}>
     <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap items-center gap-3"><h2 id="collection-detail-title" tabIndex={-1} className="text-xl font-extrabold">급식 수집 상세</h2>{job && !loading && !error ? job.status === "FAILED" ? <CollectionJobStatus job={job} /> : <CollectionBadge status={job.status} label={collectionOriginalStatusLabel(job.status)} /> : null}</div>{job && !loading && !error && !operation.authStatus && job.recovery?.status !== "SUCCEEDED" && isJobActionAvailable(job) ? <CollectionActionMenu key={job.collectionJobId} label={job.availableActions.canRecollect ? "재수집 요청" : "수집 실행"} disabled={operation.busy || Boolean(operation.retryIntent)} processing={operation.processing} onAction={() => setConfirmation({ job, kind: job.availableActions.canRecollect ? "recollection" : "execution" })} /> : null}</div>
     {loading ? <p role="status" className="mt-5 flex items-center gap-2 text-sm text-zinc-500"><LoaderCircle className="h-4 w-4 animate-spin" />상세를 불러오고 있습니다.</p> : error ? <div role="alert" className="mt-5 space-y-3 text-sm"><p>{error.status === 404 ? "수집 작업을 찾을 수 없습니다." : error.status === 401 ? "로그인한 후 다시 확인해 주세요." : error.status === 403 ? "관리자 권한이 필요합니다." : error.message}</p>{error.status === 401 ? <Link className={collectionButtonStyle} href={`/auth/login?next=${encodeURIComponent(selectedId ? collectionJobHref(selectedId) : "/admin/collection-jobs")}`}>로그인</Link> : null}<Link href="/admin/collection-jobs" className={collectionButtonStyle}>전체 목록 보기</Link></div> : job ? <CollectionJobInformation key={job.collectionJobId} job={job} /> : <p className="mt-8 text-center text-sm text-zinc-500">행을 선택하면 상세 정보를 표시합니다.</p>}
     {operation.retryIntent ? <button type="button" disabled={operation.processing} className={`${collectionButtonStyle} mt-3`} onClick={() => void operation.retry()}>요청 다시 시도</button> : null}

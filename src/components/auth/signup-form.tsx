@@ -1,5 +1,7 @@
 "use client";
 
+import { SuccessToast, useSuccessToast } from "@/components/success-toast";
+
 import { Eye, EyeOff, LoaderCircle, LockKeyhole, Mail, MailCheck } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useState } from "react";
@@ -32,6 +34,7 @@ function validate(email: string, password: string): FieldErrors {
 
 export function SignupForm() {
   const [email, setEmail] = useState("");
+  const { notice, notify } = useSuccessToast();
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -54,11 +57,13 @@ export function SignupForm() {
       return;
     }
 
+    notify("");
     setIsSubmitting(true);
     try {
       await signup({ email: normalizedEmail, password });
       setEmail(normalizedEmail);
       setRegisteredEmail(normalizedEmail);
+      notify("회원가입이 완료되었습니다.");
     } catch (error) {
       const message = getAuthErrorMessage(error, "signup");
       setErrorMessage(message);
@@ -75,12 +80,13 @@ export function SignupForm() {
       return;
     }
 
+    notify("");
     setIsResending(true);
     setResendMessage("");
     setResendFailed(false);
     try {
       await requestEmailVerification(registeredEmail);
-      setResendMessage("인증 메일을 다시 보냈습니다. 받은편지함을 확인해 주세요.");
+      notify("인증 메일을 다시 보냈습니다. 받은편지함을 확인해 주세요.");
     } catch (error) {
       setResendFailed(true);
       setResendMessage(getAuthErrorMessage(error, "email-verification-request"));
@@ -93,6 +99,7 @@ export function SignupForm() {
   if (isRegistered) {
     return (
       <section className="mx-auto w-full max-w-[640px] rounded-2xl border border-zinc-200 bg-white p-5 text-center dark:border-zinc-800 dark:bg-[#101419] md:p-8">
+        <SuccessToast notice={notice} />
         <div className="text-left"><PageHeading title="회원가입" /></div>
         <span className="mx-auto mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-mint-500/10 text-mint-600 dark:text-mint-400">
           <MailCheck className="h-7 w-7" />
@@ -101,7 +108,7 @@ export function SignupForm() {
           인증 메일을 확인해 주세요
         </h2>
         <p className="mt-3 text-sm font-medium leading-6 text-zinc-500 dark:text-zinc-400">
-          회원가입이 완료되었습니다. 아래 이메일로 보낸 인증 링크를 열어 인증을 완료해 주세요.
+          아래 이메일로 보낸 인증 링크를 열어 인증을 완료해 주세요.
         </p>
 
         <div className="mt-6 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-4 text-left dark:border-zinc-800 dark:bg-[#0b0f13]">
@@ -127,6 +134,7 @@ export function SignupForm() {
 
   return (
     <section className="mx-auto w-full max-w-[640px] overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-[#101419]">
+      <SuccessToast notice={notice} />
       <div className="p-5 md:p-8">
         <PageHeading title="회원가입" description="이메일과 비밀번호로 계정을 만들어 주세요." />
 

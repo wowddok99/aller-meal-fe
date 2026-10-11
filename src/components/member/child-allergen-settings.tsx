@@ -1,11 +1,12 @@
 "use client";
 
+import { SuccessToast, useSuccessToast } from "@/components/success-toast";
+
 import { PageHeading } from "@/components/page-heading";
 
 import {
   AlertTriangle,
   Check,
-  CheckCircle2,
   HelpCircle,
   LoaderCircle,
   RefreshCw,
@@ -56,19 +57,13 @@ export function ChildAllergenSettings({ childId, registered }: { childId: string
   const [loadError, setLoadError] = useState<MemberApiError | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
-  const [registrationNotice, setRegistrationNotice] = useState(false);
+  const { notice, notify } = useSuccessToast();
 
   useEffect(() => {
     if (!registered) return;
-    if (consumeChildRegistrationNotice(childId, registered)) setRegistrationNotice(true);
+    if (consumeChildRegistrationNotice(childId, registered)) notify("자녀를 등록했습니다.");
     router.replace(`/children/${encodeURIComponent(childId)}/allergens`, { scroll: false });
-  }, [childId, registered, router]);
-
-  useEffect(() => {
-    if (!registrationNotice) return;
-    const timer = window.setTimeout(() => setRegistrationNotice(false), 5000);
-    return () => window.clearTimeout(timer);
-  }, [registrationNotice]);
+  }, [childId, registered, router, notify]);
 
   const load = useCallback(async () => {
     const generation = ++generationRef.current;
@@ -159,7 +154,7 @@ export function ChildAllergenSettings({ childId, registered }: { childId: string
   }
 
   const heading = <PageHeading title="알레르기 설정" description="자녀의 알레르기 코드를 선택해 급식 위험 확인 기준으로 저장하세요." parents={[{ label: "자녀 관리", href: "/children" }]} />;
-  const registrationToast = <div role="status" aria-live="polite" aria-atomic="true" className="pointer-events-none fixed inset-x-5 bottom-6 z-50 flex justify-center">{registrationNotice && <div className="withdrawal-toast flex max-w-full items-center gap-2 rounded-xl border border-mint-200 bg-mint-50 px-4 py-3 text-sm font-semibold text-mint-900 shadow-sm dark:border-mint-900 dark:bg-mint-950 dark:text-mint-200"><CheckCircle2 aria-hidden="true" className="h-4 w-4 shrink-0" />자녀를 등록했습니다.</div>}</div>;
+  const registrationToast = <SuccessToast notice={notice} />;
   if (loading || (child && child.id !== childId)) {
     return (
       <div className="mx-auto w-full max-w-[1220px] px-5 pb-12 pt-5">{heading}{registrationToast}<div role="status" className="flex min-h-80 items-center justify-center text-sm font-bold text-zinc-500">

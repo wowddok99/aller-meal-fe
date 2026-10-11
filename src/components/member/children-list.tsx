@@ -1,6 +1,8 @@
 "use client";
 
-import { AlertTriangle, Bell, CheckCircle2, ChevronRight, History, LoaderCircle, MoreVertical, Pencil, Plus, RefreshCw, ShieldCheck, Trash2, UsersRound, Utensils } from "lucide-react";
+import { SuccessToast, useSuccessToast } from "@/components/success-toast";
+
+import { AlertTriangle, Bell, ChevronRight, History, LoaderCircle, MoreVertical, Pencil, Plus, RefreshCw, ShieldCheck, Trash2, UsersRound, Utensils } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -26,8 +28,7 @@ export function ChildrenList({ requestedChildId, allergenSaved }: { requestedChi
   const [target, setTarget] = useState<ChildProfile | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
-  const [notice, setNotice] = useState<{ message: string; version: number } | null>(null);
-  const noticeVersionRef = useRef(0);
+  const { notice, notify: showNotice } = useSuccessToast();
   const [selectedChildId, setSelectedChildId] = useState<string | null>(requestedChildId ?? null);
   const pendingAllergenChildRef = useRef<string | undefined>(undefined);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -63,17 +64,7 @@ export function ChildrenList({ requestedChildId, allergenSaved }: { requestedChi
     const savedChildId = pendingAllergenChildRef.current;
     pendingAllergenChildRef.current = undefined;
     if (!error && children.some(child => child.id === savedChildId)) showNotice("알레르기 설정을 저장했습니다.");
-  }, [loading, error, children]);
-
-  useEffect(() => {
-    if (!notice) return;
-    const timer = window.setTimeout(() => setNotice(null), 5000);
-    return () => window.clearTimeout(timer);
-  }, [notice]);
-
-  function showNotice(message: string) {
-    setNotice({ message, version: ++noticeVersionRef.current });
-  }
+  }, [loading, error, children, showNotice]);
 
   async function confirmDelete() {
     if (!target || deletingRef.current) return;
@@ -84,7 +75,7 @@ export function ChildrenList({ requestedChildId, allergenSaved }: { requestedChi
       await deleteChild(target.id);
       const nextChildren = await load();
       if (selectedChildId === target.id) setSelectedChildId(nextChildren[0]?.id ?? null);
-      showNotice(`${target.name} 자녀 정보를 삭제했습니다.`);
+      showNotice("자녀 정보를 삭제했습니다.");
       setTarget(null);
       router.refresh();
     } catch (reason) {
@@ -166,9 +157,7 @@ export function ChildrenList({ requestedChildId, allergenSaved }: { requestedChi
         )}
       </section>
 
-      <div role="status" aria-live="polite" aria-atomic="true" className="pointer-events-none fixed inset-x-5 bottom-6 z-50 flex justify-center">
-        {notice && <div key={notice.version} className="withdrawal-toast flex max-w-full items-center gap-2 rounded-xl border border-mint-200 bg-mint-50 px-4 py-3 text-sm font-semibold text-mint-900 shadow-sm dark:border-mint-900 dark:bg-mint-950 dark:text-mint-200"><CheckCircle2 aria-hidden="true" className="h-4 w-4 shrink-0" />{notice.message}</div>}
-      </div>
+      <SuccessToast notice={notice} />
 
       <ModalDialog open={Boolean(target)} busy={deleting} onClose={() => { if (!deletingRef.current) setTarget(null); }} initialFocusRef={deleteCancelRef} labelledBy="delete-title" describedBy="delete-description">
         <div className="border-b border-zinc-200 px-6 pb-4 pt-6 dark:border-zinc-800">

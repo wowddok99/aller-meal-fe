@@ -1,10 +1,11 @@
 "use client";
 
+import { SuccessToast, useSuccessToast } from "@/components/success-toast";
+
 import { PageHeading } from "@/components/page-heading";
 
 import {
   AlertTriangle,
-  CheckCircle2,
   Clock3,
   Info,
   LoaderCircle,
@@ -72,7 +73,7 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
   const [loadError, setLoadError] = useState<MemberApiError | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
-  const [notice, setNotice] = useState("");
+  const { notice, notify: setNotice } = useSuccessToast();
   const generationRef = useRef(0);
   const savingRef = useRef(false);
 
@@ -110,7 +111,7 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
     } finally {
       if (generation === generationRef.current) setLoading(false);
     }
-  }, [childId]);
+  }, [childId, setNotice]);
 
   useEffect(() => {
     void load();
@@ -227,7 +228,7 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
         </div>
       </section>
 
-      {notice && <div role="status" className="flex items-center gap-2 rounded-xl border border-mint-200 bg-mint-50 px-4 py-3 text-sm font-bold text-mint-700 dark:border-mint-900 dark:bg-mint-950/30 dark:text-mint-300"><CheckCircle2 className="h-4 w-4" /> {notice}</div>}
+      <SuccessToast notice={notice} />
 
       <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-[#101419]">
         <div className="border-b border-zinc-200 p-5 md:p-7 dark:border-zinc-800">

@@ -1,5 +1,7 @@
 "use client";
 
+import { useSuccessToast } from "@/components/success-toast";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AdminApiError, createIdempotencyKey, getCollectionJob, isAdminActionId, requestCollectionExecution, requestRecollection, type CollectionJob } from "@/lib/admin-api";
 
@@ -10,6 +12,7 @@ export type CollectionNotice = { error: boolean; text: string; kind: "accepted" 
 
 export function useCollectionRequest(refresh: () => Promise<void>) {
   const [processing, setProcessing] = useState(false);
+  const { notice: successNotice, notify } = useSuccessToast();
   const [tracking, setTracking] = useState<Tracking>();
   const [trackedJob, setTrackedJob] = useState<CollectionJob>();
   const [paused, setPaused] = useState<string>();
@@ -27,7 +30,7 @@ export function useCollectionRequest(refresh: () => Promise<void>) {
 
   const runIntent = useCallback(async (intent: Intent) => {
     if (guard.current || !isAdminActionId(intent.sourceId)) return;
-    guard.current = true; setProcessing(true); setNotice(undefined); setRetryIntent(undefined); setAuthStatus(undefined);
+    guard.current = true; notify(""); setProcessing(true); setNotice(undefined); setRetryIntent(undefined); setAuthStatus(undefined);
     try {
       const result = await (intent.kind === "recollection" ? requestRecollection : requestCollectionExecution)(intent.sourceId, intent.key);
       if (!mounted.current) return;
@@ -36,7 +39,7 @@ export function useCollectionRequest(refresh: () => Promise<void>) {
         setNotice({ kind: "information", title: "결과 확인 안내", error: true, text: "요청 응답에 작업 ID가 없어 결과를 확인할 수 없습니다. 상태를 새로고침해 주세요." });
         await refreshRef.current(); return;
       }
-      setNotice({ kind: "accepted", title: intent.kind === "recollection" ? "재수집 요청 접수" : "수집 실행 요청 접수", error: false, text: result.duplicate ? "이미 접수된 요청입니다." : intent.kind === "recollection" ? "재수집 요청이 접수되었습니다." : "수집 실행 요청이 접수되었습니다." });
+      notify(result.duplicate ? "이미 접수된 요청입니다." : intent.kind === "recollection" ? "재수집 요청이 접수되었습니다." : "수집 실행 요청이 접수되었습니다.");
       setTrackedJob(undefined); setPaused(undefined);
       setTracking({ id: result.collectionJobId!, kind: intent.kind, token: ++sequence.current });
       await refreshRef.current();
@@ -51,7 +54,7 @@ export function useCollectionRequest(refresh: () => Promise<void>) {
       guard.current = false;
       if (mounted.current) setProcessing(false);
     }
-  }, []);
+  }, [notify]);
 
   const run = useCallback((job: CollectionJob, kind: RequestKind) => {
     if (guard.current) return;
@@ -105,7 +108,7 @@ export function useCollectionRequest(refresh: () => Promise<void>) {
     return () => { active = false; controller.abort(); if (timer) clearTimeout(timer); clearTimeout(deadline); };
   }, [tracking, check]);
 
-  return { processing, tracking, trackedJob, paused, notice, authStatus, retryIntent,
+  return { successNotice, processing, tracking, trackedJob, paused, notice, authStatus, retryIntent,
     busy: processing,
     run, retry: () => retryIntent ? runIntent(retryIntent) : undefined,
     recheck: () => { setPaused(undefined); setCheck((value) => value + 1); },
