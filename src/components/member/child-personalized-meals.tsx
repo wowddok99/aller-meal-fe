@@ -161,7 +161,7 @@ export function ChildPersonalizedMeals({ childId }: { childId?: string }) {
     return [...grouped.entries()].map(([mealDate, meals]) => ({ mealDate, meals }));
   }, [data]);
 
-  const heading = <PageHeading title="자녀 급식" description="자녀의 알레르기 기준으로 급식 위험 여부를 확인하세요." parents={[{ label: "자녀 관리", href: "/children" }, ...(childId ? [{ label: "자녀 정보", href: `/children/${childId}` }] : [])]} />;
+  const heading = <PageHeading title="자녀 급식" description="자녀의 알레르기 기준으로 급식 위험 여부를 확인하세요." parents={[{ label: "자녀 관리", href: "/children" }]} />;
   if (loading && !data) return <div className="mx-auto w-full max-w-[1220px] px-5 pb-12 pt-5">{heading}<div role="status" className="flex min-h-80 items-center justify-center text-sm font-bold text-zinc-500"><LoaderCircle aria-hidden="true" className="mr-2 h-5 w-5 animate-spin" /> 자녀 급식을 불러오고 있습니다.</div></div>;
   if (error) {
     const auth = error.status === 401;

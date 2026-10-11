@@ -3,6 +3,7 @@
 import { Search } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { PublicPageShell } from "@/components/public/public-page-shell";
+import { PageHeading } from "@/components/page-heading";
 import { useListAllergens } from "@/generated/api/public";
 import {
   toPublicAllergens,
@@ -110,12 +111,10 @@ export function PublicAllergenGuidePage() {
   return (
     <PublicPageShell>
       <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">
-        <p className="text-base font-medium leading-6 text-zinc-500 dark:text-zinc-400">
-          급식 메뉴에 표시되는 알레르기 코드를 확인하세요.
-        </p>
+        <PageHeading title="알레르기 안내" description="급식 메뉴에 표시되는 알레르기 코드를 확인하세요." />
 
         <Card className="flex flex-col gap-3 p-5 md:p-7">
-          <h1 className="text-2xl font-extrabold tracking-[-0.02em]">알레르기 코드 검색</h1>
+          <h2 className="text-2xl font-extrabold tracking-[-0.02em]">알레르기 코드 검색</h2>
 
           <form className="flex w-full flex-col gap-3" action="/allergens" onSubmit={handleSearch}>
             <div className="flex flex-col gap-4 md:flex-row">

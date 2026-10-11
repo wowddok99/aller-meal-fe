@@ -96,7 +96,7 @@ export function ChildRegistrationForm() {
 
   return (
     <form onSubmit={(event) => void handleSubmit(event)} className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">
-      <PageHeading title="자녀 등록" description="자녀 정보와 학교를 등록하세요." parents={[{ label: "자녀 관리", href: "/children" }]} />
+      <PageHeading title="등록" description="자녀 정보와 학교를 등록하세요." parents={[{ label: "자녀 관리", href: "/children" }]} />
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 md:p-7 dark:border-zinc-800 dark:bg-[#101419]">
         <StepTitle step={1}>자녀 등록</StepTitle>

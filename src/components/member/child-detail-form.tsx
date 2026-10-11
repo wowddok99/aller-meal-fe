@@ -104,7 +104,7 @@ export function ChildDetailForm({ childId }: { childId: string }) {
     navigation.requestLeave(() => router.push("/children"));
   }
 
-  const heading = <PageHeading title="자녀 정보" description="자녀 기본 정보를 확인하고 수정하세요." parents={[{ label: "자녀 관리", href: "/children" }]} />;
+  const heading = <PageHeading title="수정" description="자녀 기본 정보를 확인하고 수정하세요." parents={[{ label: "자녀 관리", href: "/children" }]} />;
   if (loading || (child && child.id !== childId)) return <div className="mx-auto w-full max-w-[1220px] px-5 pb-12 pt-5">{heading}<div role="status" className="flex min-h-80 items-center justify-center text-sm font-bold text-zinc-500"><LoaderCircle aria-hidden="true" className="mr-2 h-5 w-5 animate-spin" />자녀 정보를 불러오고 있습니다.</div></div>;
   if (loadError) {
     const loginRequired = loadError.status === 401;

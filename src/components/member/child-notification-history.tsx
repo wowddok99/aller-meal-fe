@@ -126,7 +126,7 @@ export function ChildNotificationHistory({ childId }: { childId?: string }) {
   const notifications = history?.notifications ?? [];
   const totalPages = Math.max(1, Math.ceil((history?.totalCount ?? 0) / pageSize));
 
-  const heading = <PageHeading title="알림 이력" description="자녀별 급식 알림 발송 이력을 확인하세요." parents={[{ label: "자녀 관리", href: "/children" }, ...(childId ? [{ label: "자녀 정보", href: `/children/${childId}` }] : [])]} />;
+  const heading = <PageHeading title="알림 이력" description="자녀별 급식 알림 발송 이력을 확인하세요." parents={[{ label: "자녀 관리", href: "/children" }]} />;
   if (loading && !history) return <div className="mx-auto w-full max-w-[1220px] px-5 pb-12 pt-5">{heading}<div role="status" className="flex min-h-80 items-center justify-center text-sm font-bold text-zinc-500"><LoaderCircle aria-hidden="true" className="mr-2 h-5 w-5 animate-spin" /> 알림 이력을 불러오고 있습니다.</div></div>;
   if (error) {
     const auth = error.status === 401;

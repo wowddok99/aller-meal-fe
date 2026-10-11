@@ -173,7 +173,7 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
     navigation.requestLeave(() => router.push(`/children/${childId}`));
   }
 
-  const heading = <PageHeading title="알림 설정" description="급식 알림을 받을 시간과 사용 여부를 설정하세요." parents={[{ label: "자녀 관리", href: "/children" }, { label: "자녀 정보", href: `/children/${childId}` }]} />;
+  const heading = <PageHeading title="알림 설정" description="급식 알림을 받을 시간과 사용 여부를 설정하세요." parents={[{ label: "자녀 관리", href: "/children" }]} />;
   if (loading || (child && child.id !== childId)) {
     return (
       <div className="mx-auto w-full max-w-[1220px] px-5 pb-12 pt-5">{heading}<div role="status" className="flex min-h-80 items-center justify-center text-sm font-bold text-zinc-500">

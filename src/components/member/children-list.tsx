@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ModalDialog } from "@/components/modal-dialog";
+import { PageHeading } from "@/components/page-heading";
 import { ChildProfile, deleteChild, getChildren, getSchool, MemberApiError } from "@/lib/member-api";
 
 function ChildSkeleton() {
@@ -94,11 +95,18 @@ export function ChildrenList() {
 
   return (
     <div className="mx-auto flex min-w-0 w-full max-w-[1220px] flex-col gap-5 px-5 pb-12 pt-5">
-      <p className="text-base font-medium leading-6 text-zinc-500 dark:text-zinc-400">등록한 자녀의 급식과 알레르기 설정을 관리하세요.</p>
+      <PageHeading title="자녀 관리" description="등록한 자녀의 급식과 알레르기 설정을 관리하세요." />
       <section className="flex min-w-0 flex-col gap-4">
-        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-          <div><h1 className="text-2xl font-extrabold">자녀 관리</h1><p className="mt-1 text-sm font-semibold text-zinc-500 dark:text-zinc-400">{loading ? "불러오는 중" : `등록된 자녀 ${children.length}명`}</p></div>
-          <Link href="/children/new" className="inline-flex h-10 items-center justify-center gap-2 self-start rounded-[10px] bg-mint-500 px-4 text-sm font-bold text-white transition-colors hover:bg-mint-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 focus-visible:ring-offset-2 sm:self-auto dark:focus-visible:ring-offset-[#101419]"><Plus className="h-4 w-4" />자녀 등록</Link>
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2">
+          <Link href="/children/new" className="col-start-2 row-start-1 inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-[10px] bg-mint-500 px-4 text-sm font-bold text-white transition-colors hover:bg-mint-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#101419]"><Plus className="h-4 w-4" />자녀 등록</Link>
+          {!loading && !error && selectedChild && (
+            <div aria-label="관리할 자녀 선택" className="col-start-1 row-start-1 flex min-w-0 gap-2 overflow-x-auto py-1">
+              {children.map((child) => {
+                const selected = child.id === selectedChild.id;
+                return <button key={child.id} type="button" aria-pressed={selected} onClick={() => { setSelectedChildId(child.id); setOpenMenuId(null); }} className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-[10px] border px-3 text-sm font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 ${selected ? "border-mint-500 bg-mint-500/10 text-mint-700 dark:bg-mint-950/30 dark:text-mint-300" : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:text-zinc-950 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-300 dark:hover:text-white"}`}>{child.name}<span className="text-xs font-semibold opacity-70">{child.grade}-{child.classNumber}</span></button>;
+              })}
+            </div>
+          )}
         </div>
 
         {notice && <div role="status" className="rounded-xl border border-mint-200 bg-mint-50 px-4 py-3 text-sm font-bold text-mint-700 dark:border-mint-900 dark:bg-mint-950/30 dark:text-mint-300">{notice}</div>}
@@ -114,12 +122,7 @@ export function ChildrenList() {
         )}
         {!loading && !error && selectedChild && (
           <>
-            <div aria-label="관리할 자녀 선택" className="flex gap-2 overflow-x-auto pb-1">
-              {children.map((child) => {
-                const selected = child.id === selectedChild.id;
-                return <button key={child.id} type="button" aria-pressed={selected} onClick={() => { setSelectedChildId(child.id); setOpenMenuId(null); }} className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-[10px] border px-3 text-sm font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 ${selected ? "border-mint-500 bg-mint-500/10 text-mint-700 dark:bg-mint-950/30 dark:text-mint-300" : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:text-zinc-950 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-300 dark:hover:text-white"}`}>{child.name}<span className="text-xs font-semibold opacity-70">{child.grade}-{child.classNumber}</span></button>;
-              })}
-            </div>
+
 
             <section aria-label={`${selectedChild.name} 자녀 관리`} className="overflow-visible rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-[#101419]">
               <div className="flex items-center justify-between gap-4 border-b border-zinc-200 px-5 py-5 dark:border-zinc-800">
@@ -142,7 +145,10 @@ export function ChildrenList() {
           <h2 id="delete-title" className="break-keep text-xl font-extrabold">자녀 정보 삭제</h2>
         </div>
         <div className="px-6 pb-6 pt-5">
-          <p id="delete-description" className="text-sm leading-6 text-zinc-600 dark:text-zinc-300">정말 {target?.name} 자녀 정보를 삭제할까요? 관련 설정도 더 이상 이용할 수 없습니다.</p>
+          <p id="delete-description" className="text-sm leading-5 text-zinc-900 dark:text-zinc-100">
+            자녀 정보를 삭제하시겠습니까?<br />
+            알레르기 및 알림 설정도 함께 삭제됩니다.
+          </p>
           {deleteError && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm font-bold text-red-700 dark:bg-red-950/30 dark:text-red-300">{deleteError}</p>}
           <div className="mt-6 flex flex-wrap justify-end gap-3">
             <button ref={deleteCancelRef} type="button" disabled={deleting} onClick={() => setTarget(null)} className="h-11 min-w-16 rounded-[10px] border border-zinc-300 px-4 text-sm font-bold transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900">취소</button>

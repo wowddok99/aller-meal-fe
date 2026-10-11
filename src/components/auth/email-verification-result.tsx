@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { PageHeading } from "@/components/page-heading";
 import {
   confirmEmailVerification,
   getAuthErrorMessage,
@@ -77,6 +78,7 @@ export function EmailVerificationResult({ token }: { token?: string }) {
   return (
     <>
       <section className="rounded-2xl bg-white p-6 shadow-[0_10px_32px_rgba(24,24,27,0.06)] dark:bg-[#101419] dark:shadow-none sm:p-8">
+        <div className="mb-6"><PageHeading title="이메일 인증" parents={[{ label: "회원가입", href: "/auth/signup" }]} /></div>
         {state === "loading" ? (
           <ResultPanel
             icon={<LoaderCircle className="h-8 w-8 animate-spin" />}
@@ -134,7 +136,7 @@ function ResultPanel({ icon, iconClass, title, description, children }: { icon: 
     <div>
       <span className={`flex h-16 w-16 items-center justify-center rounded-full ${iconClass}`}>{icon}</span>
       <div className="mt-6 min-w-0">
-        <h1 className="text-2xl font-extrabold tracking-[-0.03em] sm:text-[28px]">{title}</h1>
+        <h2 className="text-2xl font-extrabold tracking-[-0.03em] sm:text-[28px]">{title}</h2>
         <p className="mt-2 text-base font-medium leading-6 text-zinc-500 dark:text-zinc-400">{description}</p>
         {children}
       </div>

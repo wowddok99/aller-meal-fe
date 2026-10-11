@@ -145,7 +145,7 @@ export function ChildAllergenSettings({ childId }: { childId: string }) {
     }
   }
 
-  const heading = <PageHeading title="알레르기 설정" description="자녀의 알레르기 코드를 선택해 급식 위험 확인 기준으로 저장하세요." parents={[{ label: "자녀 관리", href: "/children" }, { label: "자녀 정보", href: `/children/${childId}` }]} />;
+  const heading = <PageHeading title="알레르기 설정" description="자녀의 알레르기 코드를 선택해 급식 위험 확인 기준으로 저장하세요." parents={[{ label: "자녀 관리", href: "/children" }]} />;
   if (loading || (child && child.id !== childId)) {
     return (
       <div className="mx-auto w-full max-w-[1220px] px-5 pb-12 pt-5">{heading}<div role="status" className="flex min-h-80 items-center justify-center text-sm font-bold text-zinc-500">

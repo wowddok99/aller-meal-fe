@@ -129,13 +129,13 @@ export function AppHeader() {
   useEffect(() => {
     if (!mobileMenuOpen) {
       if (shouldRestoreMobileMenuFocus.current) {
-        mobileMenuTriggerRef.current?.focus();
+        mobileMenuTriggerRef.current?.focus({ preventScroll: true });
         shouldRestoreMobileMenuFocus.current = false;
       }
       return;
     }
 
-    mobileMenuCloseRef.current?.focus();
+    mobileMenuCloseRef.current?.focus({ preventScroll: true });
 
     function trapFocus(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -342,9 +342,9 @@ export function AppHeader() {
           aria-modal="true"
           aria-label="모바일 메뉴"
           tabIndex={-1}
-          className={`relative ml-auto h-[100dvh] w-screen bg-white transition-transform duration-300 ease-out dark:bg-[#06080b] sm:max-w-[420px] ${mobileMenuOpen ? "translate-x-0" : "translate-x-full"}`}
+          className={`relative ml-auto flex h-[100dvh] w-screen flex-col overflow-hidden bg-white transition-transform duration-300 ease-out dark:bg-[#06080b] sm:max-w-[420px] ${mobileMenuOpen ? "translate-x-0" : "translate-x-full"}`}
         >
-          <div className="flex h-14 items-center justify-between border-b border-zinc-100 px-4 dark:border-zinc-900">
+          <div className="flex h-14 shrink-0 items-center justify-between border-b border-zinc-100 px-4 dark:border-zinc-900">
             <button
               ref={mobileMenuCloseRef}
               type="button"
@@ -356,7 +356,7 @@ export function AppHeader() {
             </button>
             <AllerMealLogo variant="full" />
           </div>
-          <nav className="px-4 py-3" aria-label="주요 메뉴">
+          <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3" aria-label="주요 메뉴">
             <div className="flex flex-col gap-1">
               {navigationItems.map((item) => {
                 const Icon = item.icon;
