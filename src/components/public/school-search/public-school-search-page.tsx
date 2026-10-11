@@ -11,6 +11,7 @@ import {
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { PublicPageShell } from "@/components/public/public-page-shell";
+import { PageHeading } from "@/components/page-heading";
 import {
   getRecentSchools,
   saveRecentSchool,
@@ -152,14 +153,12 @@ export function PublicSchoolSearchPage() {
   return (
     <PublicPageShell>
       <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-3 px-5 pb-12 pt-5">
-        <p className="text-base font-medium leading-6 text-zinc-500 dark:text-zinc-400">
-          학교 급식 메뉴와 알레르기 유발 성분을 쉽고 빠르게 확인하세요.
-        </p>
+        <PageHeading title="학교 검색" description="학교 급식 메뉴와 알레르기 유발 성분을 쉽고 빠르게 확인하세요." />
 
         <Card className="flex flex-col gap-3 p-5 md:p-7">
-          <h1 className="text-2xl font-extrabold tracking-[-0.02em]">
+          <h2 className="text-2xl font-extrabold tracking-[-0.02em]">
             학교 검색
-          </h1>
+          </h2>
 
           <form
             className="flex w-full flex-col gap-3"

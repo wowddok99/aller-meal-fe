@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "pretendard/dist/web/variable/pretendardvariable.css";
 import { ApiClientProvider } from "@/shared/api/api-client-provider";
+import "@daypicker/react/style.css";
 import "./globals.css";
 
 export const metadata: Metadata = {

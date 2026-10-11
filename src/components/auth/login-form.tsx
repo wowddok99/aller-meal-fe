@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { AuthApiError, login } from "@/lib/auth-api";
+import { PageHeading } from "@/components/page-heading";
 
 type FieldErrors = { email?: string; password?: string };
 
@@ -83,10 +84,7 @@ export function LoginForm() {
 
   return (
     <section className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-[#101419] md:p-8">
-      <h1 className="text-3xl font-extrabold tracking-[-0.04em]">로그인</h1>
-      <p className="mt-1 text-base font-medium leading-7 text-zinc-500 dark:text-zinc-400">
-        이메일과 비밀번호를 입력해 주세요.
-      </p>
+      <PageHeading title="로그인" description="이메일과 비밀번호를 입력해 주세요." />
       <form
         className="mt-6 flex flex-col gap-5"
         noValidate
@@ -117,7 +115,7 @@ export function LoginForm() {
               aria-describedby={
                 fieldErrors.email ? "login-email-error" : undefined
               }
-              className="h-full min-w-0 flex-1 bg-transparent text-base font-semibold outline-none placeholder:text-zinc-400 disabled:opacity-70 dark:placeholder:text-zinc-600"
+              className="auth-autofill h-full min-w-0 flex-1 bg-transparent text-base font-semibold outline-none placeholder:text-zinc-400 disabled:opacity-70 dark:placeholder:text-zinc-600"
             />
           </span>
           {fieldErrors.email ? (
@@ -154,7 +152,7 @@ export function LoginForm() {
               aria-describedby={
                 fieldErrors.password ? "login-password-error" : undefined
               }
-              className="h-full min-w-0 flex-1 bg-transparent text-base font-semibold outline-none placeholder:text-zinc-400 disabled:opacity-70 dark:placeholder:text-zinc-600"
+              className="auth-autofill h-full min-w-0 flex-1 bg-transparent text-base font-semibold outline-none placeholder:text-zinc-400 disabled:opacity-70 dark:placeholder:text-zinc-600"
             />
             <button
               type="button"

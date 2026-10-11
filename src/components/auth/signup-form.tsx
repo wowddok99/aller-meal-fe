@@ -5,6 +5,7 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { getAuthErrorMessage, requestEmailVerification, signup } from "@/lib/auth-api";
 import { ApiClientError } from "@/shared/api/api-client-error";
+import { PageHeading } from "@/components/page-heading";
 
 type FieldErrors = {
   email?: string;
@@ -92,12 +93,13 @@ export function SignupForm() {
   if (isRegistered) {
     return (
       <section className="mx-auto w-full max-w-[640px] rounded-2xl border border-zinc-200 bg-white p-5 text-center dark:border-zinc-800 dark:bg-[#101419] md:p-8">
-        <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-mint-500/10 text-mint-600 dark:text-mint-400">
+        <div className="text-left"><PageHeading title="회원가입" /></div>
+        <span className="mx-auto mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-mint-500/10 text-mint-600 dark:text-mint-400">
           <MailCheck className="h-7 w-7" />
         </span>
-        <h1 className="mt-5 text-2xl font-extrabold tracking-[-0.02em]">
+        <h2 className="mt-5 text-2xl font-extrabold tracking-[-0.02em]">
           인증 메일을 확인해 주세요
-        </h1>
+        </h2>
         <p className="mt-3 text-sm font-medium leading-6 text-zinc-500 dark:text-zinc-400">
           회원가입이 완료되었습니다. 아래 이메일로 보낸 인증 링크를 열어 인증을 완료해 주세요.
         </p>
@@ -126,10 +128,7 @@ export function SignupForm() {
   return (
     <section className="mx-auto w-full max-w-[640px] overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-[#101419]">
       <div className="p-5 md:p-8">
-        <h1 className="text-3xl font-extrabold tracking-[-0.04em]">회원가입</h1>
-        <p className="mt-1 text-base font-medium leading-7 text-zinc-500 dark:text-zinc-400">
-          이메일과 비밀번호로 계정을 만들어 주세요.
-        </p>
+        <PageHeading title="회원가입" description="이메일과 비밀번호로 계정을 만들어 주세요." />
 
         <form className="mt-6 flex flex-col gap-5" noValidate onSubmit={handleSubmit}>
           <label className="flex flex-col gap-2" htmlFor="signup-email">
@@ -148,7 +147,7 @@ export function SignupForm() {
                 placeholder="example@email.com"
                 aria-invalid={Boolean(fieldErrors.email)}
                 aria-describedby={fieldErrors.email ? "signup-email-error" : undefined}
-                className="h-full min-w-0 flex-1 bg-transparent text-base font-semibold outline-none placeholder:text-zinc-400 disabled:cursor-not-allowed disabled:opacity-70 dark:placeholder:text-zinc-600"
+                className="auth-autofill h-full min-w-0 flex-1 bg-transparent text-base font-semibold outline-none placeholder:text-zinc-400 disabled:cursor-not-allowed disabled:opacity-70 dark:placeholder:text-zinc-600"
               />
             </span>
             {fieldErrors.email ? <span id="signup-email-error" className="text-[13px] font-semibold text-red-600 dark:text-red-400">{fieldErrors.email}</span> : null}
@@ -169,7 +168,7 @@ export function SignupForm() {
                 placeholder="8자 이상 입력"
                 aria-invalid={Boolean(fieldErrors.password)}
                 aria-describedby={fieldErrors.password ? "signup-password-error" : undefined}
-                className="h-full min-w-0 flex-1 bg-transparent text-base font-semibold outline-none placeholder:text-zinc-400 disabled:cursor-not-allowed disabled:opacity-70 dark:placeholder:text-zinc-600"
+                className="auth-autofill h-full min-w-0 flex-1 bg-transparent text-base font-semibold outline-none placeholder:text-zinc-400 disabled:cursor-not-allowed disabled:opacity-70 dark:placeholder:text-zinc-600"
               />
               <button type="button" onClick={() => setShowPassword((value) => !value)} className="rounded-md p-1 text-zinc-400 hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:hover:text-zinc-200" aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}>
                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}

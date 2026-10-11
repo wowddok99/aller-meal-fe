@@ -49,6 +49,32 @@ input {
   font: inherit;
 }
 
+.auth-autofill {
+  --autofill-background: #fff;
+  --autofill-text: #111827;
+}
+
+.dark .auth-autofill,
+html[data-theme="dark"] .auth-autofill {
+  --autofill-background: #0b0f13;
+  --autofill-text: #f6f8fb;
+}
+
+/* Autofill background-color is browser-controlled; paint the field surface with an inset shadow. */
+.auth-autofill:is(:autofill, :-webkit-autofill) {
+  box-shadow: inset 0 0 0 1000px var(--autofill-background);
+  -webkit-text-fill-color: var(--autofill-text);
+  caret-color: var(--autofill-text);
+}
+
+@media (forced-colors: active) {
+  .auth-autofill:is(:autofill, :-webkit-autofill) {
+    box-shadow: none;
+    -webkit-text-fill-color: CanvasText;
+    caret-color: CanvasText;
+  }
+}
+
 /* Table action controls must stay readable even when wide admin tables scroll. */
 table th:last-child,
 table td:last-child,
@@ -71,4 +97,101 @@ table td > p + p.font-mono {
 
 ::selection {
   background: rgb(32 232 137 / 0.28);
+}
+
+.service-date-calendar {
+  --rdp-accent-color: #00c471;
+  --rdp-accent-background-color: #effdf5;
+  --rdp-day-height: 36px;
+  --rdp-day-width: 36px;
+  --rdp-day_button-height: 36px;
+  --rdp-day_button-width: 36px;
+  --rdp-day_button-border-radius: 100%;
+  --rdp-day_button-border: 0;
+  --rdp-selected-border: 1px solid #00c471;
+  --rdp-today-color: #008a4e;
+  --rdp-weekday-padding: 8px 0;
+  --rdp-outside-opacity: 0.3;
+  --calendar-sunday-color: #dc2626;
+  --calendar-saturday-color: #2563eb;
+  width: 100%;
+  font-size: 14px;
+}
+
+.service-date-calendar .rdp-months,
+.service-date-calendar .rdp-month,
+.service-date-calendar .rdp-month_grid {
+  width: 100%;
+  max-width: none;
+}
+
+.service-date-calendar .rdp-day_button {
+  min-width: 0;
+  margin: auto;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.service-date-calendar .rdp-weekday:first-child,
+.service-date-calendar .rdp-week .rdp-day:first-child:not(.rdp-selected) .rdp-day_button {
+  color: var(--calendar-sunday-color);
+}
+
+.service-date-calendar .rdp-weekday:last-child,
+.service-date-calendar .rdp-week .rdp-day:last-child:not(.rdp-selected) .rdp-day_button {
+  color: var(--calendar-saturday-color);
+}
+
+.service-date-calendar .rdp-outside:not(.rdp-selected) {
+  opacity: var(--rdp-outside-opacity);
+}
+
+.service-date-calendar .rdp-selected {
+  opacity: 1;
+}
+
+.service-date-calendar .rdp-selected .rdp-day_button {
+  background: #00c471;
+  color: white;
+}
+
+.service-date-calendar .rdp-day_button:focus-visible {
+  outline: 2px solid #00c471;
+  outline-offset: 2px;
+}
+
+.dark .service-date-calendar {
+  --rdp-accent-background-color: #00351e;
+  --rdp-today-color: #73e5aa;
+  --calendar-sunday-color: #f87171;
+  --calendar-saturday-color: #60a5fa;
+}
+
+.withdrawal-toast {
+  animation: withdrawal-toast 5s linear both;
+}
+
+@keyframes withdrawal-toast {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+    animation-timing-function: ease-out;
+  }
+  4.8%, 96% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  96% {
+    animation-timing-function: ease-in;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .withdrawal-toast {
+    animation: none;
+  }
 }
