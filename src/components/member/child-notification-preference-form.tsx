@@ -1,6 +1,6 @@
 "use client";
 
-import { SuccessToast, useSuccessToast } from "@/components/success-toast";
+import { createChildSaveNotice } from "./allergen-save-notice";
 
 import { PageHeading } from "@/components/page-heading";
 
@@ -73,14 +73,13 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
   const [loadError, setLoadError] = useState<MemberApiError | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
-  const { notice, notify: setNotice } = useSuccessToast();
   const generationRef = useRef(0);
   const savingRef = useRef(false);
 
   const load = useCallback(async () => {
     const generation = ++generationRef.current;
     savingRef.current = false;
-    setSaving(false); setChild(null); setNotice(""); setSaveError("");
+    setSaving(false); setChild(null); setSaveError("");
     setLoading(true);
     setLoadError(null);
     try {
@@ -111,7 +110,7 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
     } finally {
       if (generation === generationRef.current) setLoading(false);
     }
-  }, [childId, setNotice]);
+  }, [childId]);
 
   useEffect(() => {
     void load();
@@ -129,7 +128,6 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
     if (savingRef.current) return;
     setForm((current) => ({ ...current, ...next }));
     setSaveError("");
-    setNotice("");
   }
 
   async function save() {
@@ -142,7 +140,7 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
     const generation = generationRef.current;
     setSaving(true);
     setSaveError("");
-    setNotice("");
+    let completed = false;
     try {
       const result = await updateChildNotificationPreference(childId, {
         ...form,
@@ -157,7 +155,11 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
       setPreference(result);
       setForm(next);
       setSaved(next);
-      setNotice("알림 설정을 저장했습니다.");
+      navigation.runTerminalExit(() => {
+        const settingsSaved = createChildSaveNotice("notification", childId);
+        router.push(`/children?${new URLSearchParams({ childId, settingsSaved })}`);
+      });
+      completed = true;
     } catch (reason) {
       if (generation !== generationRef.current) return;
       setSaveError(
@@ -166,12 +168,12 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
           : "알림 설정을 저장하지 못했습니다.",
       );
     } finally {
-      if (generation === generationRef.current) { savingRef.current = false; setSaving(false); }
+      if (generation === generationRef.current && !completed) { savingRef.current = false; setSaving(false); }
     }
   }
 
   function requestLeave() {
-    navigation.requestLeave(() => router.push(`/children/${childId}`));
+    navigation.requestLeave(() => router.push(`/children?${new URLSearchParams({ childId })}`));
   }
 
   const heading = <PageHeading title="알림 설정" description="급식 알림을 받을 시간과 사용 여부를 설정하세요." parents={[{ label: "자녀 관리", href: "/children" }]} />;
@@ -228,7 +230,6 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
         </div>
       </section>
 
-      <SuccessToast notice={notice} />
 
       <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-[#101419]">
         <div className="border-b border-zinc-200 p-5 md:p-7 dark:border-zinc-800">

@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ModalDialog } from "@/components/modal-dialog";
 import { PageHeading } from "@/components/page-heading";
 import { ChildProfile, deleteChild, getChildren, getSchool, MemberApiError } from "@/lib/member-api";
-import { consumeAllergenSaveNotice } from "./allergen-save-notice";
+import { consumeChildSaveNotice } from "./allergen-save-notice";
 
 function ChildSkeleton() {
   return (
@@ -20,7 +20,7 @@ function ChildSkeleton() {
   );
 }
 
-export function ChildrenList({ requestedChildId, allergenSaved }: { requestedChildId?: string; allergenSaved?: string }) {
+export function ChildrenList({ requestedChildId, allergenSaved, settingsSaved }: { requestedChildId?: string; allergenSaved?: string; settingsSaved?: string }) {
   const router = useRouter();
   const [children, setChildren] = useState<ChildProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,7 +30,7 @@ export function ChildrenList({ requestedChildId, allergenSaved }: { requestedChi
   const [deleteError, setDeleteError] = useState("");
   const { notice, notify: showNotice } = useSuccessToast();
   const [selectedChildId, setSelectedChildId] = useState<string | null>(requestedChildId ?? null);
-  const pendingAllergenChildRef = useRef<string | undefined>(undefined);
+  const pendingSaveRef = useRef<{ childId: string; message: string } | undefined>(undefined);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [schoolNames, setSchoolNames] = useState<Record<string, string>>({});
   const menuRef = useRef<HTMLDivElement>(null);
@@ -54,16 +54,18 @@ export function ChildrenList({ requestedChildId, allergenSaved }: { requestedChi
 
   useEffect(() => {
     setSelectedChildId(requestedChildId ?? null);
-    if (!allergenSaved) return;
-    if (consumeAllergenSaveNotice(requestedChildId, allergenSaved)) pendingAllergenChildRef.current = requestedChildId;
+    const token = settingsSaved ?? allergenSaved;
+    if (!token) return;
+    const message = consumeChildSaveNotice(requestedChildId, token);
+    if (message && requestedChildId) pendingSaveRef.current = { childId: requestedChildId, message };
     router.replace(`/children${requestedChildId ? `?${new URLSearchParams({ childId: requestedChildId })}` : ""}`, { scroll: false });
-  }, [requestedChildId, allergenSaved, router]);
+  }, [requestedChildId, allergenSaved, settingsSaved, router]);
 
   useEffect(() => {
-    if (loading || !pendingAllergenChildRef.current) return;
-    const savedChildId = pendingAllergenChildRef.current;
-    pendingAllergenChildRef.current = undefined;
-    if (!error && children.some(child => child.id === savedChildId)) showNotice("알레르기 설정을 저장했습니다.");
+    if (loading || !pendingSaveRef.current) return;
+    const saved = pendingSaveRef.current;
+    pendingSaveRef.current = undefined;
+    if (!error && children.some(child => child.id === saved.childId)) showNotice(saved.message);
   }, [loading, error, children, showNotice]);
 
   async function confirmDelete() {

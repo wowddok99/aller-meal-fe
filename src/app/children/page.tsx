@@ -4,7 +4,7 @@ import { MemberShell } from "@/components/member/member-shell";
 
 export const metadata: Metadata = { description: "등록한 자녀의 급식과 알레르기 설정을 관리합니다." };
 
-export default async function ChildrenPage({ searchParams }: { searchParams: Promise<{ childId?: string | string[]; allergenSaved?: string | string[] }> }) {
+export default async function ChildrenPage({ searchParams }: { searchParams: Promise<{ childId?: string | string[]; allergenSaved?: string | string[]; settingsSaved?: string | string[] }> }) {
   const query = await searchParams;
-  return <MemberShell><ChildrenList requestedChildId={typeof query.childId === "string" ? query.childId : undefined} allergenSaved={typeof query.allergenSaved === "string" ? query.allergenSaved : undefined} /></MemberShell>;
+  return <MemberShell><ChildrenList requestedChildId={typeof query.childId === "string" ? query.childId : undefined} allergenSaved={typeof query.allergenSaved === "string" ? query.allergenSaved : undefined} settingsSaved={typeof query.settingsSaved === "string" ? query.settingsSaved : undefined} /></MemberShell>;
 }
