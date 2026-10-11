@@ -147,7 +147,7 @@ export function SignupForm() {
                 placeholder="example@email.com"
                 aria-invalid={Boolean(fieldErrors.email)}
                 aria-describedby={fieldErrors.email ? "signup-email-error" : undefined}
-                className="h-full min-w-0 flex-1 bg-transparent text-base font-semibold outline-none placeholder:text-zinc-400 disabled:cursor-not-allowed disabled:opacity-70 dark:placeholder:text-zinc-600"
+                className="auth-autofill h-full min-w-0 flex-1 bg-transparent text-base font-semibold outline-none placeholder:text-zinc-400 disabled:cursor-not-allowed disabled:opacity-70 dark:placeholder:text-zinc-600"
               />
             </span>
             {fieldErrors.email ? <span id="signup-email-error" className="text-[13px] font-semibold text-red-600 dark:text-red-400">{fieldErrors.email}</span> : null}
@@ -168,7 +168,7 @@ export function SignupForm() {
                 placeholder="8자 이상 입력"
                 aria-invalid={Boolean(fieldErrors.password)}
                 aria-describedby={fieldErrors.password ? "signup-password-error" : undefined}
-                className="h-full min-w-0 flex-1 bg-transparent text-base font-semibold outline-none placeholder:text-zinc-400 disabled:cursor-not-allowed disabled:opacity-70 dark:placeholder:text-zinc-600"
+                className="auth-autofill h-full min-w-0 flex-1 bg-transparent text-base font-semibold outline-none placeholder:text-zinc-400 disabled:cursor-not-allowed disabled:opacity-70 dark:placeholder:text-zinc-600"
               />
               <button type="button" onClick={() => setShowPassword((value) => !value)} className="rounded-md p-1 text-zinc-400 hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:hover:text-zinc-200" aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}>
                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}

@@ -115,7 +115,7 @@ export function LoginForm() {
               aria-describedby={
                 fieldErrors.email ? "login-email-error" : undefined
               }
-              className="h-full min-w-0 flex-1 bg-transparent text-base font-semibold outline-none placeholder:text-zinc-400 disabled:opacity-70 dark:placeholder:text-zinc-600"
+              className="auth-autofill h-full min-w-0 flex-1 bg-transparent text-base font-semibold outline-none placeholder:text-zinc-400 disabled:opacity-70 dark:placeholder:text-zinc-600"
             />
           </span>
           {fieldErrors.email ? (
@@ -152,7 +152,7 @@ export function LoginForm() {
               aria-describedby={
                 fieldErrors.password ? "login-password-error" : undefined
               }
-              className="h-full min-w-0 flex-1 bg-transparent text-base font-semibold outline-none placeholder:text-zinc-400 disabled:opacity-70 dark:placeholder:text-zinc-600"
+              className="auth-autofill h-full min-w-0 flex-1 bg-transparent text-base font-semibold outline-none placeholder:text-zinc-400 disabled:opacity-70 dark:placeholder:text-zinc-600"
             />
             <button
               type="button"
