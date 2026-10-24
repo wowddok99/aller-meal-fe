@@ -1,6 +1,8 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Inbox, LoaderCircle, Search, XCircle } from "lucide-react";
+import { SuccessToast, useSuccessToast } from "@/components/success-toast";
+
+import { AlertTriangle, ChevronLeft, ChevronRight, Inbox, LoaderCircle, Search, XCircle } from "lucide-react";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -80,7 +82,8 @@ function AdminOperationListContent({ title, description, itemName, statusOptions
   const [selected, setSelected] = useState<AdminOperationItem>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<AdminApiError>();
-  const [actionMessage, setActionMessage] = useState<{ kind: "success" | "error"; text: string }>();
+  const [actionMessage, setActionMessage] = useState<{ kind: "error"; text: string }>();
+  const { notice, notify } = useSuccessToast();
   const [processingId, setProcessingId] = useState<string>();
   const tracker = useRef(createLatestAdminOperationRequestTracker());
 
@@ -154,8 +157,8 @@ function AdminOperationListContent({ title, description, itemName, statusOptions
   const actionItem = selected && selected.status === action?.status && isAdminActionId(selected.actionId) ? selected : undefined;
   const runAction = async () => {
     if (!action || !actionItem?.actionId || processingId) return;
-    setProcessingId(actionItem.actionId); setActionMessage(undefined);
-    try { await action.run(actionItem.actionId, createIdempotencyKey()); setActionMessage({ kind: "success", text: action.success }); await loadCurrent(latestQuery.current); }
+    setProcessingId(actionItem.actionId); setActionMessage(undefined); notify("");
+    try { await action.run(actionItem.actionId, createIdempotencyKey()); notify(action.success); await loadCurrent(latestQuery.current); }
     catch (cause) {
       const actionError = cause instanceof AdminApiError ? cause : new AdminApiError(0, "요청을 처리하지 못했습니다.");
       const kind = getAdminOperationFailureKind(actionError.status);
@@ -170,6 +173,7 @@ function AdminOperationListContent({ title, description, itemName, statusOptions
   if (error && !result) return <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5"><PageHeading title={title} description={description} parents={[{ label: "서비스 관리", href: "/admin" }]} /><ErrorState error={error} retry={() => void loadCurrent()} loginHref={loginHref} /></div>;
 
   return <div className={`mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pt-5 ${customDetail ? "pb-40" : "pb-12"}`}>
+    <SuccessToast notice={notice} />
     <PageHeading title={title} description={description} parents={[{ label: "서비스 관리", href: "/admin" }]} />
     {error ? <ErrorState error={error} retry={() => void loadCurrent()} loginHref={loginHref} /> : null}
     <section aria-label={`${itemName} 목록`} aria-busy={loading} className="overflow-visible rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-[#101419] dark:text-zinc-50">
@@ -179,7 +183,7 @@ function AdminOperationListContent({ title, description, itemName, statusOptions
       <div className="flex justify-center border-t border-zinc-200 px-5 py-4 dark:border-zinc-800"><div className="flex items-center gap-2"><button type="button" aria-label="이전 페이지" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={currentPage <= 1 || loading} className={`flex h-11 w-11 items-center justify-center rounded-[10px] border border-zinc-300 disabled:opacity-40 dark:border-zinc-700 ${focusRing}`}><ChevronLeft className="h-4 w-4" /></button><span className="min-w-20 text-center text-sm font-bold">{currentPage} / {totalPages}</span><button type="button" aria-label="다음 페이지" onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={currentPage >= totalPages || loading} className={`flex h-11 w-11 items-center justify-center rounded-[10px] border border-zinc-300 disabled:opacity-40 dark:border-zinc-700 ${focusRing}`}><ChevronRight className="h-4 w-4" /></button></div></div>
     </section>
     {renderDetail ? renderDetail(selected, loadCurrent) : <section aria-labelledby={`${title}-detail`} className="rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-[#101419] dark:text-zinc-50"><div className="flex flex-wrap items-center justify-between gap-3 px-5 py-5 md:px-6"><h2 id={`${title}-detail`} className="text-xl font-extrabold">{itemName} 상세</h2>{actionItem ? <button type="button" onClick={() => void runAction()} disabled={Boolean(processingId)} className={`min-h-11 rounded-[10px] bg-mint-500 px-4 text-sm font-extrabold text-white disabled:opacity-50 ${focusRing}`}>{processingId ? "처리 중" : action?.label}</button> : null}</div>{selected ? <dl className="grid gap-x-6 gap-y-5 border-t border-zinc-100 px-5 py-5 text-sm dark:border-zinc-800 md:px-6 sm:grid-cols-2 xl:grid-cols-4">{[["ID", getAdminOperationDisplayId(selected.id)], ...selected.fields, ["생성 시각", formatDateTime(selected.createdAt)], ["갱신 시각", formatDateTime(selected.updatedAt)]].map(([label, value]) => <div key={label}><dt className="font-semibold text-zinc-500 dark:text-zinc-400">{label}</dt><dd className="mt-1 break-all font-extrabold">{value}</dd></div>)}</dl> : <div className="border-t border-zinc-100 px-5 py-12 text-center text-sm font-medium text-zinc-500 dark:border-zinc-800">행을 선택하면 상세 정보를 표시합니다.</div>}</section>}
-    {actionMessage ? <section aria-live="polite" className={`rounded-2xl border bg-white p-5 dark:bg-[#101419] ${actionMessage.kind === "success" ? "border-mint-500/50 text-mint-700 dark:text-mint-300" : "border-red-200 text-red-700 dark:border-red-900 dark:text-red-300"}`}><div className="flex items-start gap-3">{actionMessage.kind === "success" ? <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0" /> : <XCircle className="mt-0.5 h-6 w-6 shrink-0" />}<p className="font-bold">{actionMessage.text}</p></div></section> : null}
+    {actionMessage ? <section role="alert" className="rounded-2xl border border-red-200 bg-white p-5 text-red-700 dark:border-red-900 dark:bg-[#101419] dark:text-red-300"><div className="flex items-start gap-3"><XCircle className="mt-0.5 h-6 w-6 shrink-0" /><p className="font-bold">{actionMessage.text}</p></div></section> : null}
   </div>;
 }
 

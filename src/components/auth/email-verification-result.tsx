@@ -1,8 +1,9 @@
 "use client";
 
+import { SuccessToast, useSuccessToast } from "@/components/success-toast";
+
 import {
   AlertTriangle,
-  Check,
   LoaderCircle,
   Mail,
 } from "lucide-react";
@@ -20,6 +21,7 @@ type ResultState = "loading" | "success" | "error" | "missing";
 export function EmailVerificationResult({ token }: { token?: string }) {
   const [state, setState] = useState<ResultState>(token ? "loading" : "missing");
   const [message, setMessage] = useState("");
+  const { notice, notify } = useSuccessToast();
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState("");
   const [isResending, setIsResending] = useState(false);
@@ -35,6 +37,7 @@ export function EmailVerificationResult({ token }: { token?: string }) {
         if (!active) return;
         if (response.emailVerificationStatus === "VERIFIED") {
           setState("success");
+          notify("이메일 인증이 완료됐어요");
           return;
         }
         setMessage("이메일 인증이 완료되지 않았습니다. 새 인증 메일을 요청해 주세요.");
@@ -49,7 +52,7 @@ export function EmailVerificationResult({ token }: { token?: string }) {
     return () => {
       active = false;
     };
-  }, [token]);
+  }, [token, notify]);
 
   const handleResend = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -60,13 +63,14 @@ export function EmailVerificationResult({ token }: { token?: string }) {
     }
 
     setEmailError("");
+    notify("");
     setIsResending(true);
     setResendMessage("");
     setResendFailed(false);
     try {
       await requestEmailVerification(normalizedEmail);
       setEmail(normalizedEmail);
-      setResendMessage("인증 메일을 다시 보냈습니다. 받은편지함을 확인해 주세요.");
+      notify("인증 메일을 다시 보냈습니다. 받은편지함을 확인해 주세요.");
     } catch (error) {
       setResendFailed(true);
       setResendMessage(getAuthErrorMessage(error, "email-verification-request"));
@@ -88,9 +92,9 @@ export function EmailVerificationResult({ token }: { token?: string }) {
           />
         ) : state === "success" ? (
           <ResultPanel
-            icon={<Check className="h-8 w-8" strokeWidth={2.6} />}
-            iconClass="bg-mint-500/10 text-mint-600 dark:text-mint-400"
-            title="이메일 인증이 완료됐어요"
+            icon={<Mail className="h-8 w-8" />}
+            iconClass="bg-zinc-100 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400"
+            title="로그인 안내"
             description="이제 AllerMeal의 서비스를 이용할 수 있어요."
           >
             <div className="mt-7 border-t border-zinc-200 pt-6 dark:border-zinc-800">
@@ -127,6 +131,7 @@ export function EmailVerificationResult({ token }: { token?: string }) {
           </ResultPanel>
         )}
       </section>
+      <SuccessToast notice={notice} />
     </>
   );
 }

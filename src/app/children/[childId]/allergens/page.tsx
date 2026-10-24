@@ -8,13 +8,16 @@ export const metadata: Metadata = {
 
 export default async function ChildAllergensPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ childId: string }>;
+  searchParams: Promise<{ registered?: string | string[] }>;
 }) {
   const { childId } = await params;
+  const { registered } = await searchParams;
   return (
     <MemberShell>
-      <ChildAllergenSettings childId={childId} />
+      <ChildAllergenSettings childId={childId} registered={typeof registered === "string" ? registered : undefined} />
     </MemberShell>
   );
 }

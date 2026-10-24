@@ -1,5 +1,7 @@
 "use client";
 
+import { SuccessToast, useSuccessToast } from "@/components/success-toast";
+
 import { AlertTriangle, Bell, ChevronRight, History, LoaderCircle, MoreVertical, Pencil, Plus, RefreshCw, ShieldCheck, Trash2, UsersRound, Utensils } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -7,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ModalDialog } from "@/components/modal-dialog";
 import { PageHeading } from "@/components/page-heading";
 import { ChildProfile, deleteChild, getChildren, getSchool, MemberApiError } from "@/lib/member-api";
+import { consumeChildSaveNotice } from "./allergen-save-notice";
 
 function ChildSkeleton() {
   return (
@@ -17,7 +20,7 @@ function ChildSkeleton() {
   );
 }
 
-export function ChildrenList() {
+export function ChildrenList({ requestedChildId, allergenSaved, settingsSaved }: { requestedChildId?: string; allergenSaved?: string; settingsSaved?: string }) {
   const router = useRouter();
   const [children, setChildren] = useState<ChildProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,8 +28,9 @@ export function ChildrenList() {
   const [target, setTarget] = useState<ChildProfile | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
-  const [notice, setNotice] = useState("");
-  const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
+  const { notice, notify: showNotice } = useSuccessToast();
+  const [selectedChildId, setSelectedChildId] = useState<string | null>(requestedChildId ?? null);
+  const pendingSaveRef = useRef<{ childId: string; message: string } | undefined>(undefined);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [schoolNames, setSchoolNames] = useState<Record<string, string>>({});
   const menuRef = useRef<HTMLDivElement>(null);
@@ -48,6 +52,22 @@ export function ChildrenList() {
 
   useEffect(() => { void load(); }, [load]);
 
+  useEffect(() => {
+    setSelectedChildId(requestedChildId ?? null);
+    const token = settingsSaved ?? allergenSaved;
+    if (!token) return;
+    const message = consumeChildSaveNotice(requestedChildId, token);
+    if (message && requestedChildId) pendingSaveRef.current = { childId: requestedChildId, message };
+    router.replace(`/children${requestedChildId ? `?${new URLSearchParams({ childId: requestedChildId })}` : ""}`, { scroll: false });
+  }, [requestedChildId, allergenSaved, settingsSaved, router]);
+
+  useEffect(() => {
+    if (loading || !pendingSaveRef.current) return;
+    const saved = pendingSaveRef.current;
+    pendingSaveRef.current = undefined;
+    if (!error && children.some(child => child.id === saved.childId)) showNotice(saved.message);
+  }, [loading, error, children, showNotice]);
+
   async function confirmDelete() {
     if (!target || deletingRef.current) return;
     deletingRef.current = true;
@@ -57,7 +77,7 @@ export function ChildrenList() {
       await deleteChild(target.id);
       const nextChildren = await load();
       if (selectedChildId === target.id) setSelectedChildId(nextChildren[0]?.id ?? null);
-      setNotice(`${target.name} 자녀 정보를 삭제했습니다.`);
+      showNotice("자녀 정보를 삭제했습니다.");
       setTarget(null);
       router.refresh();
     } catch (reason) {
@@ -109,7 +129,6 @@ export function ChildrenList() {
           )}
         </div>
 
-        {notice && <div role="status" className="rounded-xl border border-mint-200 bg-mint-50 px-4 py-3 text-sm font-bold text-mint-700 dark:border-mint-900 dark:bg-mint-950/30 dark:text-mint-300">{notice}</div>}
         {loading && <><ChildSkeleton /><ChildSkeleton /></>}
         {!loading && error && (
           <div className="rounded-2xl border border-red-200 bg-white p-8 text-center dark:border-red-950 dark:bg-[#101419]">
@@ -139,6 +158,8 @@ export function ChildrenList() {
           </>
         )}
       </section>
+
+      <SuccessToast notice={notice} />
 
       <ModalDialog open={Boolean(target)} busy={deleting} onClose={() => { if (!deletingRef.current) setTarget(null); }} initialFocusRef={deleteCancelRef} labelledBy="delete-title" describedBy="delete-description">
         <div className="border-b border-zinc-200 px-6 pb-4 pt-6 dark:border-zinc-800">

@@ -1,11 +1,12 @@
 "use client";
 
+import { SuccessToast, useSuccessToast } from "@/components/success-toast";
+
 import { PageHeading } from "@/components/page-heading";
 
 import {
   AlertTriangle,
   Check,
-  CheckCircle2,
   HelpCircle,
   LoaderCircle,
   RefreshCw,
@@ -14,6 +15,7 @@ import { GuardedLink as Link } from "./guarded-link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUnsavedChangesGuard } from "./edit-navigation-guard";
+import { createAllergenSaveNotice, consumeChildRegistrationNotice } from "./allergen-save-notice";
 import {
   Allergen,
   ChildProfile,
@@ -42,7 +44,7 @@ function sameCodes(left: number[], right: number[]) {
 
 function normalizeCodes(codes: number[]) { return [...new Set(codes)].sort((a, b) => a - b); }
 
-export function ChildAllergenSettings({ childId }: { childId: string }) {
+export function ChildAllergenSettings({ childId, registered }: { childId: string; registered?: string }) {
   const router = useRouter();
   const generationRef = useRef(0);
   const savingRef = useRef(false);
@@ -55,12 +57,18 @@ export function ChildAllergenSettings({ childId }: { childId: string }) {
   const [loadError, setLoadError] = useState<MemberApiError | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
-  const [notice, setNotice] = useState("");
+  const { notice, notify } = useSuccessToast();
+
+  useEffect(() => {
+    if (!registered) return;
+    if (consumeChildRegistrationNotice(childId, registered)) notify("자녀를 등록했습니다.");
+    router.replace(`/children/${encodeURIComponent(childId)}/allergens`, { scroll: false });
+  }, [childId, registered, router, notify]);
 
   const load = useCallback(async () => {
     const generation = ++generationRef.current;
     savingRef.current = false;
-    setSaving(false); setChild(null); setSavedCodes(null); setSaveError(""); setNotice("");
+    setSaving(false); setChild(null); setSavedCodes(null); setSaveError("");
     setLoading(true);
     setLoadError(null);
     try {
@@ -109,14 +117,12 @@ export function ChildAllergenSettings({ childId }: { childId: string }) {
         : [...current, code].sort((a, b) => a - b),
     );
     setSaveError("");
-    setNotice("");
   }
 
   function clearSelection() {
     if (savingRef.current) return;
     setSelectedCodes([]);
     setSaveError("");
-    setNotice("");
   }
 
   async function save() {
@@ -125,14 +131,16 @@ export function ChildAllergenSettings({ childId }: { childId: string }) {
     const generation = generationRef.current;
     setSaving(true);
     setSaveError("");
-    setNotice("");
     try {
       const result = await replaceChildAllergens(childId, [...selectedCodes]);
       if (generation !== generationRef.current) return;
       const normalizedCodes = normalizeCodes(result.allergenCodes);
       setSelectedCodes(normalizedCodes);
       setSavedCodes(normalizedCodes);
-      setNotice("알레르기 설정을 저장했습니다.");
+      navigation.runTerminalExit(() => {
+        const token = createAllergenSaveNotice(childId);
+        router.push(`/children?${new URLSearchParams({ childId, allergenSaved: token })}`);
+      });
     } catch (reason) {
       if (generation !== generationRef.current) return;
       setSaveError(
@@ -146,9 +154,10 @@ export function ChildAllergenSettings({ childId }: { childId: string }) {
   }
 
   const heading = <PageHeading title="알레르기 설정" description="자녀의 알레르기 코드를 선택해 급식 위험 확인 기준으로 저장하세요." parents={[{ label: "자녀 관리", href: "/children" }]} />;
+  const registrationToast = <SuccessToast notice={notice} />;
   if (loading || (child && child.id !== childId)) {
     return (
-      <div className="mx-auto w-full max-w-[1220px] px-5 pb-12 pt-5">{heading}<div role="status" className="flex min-h-80 items-center justify-center text-sm font-bold text-zinc-500">
+      <div className="mx-auto w-full max-w-[1220px] px-5 pb-12 pt-5">{heading}{registrationToast}<div role="status" className="flex min-h-80 items-center justify-center text-sm font-bold text-zinc-500">
         <LoaderCircle aria-hidden="true" className="mr-2 h-5 w-5 animate-spin" />
         알레르기 설정을 불러오고 있습니다.
       </div></div>
@@ -158,7 +167,7 @@ export function ChildAllergenSettings({ childId }: { childId: string }) {
   if (loadError) {
     const loginRequired = loadError.status === 401;
     return (
-      <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">{heading}
+      <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">{heading}{registrationToast}
         <section className="rounded-2xl border border-red-200 bg-white p-10 text-center dark:border-red-950 dark:bg-[#101419]">
           <AlertTriangle className="mx-auto h-10 w-10 text-red-500" />
           <h2 className="mt-4 text-xl font-extrabold">
@@ -195,6 +204,7 @@ export function ChildAllergenSettings({ childId }: { childId: string }) {
   return (
     <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">
       {heading}
+      {registrationToast}
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 md:px-7 dark:border-zinc-800 dark:bg-[#101419]">
         <div className="min-w-0">
@@ -204,12 +214,6 @@ export function ChildAllergenSettings({ childId }: { childId: string }) {
           </p>
         </div>
       </section>
-
-      {notice && (
-        <div role="status" className="flex items-center gap-2 rounded-xl border border-mint-200 bg-mint-50 px-4 py-3 text-sm font-bold text-mint-700 dark:border-mint-900 dark:bg-mint-950/30 dark:text-mint-300">
-          <CheckCircle2 className="h-4 w-4" /> {notice}
-        </div>
-      )}
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 md:p-7 dark:border-zinc-800 dark:bg-[#101419]">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -273,7 +277,7 @@ export function ChildAllergenSettings({ childId }: { childId: string }) {
           </div>
         </div>
         <div className="mt-6 flex justify-end"><div className="grid w-full grid-cols-2 gap-3 md:flex md:w-auto">
-          <button type="button" onClick={() => navigation.requestLeave(() => router.push(`/children/${childId}`))} disabled={saving} className="inline-flex h-11 w-full items-center justify-center rounded-[10px] border border-zinc-300 bg-white px-5 text-sm font-bold text-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 md:w-24 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-200">취소</button>
+          <button type="button" onClick={() => navigation.requestLeave(() => router.push(`/children?${new URLSearchParams({ childId })}`))} disabled={saving} className="inline-flex h-11 w-full items-center justify-center rounded-[10px] border border-zinc-300 bg-white px-5 text-sm font-bold text-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 md:w-24 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-200">취소</button>
           <button type="button" onClick={() => void save()} disabled={saving || !dirty || allergens.length === 0} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[10px] bg-mint-500 px-5 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50 md:w-24">{saving && <LoaderCircle className="h-4 w-4 animate-spin" />}{saving ? "저장 중" : "저장"}</button>
         </div></div>
       </section>

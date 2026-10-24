@@ -1,5 +1,7 @@
 "use client";
 
+import { SuccessToast, useSuccessToast } from "@/components/success-toast";
+
 import { ChevronLeft, ChevronRight, LoaderCircle, MoreVertical, Search } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -343,6 +345,7 @@ export function AdminUserManagement() {
   const [actionError, setActionError] = useState("");
   const mutationPendingRef = useRef(false);
   const [notice, setNotice] = useState("");
+  const { notice: successNotice, notify } = useSuccessToast();
   const listRequestId = useRef(0);
   const selectionRequests = useRef(createLatestAdminRequestTracker());
   const selectedUserIdRef = useRef("");
@@ -505,7 +508,7 @@ export function AdminUserManagement() {
     setDetailError("");
     setHistoryError("");
     setHistoryLoading(true);
-    setNotice("");
+    setNotice(""); notify("");
   };
   useEffect(() => {
     if (!actionMenuOpen) return;
@@ -559,11 +562,9 @@ export function AdminUserManagement() {
           action: action === "suspend" ? "SUSPEND" : "UNSUSPEND",
         });
       setAction(undefined);
-      setNotice(
-        (await refreshSelected())
-          ? "변경 결과를 최신 서버 정보로 갱신했습니다."
-          : "변경은 완료됐지만 최신 상태를 불러오지 못했습니다. 다시 시도해 주세요.",
-      );
+      const refreshed = await refreshSelected();
+      notify("변경 결과를 저장했습니다.");
+      if (!refreshed) setNotice("변경은 완료됐지만 최신 상태를 불러오지 못했습니다. 다시 시도해 주세요.");
     } catch (cause) {
       if (
         cause instanceof AdminApiError &&
@@ -594,6 +595,7 @@ export function AdminUserManagement() {
   return (
     <>
       <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">
+        <SuccessToast notice={successNotice} />
         <PageHeading title="사용자 관리" description="사용자 계정 정보와 권한을 조회하고 관리합니다." parents={[{ label: "서비스 관리", href: "/admin" }]} />
         {notice ? (
           <p

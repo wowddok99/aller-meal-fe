@@ -1,6 +1,8 @@
 "use client";
 
-import { AlertTriangle, Check, CheckCircle2, CircleAlert, LoaderCircle, RefreshCw } from "lucide-react";
+import { SuccessToast, useSuccessToast } from "@/components/success-toast";
+
+import { AlertTriangle, Check, CircleAlert, LoaderCircle, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ModalDialog } from "@/components/modal-dialog";
@@ -44,7 +46,7 @@ export function AccountWithdrawalPage() {
   const [loadingWithdrawal, setLoadingWithdrawal] = useState(true);
   const [pending, setPending] = useState(false);
   const [withdrawal, setWithdrawal] = useState<AccountWithdrawal>();
-  const [notice, setNotice] = useState("");
+  const { notice, notify: setNotice } = useSuccessToast();
   const [deletionAgreed, setDeletionAgreed] = useState(false);
   const [notificationAgreed, setNotificationAgreed] = useState(false);
   const [loadError, setLoadError] = useState("");
@@ -95,11 +97,6 @@ export function AccountWithdrawalPage() {
     };
   }, [loadWithdrawal]);
 
-  useEffect(() => {
-    if (!notice) return;
-    const timer = window.setTimeout(() => setNotice(""), 5000);
-    return () => window.clearTimeout(timer);
-  }, [notice]);
 
   async function handleWithdrawal() {
     if (pendingRef.current || loadingWithdrawal || loadError || !deletionAgreed || !notificationAgreed) return;
@@ -331,14 +328,7 @@ export function AccountWithdrawalPage() {
         )}
       </div>
 
-      <div role="status" aria-live="polite" aria-atomic="true" className="pointer-events-none fixed inset-x-5 bottom-6 z-50 flex justify-center">
-        {notice ? (
-          <div className="withdrawal-toast flex max-w-full items-center gap-2 rounded-xl border border-mint-200 bg-mint-50 px-4 py-3 text-sm font-semibold text-mint-900 shadow-sm dark:border-mint-900 dark:bg-mint-950 dark:text-mint-100">
-            <CheckCircle2 aria-hidden="true" className="h-4 w-4 shrink-0" />
-            {notice}
-          </div>
-        ) : null}
-      </div>
+      <SuccessToast notice={notice} />
 
       <ModalDialog open={confirming} busy={pending} onClose={() => { if (!pendingRef.current) setConfirming(false); }} initialFocusRef={backButtonRef} labelledBy="withdrawal-confirm-title" describedBy="withdrawal-confirm-description">
         <div className="border-b border-zinc-200 px-6 pb-4 pt-6 dark:border-zinc-800">
