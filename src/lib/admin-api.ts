@@ -38,6 +38,7 @@ import {
   requestCollectionRecollection as requestRecollectionOperation,
 } from "@/generated/api/admin";
 import { ApiClientError } from "@/shared/api/api-client-error";
+import { adminEventTypeLabel, adminEventTypeOptions, adminMealSummary, adminMealTypeOptions, adminNotificationChannelOptions, adminNotificationReasonOptions, adminOperationLabel } from "./admin-operation-labels";
 
 export type DashboardSummary = AdminDashboardSummaryResponse;
 export type AdminUserPage = AdminUserPageResponse;
@@ -67,7 +68,10 @@ export type NotificationReprocessResult = AdminNotificationReprocessResponse;
 
 export type AdminOperationItem = {
   id?: string;
+  idLabel?: string;
   title: string;
+  subtitle?: string;
+  hideListId?: boolean;
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -130,22 +134,22 @@ function operationPage(page: number, pageSize: number, response: { page?: number
 }
 
 function mapCollectionJob(item: AdminCollectionJobItemResponse): AdminOperationItem {
-  return { collection: item, id: item.collectionJobId, actionId: item.collectionJobId, title: display(item.schoolName), status: display(item.status), createdAt: display(item.createdAt), updatedAt: display(item.updatedAt), fields: [["학교", display(item.schoolName)], ["식사일", display(item.mealDate)], ["식사", display(item.mealType)], ["상태", display(item.status)], ["실패 코드", display(item.failureCode)], ["실패 사유", display(item.failureMessage)]] };
+  return { collection: item, id: item.collectionJobId, idLabel: "작업 ID", actionId: item.collectionJobId, title: display(item.schoolName), subtitle: adminMealSummary(item.mealDate, item.mealType), hideListId: true, status: display(item.status), createdAt: display(item.createdAt), updatedAt: display(item.updatedAt), fields: [["학교", display(item.schoolName)], ["식사일", display(item.mealDate)], ["급식 구분", adminOperationLabel(item.mealType, adminMealTypeOptions)], ["상태", display(item.status)], ["실패 코드", display(item.failureCode)], ["실패 사유", display(item.failureMessage)]] };
 }
 function mapMealItemLabeling(item: AdminMealItemLabelingItemResponse): AdminOperationItem {
-  return { id: item.mealItemId, title: display(item.name), status: display(item.status), createdAt: display(item.createdAt), updatedAt: display(item.updatedAt), fields: [["메뉴", display(item.name)], ["학교", display(item.schoolName)], ["식사일", display(item.mealDate)], ["식사", display(item.mealType)], ["표시 순서", display(item.displayOrder)], ["상태", display(item.status)]] };
+  return { id: item.mealItemId, idLabel: "메뉴 ID", title: display(item.name), subtitle: adminMealSummary(item.mealDate, item.mealType), hideListId: true, status: display(item.status), createdAt: display(item.createdAt), updatedAt: display(item.updatedAt), fields: [["메뉴", display(item.name)], ["학교", display(item.schoolName)], ["식사일", display(item.mealDate)], ["급식 구분", adminOperationLabel(item.mealType, adminMealTypeOptions)], ["표시 순서", display(item.displayOrder)], ["상태", display(item.status)]] };
 }
 function mapOutboxEvent(item: AdminOutboxEventItemResponse): AdminOperationItem {
-  return { id: item.eventId, title: display(item.eventType), status: display(item.status), createdAt: display(item.createdAt ?? item.occurredAt), updatedAt: display(item.updatedAt ?? item.publishedAt), fields: [["이벤트 ID", display(item.eventId)], ["이벤트 타입", display(item.eventType)], ["상태", display(item.status)], ["발생 시각", display(item.occurredAt)], ["발행 시각", display(item.publishedAt)]] };
+  return { id: item.eventId, idLabel: "이벤트 ID", title: adminEventTypeLabel(item.eventType), hideListId: true, status: display(item.status), createdAt: display(item.createdAt ?? item.occurredAt), updatedAt: display(item.updatedAt ?? item.publishedAt), fields: [["이벤트 종류", adminOperationLabel(item.eventType, adminEventTypeOptions)], ["이벤트 타입", display(item.eventType)], ["상태", display(item.status)], ["발생 시각", display(item.occurredAt)], ["발행 시각", display(item.publishedAt)]] };
 }
 function mapNotificationRequest(item: AdminNotificationRequestItemResponse): AdminOperationItem {
-  return { id: item.notificationId, title: display(item.notificationId), status: display(item.status), createdAt: display(item.createdAt), updatedAt: display(item.updatedAt), fields: [["알림 ID", display(item.notificationId)], ["채널", display(item.channel)], ["사유", display(item.reason)], ["상태", display(item.status)], ["재시도", `${item.attemptCount ?? 0}/${item.maxAttempts ?? 0}`], ["다음 시도", display(item.nextAttemptAt)], ["실패 코드", display(item.failureCode)], ["실패 사유", display(item.failureMessage)]] };
+  return { id: item.notificationId, idLabel: "알림 ID", title: display(item.notificationId), hideListId: true, status: display(item.status), createdAt: display(item.createdAt), updatedAt: display(item.updatedAt), fields: [["채널", adminOperationLabel(item.channel, adminNotificationChannelOptions)], ["발송 사유", adminOperationLabel(item.reason, adminNotificationReasonOptions)], ["상태", display(item.status)], ["재시도", `${item.attemptCount ?? 0}/${item.maxAttempts ?? 0}`], ["다음 시도", display(item.nextAttemptAt)], ["실패 코드", display(item.failureCode)], ["실패 사유", display(item.failureMessage)]] };
 }
 function mapDeadLetterOperation(item: AdminDeadLetterEventItemResponse): AdminOperationItem {
-  return { id: item.deadLetterEventId, actionId: item.deadLetterEventId, title: display(item.eventType), status: display(item.status), createdAt: display(item.createdAt), updatedAt: display(item.updatedAt), fields: [["이벤트 ID", display(item.deadLetterEventId)], ["메시지 ID", display(item.messageId)], ["이벤트 타입", display(item.eventType)], ["재시도", `${item.retryCount ?? 0}회`], ["상태", display(item.status)], ["재처리 담당", display(item.reprocessedByUserId)], ["재처리 시각", display(item.reprocessedAt)]] };
+  return { id: item.deadLetterEventId, idLabel: "DLQ 이벤트 ID", actionId: item.deadLetterEventId, title: adminEventTypeLabel(item.eventType), hideListId: true, status: display(item.status), createdAt: display(item.createdAt), updatedAt: display(item.updatedAt), fields: [["메시지 ID", display(item.messageId)], ["이벤트 종류", adminOperationLabel(item.eventType, adminEventTypeOptions)], ["이벤트 타입", display(item.eventType)], ["재시도", `${item.retryCount ?? 0}회`], ["상태", display(item.status)], ["재처리 담당", display(item.reprocessedByUserId)], ["재처리 시각", display(item.reprocessedAt)]] };
 }
 function mapExternalApiLogOperation(item: AdminExternalApiLogItemResponse): AdminOperationItem {
-  return { id: item.externalApiLogId, title: `${display(item.provider)} · ${display(item.operation)}`, status: display(item.outcome), createdAt: display(item.createdAt), updatedAt: display(item.createdAt), fields: [["로그 ID", display(item.externalApiLogId)], ["제공자", display(item.provider)], ["작업", display(item.operation)], ["메서드", display(item.method)], ["엔드포인트", display(item.endpoint)], ["결과", display(item.outcome)], ["HTTP 상태", display(item.httpStatus)], ["응답 시간", `${item.responseTimeMillis ?? 0}ms`], ["학교 ID", display(item.schoolId)]] };
+  return { id: item.externalApiLogId, idLabel: "로그 ID", title: `${display(item.provider)} · ${display(item.operation)}`, status: display(item.outcome), createdAt: display(item.createdAt), updatedAt: display(item.createdAt), fields: [["제공자", display(item.provider)], ["작업", display(item.operation)], ["메서드", display(item.method)], ["엔드포인트", display(item.endpoint)], ["결과", display(item.outcome)], ["HTTP 상태", display(item.httpStatus)], ["응답 시간", `${item.responseTimeMillis ?? 0}ms`], ["학교 ID", display(item.schoolId)]] };
 }
 
 function allowedValue<T extends string>(value: string | undefined, options: Record<string, T>): T | undefined {

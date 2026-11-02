@@ -19,7 +19,7 @@ function loadCollectionJobs(query: AdminOperationQuery) {
 }
 
 export function CollectionFailures() {
-  return <AdminOperationList title="급식 수집 작업" description="급식 수집 작업의 상태와 재수집 결과를 확인하세요." itemName="급식 수집 작업" load={loadCollectionJobs} getInitialStatus={getCollectionFilterStatus} renderDetail={(_, refreshList) => <CollectionJobDetail refreshList={refreshList} />} renderStatus={(item) => item.collection ? <CollectionJobStatus job={item.collection} /> : item.status}
+  return <AdminOperationList primaryColumnLabel="학교" title="급식 수집 작업" description="급식 수집 작업의 상태와 재수집 결과를 확인하세요." itemName="급식 수집 작업" load={loadCollectionJobs} getInitialStatus={getCollectionFilterStatus} renderDetail={(_, refreshList) => <CollectionJobDetail refreshList={refreshList} />} renderStatus={(item) => item.collection ? <CollectionJobStatus job={item.collection} /> : item.status}
     statusOptions={[{ value: "PENDING", label: "대기" }, { value: "RUNNING", label: "수집 중" }, { value: "SUCCEEDED", label: "수집 완료" }, { value: "FAILED", label: "수집 실패" }, { value: "RECOLLECTED", label: "재수집 완료" }]}
     schoolSearch filters={[{ key: "schoolId", label: "학교 ID", freeText: true }, { key: "mealDate", label: "급식 날짜", freeText: true, inputType: "date" }, { key: "mealType", label: "급식 구분", options: [{ value: "BREAKFAST", label: "아침" }, { value: "LUNCH", label: "점심" }, { value: "DINNER", label: "저녁" }] }]} />;
 }

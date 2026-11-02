@@ -1,3 +1,5 @@
+import { parseDateValue } from "@/lib/date-picker-date";
+
 export function createLatestAdminOperationRequestTracker() {
   let latestRequestId = 0;
 
@@ -63,10 +65,28 @@ export function getAdminOperationLoadErrorState(status: number | undefined): Adm
   return "generic-error";
 }
 
-const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function normalizeAdminOperationSearch(value: string, notificationIdSearch = false) {
+  const normalized = value.trim();
+  return notificationIdSearch && uuidPattern.test(normalized) ? normalized.toLowerCase() : normalized;
+}
+
+export function getAdminOperationQueryErrors(query: { query?: string; eventType?: string; mealDate?: string }, notificationIdSearch = false) {
+  const errors: { query?: string; eventType?: string; mealDate?: string } = {};
+  const search = query.query?.trim();
+  if (search && notificationIdSearch && !uuidPattern.test(search)) {
+    errors.query = "전체 알림 ID를 UUID 형식으로 입력해 주세요.";
+  } else if (search && search.length > 100) {
+    errors.query = "검색어는 100자 이하로 입력해 주세요.";
+  }
+  if (query.eventType?.trim() && query.eventType.trim().length > 100) errors.eventType = "이벤트 종류는 100자 이하로 입력해 주세요.";
+  if (query.mealDate?.trim() && !parseDateValue(query.mealDate.trim())) errors.mealDate = "급식 날짜를 YYYY-MM-DD 형식의 올바른 날짜로 선택해 주세요.";
+  return errors;
+}
 
 export function getSchoolSearchQuery(value: string) {
   const normalized = value.trim();
   if (!normalized) return {};
-  return uuidPattern.test(normalized) ? { schoolId: normalized } : { query: normalized };
+  return uuidPattern.test(normalized) ? { schoolId: normalized.toLowerCase() } : { query: normalized };
 }
