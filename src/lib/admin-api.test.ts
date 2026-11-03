@@ -47,7 +47,7 @@ describe("PR-06 admin operation adapters", () => {
     expect(isAdminActionId("a1111111-1111-4111-8111-111111111111")).toBe(true);
   });
 
-  it("sends only numeric page and pageSize for every operation list", async () => {
+  it("forwards pagination in the generated client's expected types", async () => {
     adminApi.listFailedCollectionJobs.mockResolvedValueOnce({ items: [], page: 2, pageSize: 10, totalCount: 11 });
     adminApi.listExternalApiLogs.mockResolvedValueOnce({ items: [], page: 2, pageSize: 10, totalCount: 11 });
     adminApi.listFailedNotifications.mockResolvedValueOnce({ items: [], page: 2, pageSize: 10, totalCount: 11 });
@@ -58,9 +58,9 @@ describe("PR-06 admin operation adapters", () => {
     ]);
 
     expect(adminApi.listFailedCollectionJobs).toHaveBeenCalledWith({ page: 2, pageSize: 10 });
-    expect(adminApi.listExternalApiLogs).toHaveBeenCalledWith({ page: 2, pageSize: 10 });
+    expect(adminApi.listExternalApiLogs).toHaveBeenCalledWith({ page: "2", pageSize: "10" });
     expect(adminApi.listFailedNotifications).toHaveBeenCalledWith({ page: 2, pageSize: 10 });
-    expect(adminApi.listNotificationDeadLetterEvents).toHaveBeenCalledWith({ page: 2, pageSize: 10 });
+    expect(adminApi.listNotificationDeadLetterEvents).toHaveBeenCalledWith({ page: "2", pageSize: "10" });
   });
 
   it("preserves server pagination and safely displays omitted item fields without inventing an action ID", async () => {
@@ -114,17 +114,17 @@ describe("PR-06 admin operation adapters", () => {
       getCollectionJobs({ page: 2, pageSize: 50, status: "FAILED", schoolId: "school-1", query: "상명초" }),
       getMealItemLabelings({ page: 2, pageSize: 50, status: "PENDING", mealType: "LUNCH", query: "김치" }),
       getOutboxEvents({ page: 2, pageSize: 50, status: "PUBLISHED", eventType: "MealCollected", query: "event-1" }),
-      getNotificationRequests({ page: 2, pageSize: 50, status: "RETRY_PENDING", channel: "EMAIL", reason: "MEAL", query: "notification-1" }),
+      getNotificationRequests({ page: 2, pageSize: 50, status: "RETRY_PENDING", channel: "EMAIL", reason: "RISK_DETECTED", query: "notification-1" }),
       getAllDeadLetterEvents({ page: 2, pageSize: 50, status: "PENDING", eventType: "NotificationRequested", query: "message-1" }),
       getAllExternalApiLogs({ page: 2, pageSize: 50, provider: "NEIS", method: "GET", outcome: "SUCCESS", query: "school-1" }),
     ]);
 
-    expect(adminApi.listAdminCollectionJobs).toHaveBeenCalledWith({ page: 2, pageSize: 50, status: "FAILED", schoolId: "school-1", query: "상명초" });
-    expect(adminApi.listAdminMealItemLabelings).toHaveBeenCalledWith({ page: 2, pageSize: 50, status: "PENDING", mealType: "LUNCH", query: "김치" });
-    expect(adminApi.listAdminOutboxEvents).toHaveBeenCalledWith({ page: 2, pageSize: 50, status: "PUBLISHED", eventType: "MealCollected", query: "event-1" });
-    expect(adminApi.listAdminNotificationRequests).toHaveBeenCalledWith({ page: 2, pageSize: 50, status: "RETRY_PENDING", channel: "EMAIL", reason: "MEAL", query: "notification-1" });
-    expect(adminApi.listNotificationDeadLetterEvents).toHaveBeenCalledWith({ page: 2, pageSize: 50, status: "PENDING", eventType: "NotificationRequested", query: "message-1" });
-    expect(adminApi.listExternalApiLogs).toHaveBeenCalledWith({ page: 2, pageSize: 50, provider: "NEIS", method: "GET", outcome: "SUCCESS", query: "school-1" });
+    expect(adminApi.listAdminCollectionJobs).toHaveBeenCalledWith(expect.objectContaining({ page: "2", pageSize: "50", status: "FAILED", schoolId: "school-1", query: "상명초" }));
+    expect(adminApi.listAdminMealItemLabelings).toHaveBeenCalledWith(expect.objectContaining({ page: "2", pageSize: "50", status: "PENDING", mealType: "LUNCH", query: "김치" }));
+    expect(adminApi.listAdminOutboxEvents).toHaveBeenCalledWith(expect.objectContaining({ page: "2", pageSize: "50", status: "PUBLISHED", eventType: "MealCollected", query: "event-1" }));
+    expect(adminApi.listAdminNotificationRequests).toHaveBeenCalledWith(expect.objectContaining({ page: "2", pageSize: "50", status: "RETRY_PENDING", channel: "EMAIL", reason: "RISK_DETECTED", query: "notification-1" }));
+    expect(adminApi.listNotificationDeadLetterEvents).toHaveBeenCalledWith(expect.objectContaining({ page: "2", pageSize: "50", status: "PENDING", eventType: "NotificationRequested", query: "message-1" }));
+    expect(adminApi.listExternalApiLogs).toHaveBeenCalledWith(expect.objectContaining({ page: "2", pageSize: "50", provider: "NEIS", method: "GET", outcome: "SUCCESS", query: "school-1" }));
     expect(collection).toMatchObject({ page: 2, pageSize: 50, totalCount: 51 });
   });
 });

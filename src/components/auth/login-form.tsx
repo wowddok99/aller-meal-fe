@@ -2,6 +2,7 @@
 
 import {
   AlertCircle,
+  Check,
   Eye,
   EyeOff,
   LoaderCircle,
@@ -38,8 +39,11 @@ function getLoginError(error: unknown) {
   if (error.status === 401) {
     return "이메일 또는 비밀번호를 확인해 주세요.";
   }
-  if (error.status === 403) {
+  if (error.code === "EMAIL_NOT_VERIFIED") {
     return "이메일 인증을 완료한 뒤 로그인해 주세요.";
+  }
+  if (error.code === "CSRF_VALIDATION_FAILED") {
+    return "보안 확인에 실패했습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요. 계속되면 사이트 쿠키를 삭제해 주세요.";
   }
   if (error.status === 429) {
     return "로그인 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.";
@@ -51,6 +55,7 @@ export function LoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [errorMessage, setErrorMessage] = useState("");
@@ -69,12 +74,20 @@ export function LoginForm() {
 
     setIsSubmitting(true);
     try {
-      await login({ email: normalizedEmail, password });
-      router.push("/children");
+      await login({ email: normalizedEmail, password, rememberMe });
+      const next = new URLSearchParams(window.location.search).get("next");
+      let destination = "/children";
+      if (next?.startsWith("/") && !next.startsWith("//")) {
+        const url = new URL(next, window.location.origin);
+        if (url.origin === window.location.origin) {
+          destination = `${url.pathname}${url.search}${url.hash}`;
+        }
+      }
+      router.push(destination);
       router.refresh();
     } catch (error) {
       setNeedsVerification(
-        error instanceof AuthApiError && error.status === 403,
+        error instanceof AuthApiError && error.code === "EMAIL_NOT_VERIFIED",
       );
       setErrorMessage(getLoginError(error));
     } finally {
@@ -177,12 +190,21 @@ export function LoginForm() {
           ) : null}
         </label>
 
-        <Link
-          href="/auth/password-reset"
-          className="-mb-2 -mt-2 self-end text-sm font-bold text-zinc-500 transition-colors hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white"
-        >
-          비밀번호를 잊으셨나요?
-        </Link>
+        <div className="-mb-2 -mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <label className="flex cursor-pointer items-center gap-1.5 text-sm font-semibold text-zinc-500 dark:text-zinc-400">
+            <input type="checkbox" checked={rememberMe} disabled={isSubmitting} onChange={(event) => setRememberMe(event.target.checked)} className="peer sr-only" />
+            <span aria-hidden="true" className="flex h-4 w-4 shrink-0 items-center justify-center rounded border border-mint-500 bg-white text-mint-500 peer-checked:[&>svg]:block peer-focus-visible:ring-2 peer-focus-visible:ring-mint-500 peer-focus-visible:ring-offset-2 dark:bg-zinc-900 dark:peer-focus-visible:ring-offset-zinc-900">
+              <Check className="hidden h-3 w-3" strokeWidth={4} />
+            </span>
+            로그인 상태 유지
+          </label>
+          <Link
+            href="/auth/password-reset"
+            className="text-sm font-bold text-zinc-500 transition-colors hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white"
+          >
+            비밀번호를 잊으셨나요?
+          </Link>
+        </div>
 
         {errorMessage ? (
           <p

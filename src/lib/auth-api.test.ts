@@ -12,6 +12,10 @@ const publicApi = vi.hoisted(() => ({
 }));
 
 vi.mock("@/generated/api/public", () => publicApi);
+vi.mock("@/shared/api/orval-mutator", () => ({
+  withAuthSessionTransition: (operation: (sessionId?: string) => Promise<unknown>, kind: string) =>
+    operation(kind === "logout" ? "session-1" : undefined),
+}));
 
 import {
   confirmEmailVerification,
@@ -46,22 +50,23 @@ describe("auth-api public adapters", () => {
     };
     publicApi.login.mockResolvedValue(response);
 
-    await expect(login({ email: "user@example.com", password: "password123" })).resolves.toBe(response);
-    expect(publicApi.login).toHaveBeenCalledWith({ email: "user@example.com", password: "password123" });
+    await expect(login({ email: "user@example.com", password: "password123", rememberMe: true })).resolves.toBe(response);
+    expect(publicApi.login).toHaveBeenCalledWith({ email: "user@example.com", password: "password123", rememberMe: true });
   });
 
   it("uses the generated logout adapter", async () => {
     publicApi.logout.mockResolvedValue(undefined);
 
     await expect(logout()).resolves.toBeUndefined();
-    expect(publicApi.logout).toHaveBeenCalledWith();
+    expect(publicApi.logout).toHaveBeenCalledWith({ headers: { "X-Expected-Session-Id": "session-1" } });
   });
 
   it.each([
-    [new ApiClientError({ status: 401, code: "UNAUTHORIZED", message: "Session ended." }), true],
+    [new ApiClientError({ status: 401, code: "UNAUTHORIZED", message: "Session uncertain." }), false],
+    [new ApiClientError({ status: 401, code: "UNAUTHORIZED", message: "Session ended.", sessionExpired: true }), true],
     [new ApiClientError({ status: 403, code: "FORBIDDEN", message: "Forbidden." }), false],
     [new Error("Network failed."), false],
-  ])("ends the client session only for a 401 logout response", (error, expected) => {
+  ])("ends the client session only when logout has confirmed expiry", (error, expected) => {
     expect(shouldTerminateSessionAfterLogout(error)).toBe(expected);
   });
 

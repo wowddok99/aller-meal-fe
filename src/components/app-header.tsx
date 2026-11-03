@@ -19,9 +19,11 @@ import { useEffect, useRef, useState } from "react";
 import { AllerMealLogo } from "@/components/allermeal-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { logout, shouldTerminateSessionAfterLogout } from "@/lib/auth-api";
+import { ApiClientError } from "@/shared/api/api-client-error";
 import {
   API_SESSION_EXPIRED_EVENT,
   API_SESSION_REFRESHED_EVENT,
+  refreshSession,
 } from "@/shared/api/orval-mutator";
 
 const navigationItems = [
@@ -84,15 +86,21 @@ export function AppHeader() {
     async function loadSession() {
       const generation = ++sessionLoadGeneration.current;
       try {
-        const response = await fetch("/auth/session", {
+        let response = await fetch("/auth/session", {
           cache: "no-store",
         });
         if (!response.ok) throw new Error("Unable to load the session state.");
-        const data = (await response.json()) as { authenticated?: unknown };
+        let data = (await response.json()) as { authenticated?: unknown };
+        if (data.authenticated !== true && response.headers.get("X-Session-Restore-Available") === "1" && !pathname.startsWith("/auth/")) {
+          await refreshSession();
+          response = await fetch("/auth/session", { cache: "no-store" });
+          if (!response.ok) throw new Error("Unable to load the session state.");
+          data = (await response.json()) as { authenticated?: unknown };
+        }
         if (generation !== sessionLoadGeneration.current) return;
         setIsAuthenticated(data.authenticated === true);
-      } catch {
-        if (generation === sessionLoadGeneration.current) {
+      } catch (error) {
+        if (generation === sessionLoadGeneration.current && error instanceof ApiClientError && error.status === 401) {
           setIsAuthenticated(false);
         }
       }
@@ -115,7 +123,7 @@ export function AppHeader() {
       window.removeEventListener(API_SESSION_EXPIRED_EVENT, clearSession);
       window.removeEventListener(API_SESSION_REFRESHED_EVENT, reloadSession);
     };
-  }, []);
+  }, [pathname]);
 
   useEffect(() => {
     if (!mobileMenuOpen) return;

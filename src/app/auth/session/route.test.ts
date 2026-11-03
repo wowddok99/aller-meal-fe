@@ -10,11 +10,24 @@ describe("GET /auth/session", () => {
     expect(response.headers.get("Cache-Control")).toBe("no-store");
   });
 
-  it("returns true when the request contains an access token cookie", async () => {
+  it("returns the optimistic state and session-claim hint for an unexpired token", async () => {
+    const payload = Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 60, sessionId: "session-1" })).toString("base64url");
     const response = GET(new NextRequest("http://localhost/auth/session", {
-      headers: { cookie: "access_token=session-value" },
+      headers: { cookie: `access_token=header.${payload}.signature; refresh_token=opaque` },
     }));
 
     await expect(response.json()).resolves.toEqual({ authenticated: true });
+    expect(response.headers.get("X-Access-Session-Claim")).toBe("present");
+    expect(response.headers.get("X-Session-Restore-Available")).toBe("1");
+  });
+
+  it("reports an expired session-cookie access token as needing restoration", async () => {
+    const payload = Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) - 1 })).toString("base64url");
+    const response = GET(new NextRequest("http://localhost/auth/session", {
+      headers: { cookie: `access_token=header.${payload}.signature; refresh_token=opaque` },
+    }));
+    await expect(response.json()).resolves.toEqual({ authenticated: false });
+    expect(response.headers.get("X-Access-Session-Claim")).toBe("absent");
+    expect(response.headers.get("X-Session-Restore-Available")).toBe("1");
   });
 });

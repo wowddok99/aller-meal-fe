@@ -1,13 +1,17 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { hasUnexpiredAccessToken } from "@/shared/auth/access-token-expiry";
 
 const ACCESS_TOKEN_COOKIE = "access_token";
 
 export function middleware(request: NextRequest) {
-  if (request.cookies.has(ACCESS_TOKEN_COOKIE)) {
+  if (hasUnexpiredAccessToken(request.cookies.get(ACCESS_TOKEN_COOKIE)?.value)) {
     return NextResponse.next();
   }
 
-  const loginUrl = new URL("/auth/login", request.url);
+  const loginUrl = new URL(
+    request.cookies.has("refresh_token") ? "/auth/restore" : "/auth/login",
+    request.url,
+  );
   loginUrl.searchParams.set(
     "next",
     `${request.nextUrl.pathname}${request.nextUrl.search}`,
