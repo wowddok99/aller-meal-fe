@@ -30,6 +30,10 @@ import {
 } from "./auth-api";
 
 describe("auth-api public adapters", () => {
+  it.each([0, 500, 503])("uses a neutral transient failure message for HTTP %i", (status) => {
+    expect(getAuthErrorMessage(new ApiClientError({ status, code: "NETWORK_ERROR", message: "internal transport details" }), "password-reset-request")).toBe("요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.");
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
   });

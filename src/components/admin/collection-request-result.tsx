@@ -1,8 +1,9 @@
 "use client";
 
+import { ApiNotice } from "@/components/api-notice";
 import { useEffect, useRef } from "react";
 
-export function CollectionRequestResult({ title, message, failureReason, onClose }: { title: string; message: string; failureReason?: string | null; onClose: () => void }) {
+export function CollectionRequestResult({ title, message, description, failureReason, onClose }: { title: string; message: string; description?: string; failureReason?: string | null; onClose: () => void }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
 
@@ -25,8 +26,8 @@ export function CollectionRequestResult({ title, message, failureReason, onClose
   }} onKeyDown={(event) => { if (event.key === "Tab") { event.preventDefault(); confirmRef.current?.focus(); } }} className="fixed inset-0 z-[60] m-auto max-h-[calc(100dvh_-_2.5rem)] w-[calc(100%_-_2.5rem)] max-w-lg overflow-y-auto rounded-2xl bg-white p-0 text-zinc-950 shadow-xl backdrop:bg-zinc-950/45 dark:bg-[#101419] dark:text-zinc-50">
     <div className="border-b border-zinc-200 px-6 pb-4 pt-6 dark:border-zinc-800"><h2 id="collection-result-dialog-title" className="text-xl font-extrabold">{title}</h2></div>
     <div className="px-6 pb-6 pt-5">
-    <div id="collection-result-dialog-message" className="space-y-3 break-words text-sm leading-6 text-zinc-600 dark:text-zinc-300"><p>{message}</p>{failureReason ? <p>실패 사유: {failureReason}</p> : null}</div>
-    <div className="mt-6 flex justify-end"><button ref={confirmRef} type="button" onClick={onClose} className="inline-flex min-h-11 w-16 items-center justify-center rounded-[10px] bg-mint-500 px-4 text-sm font-extrabold text-white hover:bg-mint-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#101419]">확인</button></div>
+    <div id="collection-result-dialog-message" className="break-words"><ApiNotice title={message}>{description ? <p>{description}</p> : null}{failureReason ? <p>실패 사유: {failureReason}</p> : null}</ApiNotice></div>
+    <div className="-mx-6 -mb-6 mt-5 flex justify-end border-t border-zinc-200 px-6 py-4 dark:border-zinc-800"><button ref={confirmRef} type="button" onClick={onClose} className="inline-flex min-h-11 w-16 items-center justify-center rounded-[10px] bg-mint-500 px-4 text-sm font-extrabold text-white hover:bg-mint-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#101419]">확인</button></div>
     </div>
   </dialog>;
 }

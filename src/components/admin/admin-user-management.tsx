@@ -14,6 +14,8 @@ import {
   normalizeAdminUserQuery,
   type AdminUserAction,
 } from "@/components/admin/admin-user-management-utils";
+import { runMutationDialogAction } from "@/components/mutation-dialog-action";
+import { ApiNotice } from "@/components/api-notice";
 import { ModalDialog } from "@/components/modal-dialog";
 import { PageHeading } from "@/components/page-heading";
 import { AdminSelectMenu } from "@/components/admin/admin-select-menu";
@@ -94,24 +96,22 @@ function RoleBadge({ role }: { role: string }) {
     </span>
   );
 }
-function ErrorPanel({ error, retry }: { error: string; retry: () => void }) {
+function ErrorPanel({ error, retry, title = "사용자 정보를 불러오지 못했어요." }: { error: string; retry: () => void; title?: string }) {
   return (
-    <div
-      role="alert"
-      className="border-t border-red-200 bg-red-50 px-5 py-4 text-sm dark:border-red-900 dark:bg-red-950/30"
-    >
-      <p className="font-bold text-red-700 dark:text-red-300">{error}</p>
-      <button type="button" onClick={retry} className={`${button} mt-3`}>
-        다시 시도
-      </button>
+    <div className="border-t border-zinc-100 px-5 py-8 sm:py-10 dark:border-zinc-800">
+      <ApiNotice centered title={title} action={<button type="button" onClick={retry} className={`inline-flex h-8 items-center justify-center rounded-[10px] border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-200 dark:hover:bg-zinc-900 ${focusRing}`}>다시 시도</button>}>
+        {error.includes("네트워크") ? "잠시 후 다시 시도해 주세요." : error}
+      </ApiNotice>
     </div>
   );
 }
+
 function ActionDialog({
   action,
   target,
   pending,
   requestError,
+  resultUnknown,
   onClose,
   onSubmit,
 }: {
@@ -119,6 +119,7 @@ function ActionDialog({
   target: AdminUserDetailResponse;
   pending: boolean;
   requestError: string;
+  resultUnknown: boolean;
   onClose: () => void;
   onSubmit: (reason: string) => void;
 }) {
@@ -133,12 +134,16 @@ function ActionDialog({
         : "이용 제한 해제";
   return (
     <ModalDialog open busy={pending} onClose={onClose} initialFocusRef={cancelButtonRef} labelledBy="admin-user-action-title">
-      <div className="p-6">
+      <div key={requestError ? "result" : "confirmation"} className="p-6">
         <div className="-mx-6 border-b border-zinc-200 px-6 pb-4 dark:border-zinc-800">
           <h2 id="admin-user-action-title" className="break-keep text-xl font-extrabold">
-            {title}
+            {requestError ? `${title} 안내` : title}
           </h2>
         </div>
+        {requestError ? <>
+          <div className="mt-5"><ApiNotice title={resultUnknown ? "변경 결과를 확인하지 못했습니다." : "변경 요청을 완료하지 못했습니다."}>{resultUnknown ? "확인을 누르면 현재 사용자 상태를 다시 확인합니다." : requestError}</ApiNotice></div>
+          <div className="-mx-6 -mb-6 mt-5 flex justify-end border-t border-zinc-200 px-6 py-4 dark:border-zinc-800"><button ref={cancelButtonRef} autoFocus type="button" onClick={onClose} className={`inline-flex h-11 min-w-16 items-center justify-center rounded-[10px] bg-mint-500 px-4 text-sm font-extrabold text-white hover:bg-mint-600 ${focusRing}`}>확인</button></div>
+        </> : <>
         <div className="mt-5">
           <p className="text-sm text-zinc-600 dark:text-zinc-300">
             {title} 사유를 입력해 주세요.
@@ -153,7 +158,7 @@ function ActionDialog({
         <textarea
           id="admin-user-action-reason"
           value={reason}
-          disabled={pending}
+          disabled={pending || resultUnknown}
           onChange={(event) => {
             if (pending) return;
             setReason(event.target.value);
@@ -170,8 +175,7 @@ function ActionDialog({
         >
           {error || `${reason.length}/500`}
         </p>
-        {requestError && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm font-bold text-red-700 dark:bg-red-950/30 dark:text-red-300">{requestError}</p>}
-        <div className="mt-4 flex justify-end gap-3">
+        <div className="-mx-6 -mb-6 mt-5 flex justify-end gap-3 border-t border-zinc-200 px-6 py-4 dark:border-zinc-800">
           <button
             ref={cancelButtonRef}
             type="button"
@@ -199,11 +203,12 @@ function ActionDialog({
               }
               onSubmit(result.value.reason);
             }}
-            className={`inline-flex h-11 w-16 items-center justify-center rounded-[10px] px-4 text-sm font-extrabold text-white disabled:opacity-50 ${action === "suspend" ? "bg-red-600" : "bg-mint-500"} ${focusRing}`}
+            className={`inline-flex h-11 w-16 items-center justify-center rounded-[10px] px-4 text-sm font-extrabold disabled:opacity-50 ${resultUnknown ? "border border-zinc-300 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-200" : action === "suspend" ? "bg-red-600 text-white" : "bg-mint-500 text-white"} ${focusRing}`}
           >
             {pending ? <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" /> : "확인"}
           </button>
         </div>
+        </>}
       </div>
     </ModalDialog>
   );
@@ -242,11 +247,11 @@ function History({
           </p>
         </div>
         <span className="text-sm font-bold text-zinc-500">
-          총 {totalCount}건
+          {error ? "—" : `총 ${totalCount}건`}
         </span>
       </div>
       {error ? (
-        <ErrorPanel error={error} retry={retry} />
+        <ErrorPanel error={error} retry={retry} title="변경 이력을 불러오지 못했어요." />
       ) : loading && !items.length ? (
         <p className="border-t border-zinc-100 px-5 py-10 text-center text-sm text-zinc-500 dark:border-zinc-800">
           이력을 불러오는 중입니다.
@@ -343,6 +348,7 @@ export function AdminUserManagement() {
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [mutationPending, setMutationPending] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [actionOutcomeUnknown, setActionOutcomeUnknown] = useState(false);
   const mutationPendingRef = useRef(false);
   const [notice, setNotice] = useState("");
   const { notice: successNotice, notify } = useSuccessToast();
@@ -546,21 +552,22 @@ export function AdminUserManagement() {
   }, [historyPage, loadList, loadSelected]);
   const submitAction = async (reason: string) => {
     if (!detail || !action || mutationPendingRef.current) return;
+    if (actionError) return;
     mutationPendingRef.current = true;
-    setActionError("");
+    setActionError(""); setActionOutcomeUnknown(false);
     setMutationPending(true);
     try {
       if (action === "promote")
         await promoteUserToAdmin(detail.userId, {
           reason,
           expectedVersion: detail.version,
-        });
+        }, { mutationErrorDisplay: "local" });
       else
         await changeUserSuspension(detail.userId, {
           reason,
           expectedVersion: detail.version,
           action: action === "suspend" ? "SUSPEND" : "UNSUSPEND",
-        });
+        }, { mutationErrorDisplay: "local" });
       setAction(undefined);
       const refreshed = await refreshSelected();
       notify("변경 결과를 저장했습니다.");
@@ -571,14 +578,8 @@ export function AdminUserManagement() {
         isAdminAuthenticationError(cause.status)
       ) {
         promoteListAuthError(cause);
-      } else if (cause instanceof AdminApiError && cause.status === 409) {
-        setAction(undefined);
-        setNotice(
-          (await refreshSelected())
-            ? "다른 변경으로 최신 상태를 다시 확인했습니다."
-            : "다른 변경이 감지됐지만 최신 상태를 불러오지 못했습니다. 다시 시도해 주세요.",
-        );
       } else {
+        setActionOutcomeUnknown(cause instanceof AdminApiError && cause.code === "MUTATION_RESULT_UNKNOWN");
         setActionError(errorText(cause, "사용자 상태를 변경하지 못했습니다."));
       }
     } finally {
@@ -600,7 +601,7 @@ export function AdminUserManagement() {
         {notice ? (
           <p
             role="status"
-            className="rounded-xl border border-mint-200 bg-mint-50 px-4 py-3 text-sm font-bold text-mint-800 dark:border-mint-900 dark:bg-mint-500/10 dark:text-mint-300"
+            className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-medium leading-6 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-300"
           >
             {notice}
           </p>
@@ -680,33 +681,12 @@ export function AdminUserManagement() {
               </div>
             </div>
           </form>
+          {listError || !list?.items.length ? <div className="hidden overflow-x-auto border-t border-zinc-100 min-[940px]:block dark:border-zinc-800"><table className="w-full min-w-[900px] table-fixed"><colgroup><col /><col className="w-[104px]" /><col className="w-[96px]" /><col className="w-[96px]" /><col className="w-[164px]" /></colgroup><thead className="bg-zinc-50 text-left text-xs text-zinc-500 dark:bg-zinc-900/50"><tr>{["이메일", "역할", "상태", "인증", "가입 시각"].map((label, index) => <th key={label} scope="col" className={index === 0 || index === 4 ? "px-5 py-3" : "px-3 py-3"}>{label}</th>)}</tr></thead><tbody /></table></div> : null}
           {listError ? (
             listUnauthenticated ? (
-              <div
-                role="alert"
-                className="border-t border-zinc-200 px-5 py-6 dark:border-zinc-800"
-              >
-                <h2 className="font-extrabold">로그인이 필요합니다</h2>
-                <p className="mt-2 text-sm text-zinc-500">
-                  로그인한 후 사용자 목록을 확인해 주세요.
-                </p>
-                <Link
-                  href="/auth/login?next=/admin/users"
-                  className={`${button} mt-4`}
-                >
-                  로그인
-                </Link>
-              </div>
+              <div className="border-t border-zinc-200 px-5 py-8 sm:py-10 dark:border-zinc-800"><ApiNotice centered title="로그인이 필요합니다" action={<Link href="/auth/login?next=/admin/users" className={button}>로그인</Link>}>로그인한 후 사용자 목록을 확인해 주세요.</ApiNotice></div>
             ) : listForbidden ? (
-              <div
-                role="alert"
-                className="border-t border-zinc-200 px-5 py-6 dark:border-zinc-800"
-              >
-                <h2 className="font-extrabold">관리자 권한이 필요합니다</h2>
-                <p className="mt-2 text-sm text-zinc-500">
-                  관리자만 사용자 목록을 확인할 수 있습니다.
-                </p>
-              </div>
+              <div className="border-t border-zinc-200 px-5 py-8 sm:py-10 dark:border-zinc-800"><ApiNotice centered title="관리자 권한이 필요합니다">관리자만 사용자 목록을 확인할 수 있습니다.</ApiNotice></div>
             ) : (
               <ErrorPanel
                 error={listError.message}
@@ -880,7 +860,7 @@ export function AdminUserManagement() {
                               role="menuitem"
                               onClick={() => {
                                 setActionMenuOpen(false);
-                                setActionError("");
+                                setActionError(""); setActionOutcomeUnknown(false);
                                 setAction("promote");
                               }}
                               className="flex h-10 w-full items-center rounded-lg px-3 text-left text-sm font-bold text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
@@ -894,7 +874,7 @@ export function AdminUserManagement() {
                               role="menuitem"
                               onClick={() => {
                                 setActionMenuOpen(false);
-                                setActionError("");
+                                setActionError(""); setActionOutcomeUnknown(false);
                                 setAction("suspend");
                               }}
                               className="flex h-10 w-full items-center rounded-lg px-3 text-left text-sm font-bold text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/20"
@@ -908,7 +888,7 @@ export function AdminUserManagement() {
                               role="menuitem"
                               onClick={() => {
                                 setActionMenuOpen(false);
-                                setActionError("");
+                                setActionError(""); setActionOutcomeUnknown(false);
                                 setAction("unsuspend");
                               }}
                               className="flex h-10 w-full items-center rounded-lg px-3 text-left text-sm font-bold text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
@@ -983,7 +963,12 @@ export function AdminUserManagement() {
           target={detail}
           pending={mutationPending}
           requestError={actionError}
-          onClose={() => { if (!mutationPendingRef.current) setAction(undefined); }}
+          resultUnknown={actionOutcomeUnknown}
+          onClose={() => {
+            if (mutationPendingRef.current) return;
+            if (actionError) void runMutationDialogAction({ busy: false, hasResult: true }, async () => {}, () => setAction(undefined), refreshSelected);
+            else setAction(undefined);
+          }}
           onSubmit={(reason) => void submitAction(reason)}
         />
       ) : null}

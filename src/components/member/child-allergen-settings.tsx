@@ -2,10 +2,10 @@
 
 import { SuccessToast, useSuccessToast } from "@/components/success-toast";
 
+import { ApiNotice } from "@/components/api-notice";
 import { PageHeading } from "@/components/page-heading";
 
 import {
-  AlertTriangle,
   Check,
   HelpCircle,
   LoaderCircle,
@@ -14,6 +14,7 @@ import {
 import { GuardedLink as Link } from "./guarded-link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMutationRecovery } from "./mutation-recovery";
 import { useUnsavedChangesGuard } from "./edit-navigation-guard";
 import { createAllergenSaveNotice, consumeChildRegistrationNotice } from "./allergen-save-notice";
 import {
@@ -46,6 +47,7 @@ function normalizeCodes(codes: number[]) { return [...new Set(codes)].sort((a, b
 
 export function ChildAllergenSettings({ childId, registered }: { childId: string; registered?: string }) {
   const router = useRouter();
+  const recovery = useMutationRecovery(childId);
   const generationRef = useRef(0);
   const savingRef = useRef(false);
   const [child, setChild] = useState<ChildProfile | null>(null);
@@ -107,7 +109,7 @@ export function ChildAllergenSettings({ childId, registered }: { childId: string
     [allergens, selectedCodes],
   );
   const dirty = Boolean(!loading && child?.id === childId && savedCodes !== null && !sameCodes(selectedCodes, savedCodes));
-  const navigation = useUnsavedChangesGuard({ dirty, busy: saving });
+  const navigation = useUnsavedChangesGuard({ dirty: dirty || recovery.unknown, busy: saving });
 
   function toggleCode(code: number) {
     if (savingRef.current) return;
@@ -116,23 +118,23 @@ export function ChildAllergenSettings({ childId, registered }: { childId: string
         ? current.filter((item) => item !== code)
         : [...current, code].sort((a, b) => a - b),
     );
-    setSaveError("");
+    if (!recovery.isBlocked()) setSaveError("");
   }
 
   function clearSelection() {
     if (savingRef.current) return;
     setSelectedCodes([]);
-    setSaveError("");
+    if (!recovery.isBlocked()) setSaveError("");
   }
 
   async function save() {
-    if (savingRef.current || !dirty || child?.id !== childId) return;
+    if (savingRef.current || recovery.isBlocked() || !dirty || child?.id !== childId) return;
     savingRef.current = true;
     const generation = generationRef.current;
     setSaving(true);
-    setSaveError("");
+    if (!recovery.isBlocked()) setSaveError("");
     try {
-      const result = await replaceChildAllergens(childId, [...selectedCodes]);
+      const result = await replaceChildAllergens(childId, [...selectedCodes], { mutationErrorDisplay: "local" });
       if (generation !== generationRef.current) return;
       const normalizedCodes = normalizeCodes(result.allergenCodes);
       setSelectedCodes(normalizedCodes);
@@ -143,7 +145,10 @@ export function ChildAllergenSettings({ childId, registered }: { childId: string
       });
     } catch (reason) {
       if (generation !== generationRef.current) return;
-      setSaveError(
+      if (reason instanceof MemberApiError && reason.code === "MUTATION_RESULT_UNKNOWN") {
+        recovery.markUnknown();
+        setSaveError("저장 결과를 확인하지 못했습니다. 자녀 목록으로 돌아가 설정을 확인해 주세요.");
+      } else setSaveError(
         reason instanceof MemberApiError
           ? errorMessage(reason)
           : "알레르기 설정을 저장하지 못했습니다.",
@@ -152,6 +157,7 @@ export function ChildAllergenSettings({ childId, registered }: { childId: string
       if (generation === generationRef.current) { savingRef.current = false; setSaving(false); }
     }
   }
+
 
   const heading = <PageHeading title="알레르기 설정" description="자녀의 알레르기 코드를 선택해 급식 위험 확인 기준으로 저장하세요." parents={[{ label: "자녀 관리", href: "/children" }]} />;
   const registrationToast = <SuccessToast notice={notice} />;
@@ -168,32 +174,31 @@ export function ChildAllergenSettings({ childId, registered }: { childId: string
     const loginRequired = loadError.status === 401;
     return (
       <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">{heading}{registrationToast}
-        <section className="rounded-2xl border border-red-200 bg-white p-10 text-center dark:border-red-950 dark:bg-[#101419]">
-          <AlertTriangle className="mx-auto h-10 w-10 text-red-500" />
-          <h2 className="mt-4 text-xl font-extrabold">
-            {loadError.status === 404
+        <section className="rounded-2xl border border-zinc-200 bg-white px-5 py-8 sm:py-10 dark:border-zinc-800 dark:bg-[#101419]">
+          <ApiNotice centered title={
+            loadError.status === 404
               ? "자녀 정보를 찾을 수 없습니다"
               : loadError.status === 403
                 ? "알레르기 설정에 접근할 수 없습니다"
               : loginRequired
                 ? "로그인이 필요합니다"
-                : "정보를 불러오지 못했습니다"}
-          </h2>
-          <p className="mt-2 text-sm font-medium text-zinc-500">{errorMessage(loadError)}</p>
-          {loginRequired ? (
-            <Link href="/auth/login" className="mt-5 inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 font-bold text-white">
+                : "알레르기 설정을 불러오지 못했어요."
+          } action={loginRequired ? (
+            <Link href="/auth/login" className="inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 font-bold text-white">
               로그인
             </Link>
           ) : loadError.status === 403 ? (
-            <div className="mt-5 flex flex-wrap justify-center gap-2">
+            <div className="flex flex-wrap justify-center gap-2">
               <Link href="/children" className="inline-flex h-11 items-center rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700">자녀 관리로 돌아가기</Link>
-              <button type="button" onClick={() => void load()} className="inline-flex h-11 items-center gap-2 rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700"><RefreshCw className="h-4 w-4" /> 다시 시도</button>
+              <button type="button" onClick={() => void load()} className="inline-flex h-8 items-center gap-1.5 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold dark:border-zinc-700"><RefreshCw className="h-3.5 w-3.5" /> 다시 시도</button>
             </div>
           ) : (
-            <button type="button" onClick={() => void load()} className="mt-5 inline-flex h-11 items-center gap-2 rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700">
-              <RefreshCw className="h-4 w-4" /> 다시 시도
+            <button type="button" onClick={() => void load()} className="inline-flex h-8 items-center gap-1.5 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold dark:border-zinc-700">
+              <RefreshCw className="h-3.5 w-3.5" /> 다시 시도
             </button>
-          )}
+          )}>
+            {loadError.status === 0 ? "잠시 후 다시 시도해 주세요." : errorMessage(loadError)}
+          </ApiNotice>
         </section>
       </div>
     );
@@ -270,15 +275,15 @@ export function ChildAllergenSettings({ childId, registered }: { childId: string
                 </>
               )}
             </div>
-            {saveError && <p role="alert" className="mt-2 text-sm font-bold text-red-600 dark:text-red-400"><AlertTriangle className="mr-1 inline h-4 w-4" />{saveError}</p>}
           </div>
           <div className="flex shrink-0 justify-end">
             <button type="button" onClick={clearSelection} disabled={saving || selectedCodes.length === 0} className="h-10 rounded-[10px] border border-zinc-300 px-4 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700">선택 해제</button>
           </div>
         </div>
+        {saveError && <div className="mt-4 rounded-[10px] bg-zinc-50 px-4 py-3 dark:bg-zinc-900/60"><ApiNotice title={saveError} /></div>}
         <div className="mt-6 flex justify-end"><div className="grid w-full grid-cols-2 gap-3 md:flex md:w-auto">
           <button type="button" onClick={() => navigation.requestLeave(() => router.push(`/children?${new URLSearchParams({ childId })}`))} disabled={saving} className="inline-flex h-11 w-full items-center justify-center rounded-[10px] border border-zinc-300 bg-white px-5 text-sm font-bold text-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 md:w-24 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-200">취소</button>
-          <button type="button" onClick={() => void save()} disabled={saving || !dirty || allergens.length === 0} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[10px] bg-mint-500 px-5 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50 md:w-24">{saving && <LoaderCircle className="h-4 w-4 animate-spin" />}{saving ? "저장 중" : "저장"}</button>
+          <button type="button" onClick={() => void save()} disabled={saving || recovery.unknown || !dirty || allergens.length === 0} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[10px] bg-mint-500 px-5 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50 md:w-24">{saving && <LoaderCircle className="h-4 w-4 animate-spin" />}{saving ? "저장 중" : "저장"}</button>
         </div></div>
       </section>
     </div>

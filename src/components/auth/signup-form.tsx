@@ -1,5 +1,7 @@
 "use client";
 
+import { ApiNotice } from "@/components/api-notice";
+
 import { SuccessToast, useSuccessToast } from "@/components/success-toast";
 
 import { Eye, EyeOff, LoaderCircle, LockKeyhole, Mail, MailCheck } from "lucide-react";
@@ -127,7 +129,7 @@ export function SignupForm() {
           {isResending ? "보내는 중" : "인증 메일 다시 보내기"}
         </button>
         <Link href="/auth/login" className="mt-3 flex h-12 w-full items-center justify-center rounded-[10px] bg-mint-500 text-sm font-extrabold text-white transition-colors hover:bg-mint-600">로그인으로 이동</Link>
-        <p aria-live="polite" className={`mt-4 min-h-5 text-sm font-semibold leading-5 ${resendFailed ? "text-red-600 dark:text-red-400" : "text-mint-600 dark:text-mint-400"}`}>{resendMessage}</p>
+        {resendFailed && resendMessage ? <div className="mt-4 rounded-[10px] bg-zinc-50 px-4 py-3 dark:bg-zinc-900/60"><ApiNotice title={resendMessage} /></div> : <p aria-live="polite" className="mt-4 min-h-5 text-sm font-semibold leading-5 text-mint-600 dark:text-mint-400">{resendMessage}</p>}
       </section>
     );
   }
@@ -185,7 +187,7 @@ export function SignupForm() {
             {fieldErrors.password ? <span id="signup-password-error" className="text-[13px] font-semibold text-red-600 dark:text-red-400">{fieldErrors.password}</span> : null}
           </label>
 
-          {errorMessage && !fieldErrors.email ? <p role="alert" className="rounded-[10px] border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 dark:border-red-950 dark:bg-red-950/30 dark:text-red-300">{errorMessage}</p> : null}
+          {errorMessage && !fieldErrors.email ? <div className="rounded-[10px] bg-zinc-50 px-4 py-3 dark:bg-zinc-900/60"><ApiNotice title={errorMessage} /></div> : null}
 
           <button type="submit" disabled={isSubmitting} className="flex h-12 items-center justify-center gap-2 rounded-[10px] bg-mint-500 px-6 text-base font-extrabold text-white transition-colors hover:bg-mint-600 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500 dark:disabled:bg-zinc-800 dark:disabled:text-zinc-500">
             {isSubmitting ? <LoaderCircle className="h-5 w-5 animate-spin" /> : null}

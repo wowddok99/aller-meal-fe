@@ -1,5 +1,6 @@
 "use client";
 
+import { ApiNotice } from "@/components/api-notice";
 import { PageHeading } from "@/components/page-heading";
 import { DatePicker } from "@/components/date-picker";
 
@@ -83,7 +84,7 @@ function RetryButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="mt-4 h-10 rounded-[10px] border border-zinc-300 px-4 text-sm font-bold text-zinc-700 transition-colors hover:border-mint-500 hover:text-mint-600 dark:border-zinc-700 dark:text-zinc-200"
+      className="h-8 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 transition-colors hover:border-mint-500 hover:text-mint-600 dark:border-zinc-700 dark:text-zinc-200"
     >
       다시 시도
     </button>
@@ -269,16 +270,7 @@ export function PublicSchoolMealsPage({
         <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">
           {heading}
           <Card className="px-5 py-10 text-center md:px-7">
-            <h2 className="text-xl font-extrabold">학교를 찾을 수 없습니다.</h2>
-            <p className="mt-2 text-sm font-semibold text-zinc-500 dark:text-zinc-400">
-              학교 검색에서 다시 선택해 주세요.
-            </p>
-            <Link
-              href="/schools"
-              className="mt-5 inline-flex h-10 items-center rounded-[10px] bg-mint-500 px-4 text-sm font-extrabold text-white hover:bg-mint-600"
-            >
-              학교 검색으로 돌아가기
-            </Link>
+            <ApiNotice centered title="학교를 찾을 수 없습니다." action={<Link href="/schools" className="inline-flex h-8 items-center rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold dark:border-zinc-700">학교 검색으로 돌아가기</Link>}>학교 검색에서 다시 선택해 주세요.</ApiNotice>
           </Card>
         </div>
       </PublicPageShell>
@@ -289,7 +281,7 @@ export function PublicSchoolMealsPage({
     <PublicPageShell>
       <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">
         {heading}
-        <Card className="p-5 md:p-7" aria-busy={schoolQuery.isLoading}>
+        <Card className={schoolQuery.isError ? "px-5 py-8 sm:py-10" : "p-5 md:p-7"} aria-busy={schoolQuery.isLoading}>
           {schoolQuery.isLoading ? (
             <p
               role="status"
@@ -299,12 +291,9 @@ export function PublicSchoolMealsPage({
             </p>
           ) : null}
           {schoolQuery.isError ? (
-            <div role="alert">
-              <p className="text-sm font-semibold text-red-600">
-                {getErrorMessage(schoolQuery.error)}
-              </p>
-              <RetryButton onClick={() => void schoolQuery.refetch()} />
-            </div>
+            <ApiNotice centered title="학교 정보를 불러오지 못했어요." action={<RetryButton onClick={() => void schoolQuery.refetch()} />}>
+              {schoolQuery.error instanceof ApiClientError && schoolQuery.error.status === 0 ? "잠시 후 다시 시도해 주세요." : getErrorMessage(schoolQuery.error)}
+            </ApiNotice>
           ) : null}
           {school ? (
             <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
@@ -412,32 +401,13 @@ export function PublicSchoolMealsPage({
             </p>
           ) : null}
           {isNotFoundError(activeMealQuery.error) ? (
-            <div
-              role="alert"
-              className="rounded-xl border border-dashed border-zinc-300 px-5 py-10 text-center dark:border-zinc-700"
-            >
-              <p className="text-sm font-semibold text-zinc-600 dark:text-zinc-300">
-                학교 또는 급식 정보를 찾을 수 없습니다.
-              </p>
-              <Link
-                href="/schools"
-                className="mt-4 inline-flex text-sm font-extrabold text-mint-600 dark:text-mint-400"
-              >
-                학교 다시 검색
-              </Link>
-            </div>
+            <ApiNotice centered title="학교 또는 급식 정보를 찾을 수 없습니다." action={<Link href="/schools" className="inline-flex h-8 items-center rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold dark:border-zinc-700">학교 다시 검색</Link>} />
           ) : null}
           {activeMealQuery.isError &&
           !isNotFoundError(activeMealQuery.error) ? (
-            <div
-              role="alert"
-              className="rounded-xl border border-dashed border-zinc-300 px-5 py-10 text-center dark:border-zinc-700"
-            >
-              <p className="text-sm font-semibold text-red-600">
-                {getErrorMessage(activeMealQuery.error)}
-              </p>
-              <RetryButton onClick={handleRefresh} />
-            </div>
+            <ApiNotice centered title="급식 정보를 불러오지 못했어요." action={<RetryButton onClick={handleRefresh} />}>
+              {activeMealQuery.error instanceof ApiClientError && activeMealQuery.error.status === 0 ? "잠시 후 다시 시도해 주세요." : getErrorMessage(activeMealQuery.error)}
+            </ApiNotice>
           ) : null}
           {isCollecting && mealQuery ? (
             <div

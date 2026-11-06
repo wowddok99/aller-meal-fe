@@ -2,11 +2,13 @@
 
 import { SuccessToast, useSuccessToast } from "@/components/success-toast";
 
-import { AlertTriangle, Bell, ChevronRight, History, LoaderCircle, MoreVertical, Pencil, Plus, RefreshCw, ShieldCheck, Trash2, UsersRound, Utensils } from "lucide-react";
+import { Bell, ChevronRight, History, LoaderCircle, MoreVertical, Pencil, Plus, RefreshCw, ShieldCheck, Trash2, UsersRound, Utensils } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ModalDialog } from "@/components/modal-dialog";
+import { runMutationDialogAction } from "@/components/mutation-dialog-action";
+import { ApiNotice } from "@/components/api-notice";
 import { PageHeading } from "@/components/page-heading";
 import { ChildProfile, deleteChild, getChildren, getSchool, MemberApiError } from "@/lib/member-api";
 import { consumeChildSaveNotice } from "./allergen-save-notice";
@@ -28,6 +30,7 @@ export function ChildrenList({ requestedChildId, allergenSaved, settingsSaved }:
   const [target, setTarget] = useState<ChildProfile | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [deleteOutcomeUnknown, setDeleteOutcomeUnknown] = useState(false);
   const { notice, notify: showNotice } = useSuccessToast();
   const [selectedChildId, setSelectedChildId] = useState<string | null>(requestedChildId ?? null);
   const pendingSaveRef = useRef<{ childId: string; message: string } | undefined>(undefined);
@@ -69,21 +72,34 @@ export function ChildrenList({ requestedChildId, allergenSaved, settingsSaved }:
   }, [loading, error, children, showNotice]);
 
   async function confirmDelete() {
-    if (!target || deletingRef.current) return;
+    if (!target || deletingRef.current || deleteError) return;
     deletingRef.current = true;
     setDeleting(true);
     setDeleteError("");
     try {
-      await deleteChild(target.id);
+      await deleteChild(target.id, { mutationErrorDisplay: "local" });
       const nextChildren = await load();
       if (selectedChildId === target.id) setSelectedChildId(nextChildren[0]?.id ?? null);
       showNotice("자녀 정보를 삭제했습니다.");
       setTarget(null);
       router.refresh();
     } catch (reason) {
+      setDeleteOutcomeUnknown(reason instanceof MemberApiError && reason.code === "MUTATION_RESULT_UNKNOWN");
       setDeleteError(reason instanceof Error ? reason.message : "삭제하지 못했습니다.");
     } finally { deletingRef.current = false; setDeleting(false); }
   }
+
+  const confirmDeleteDialog = () => runMutationDialogAction(
+    { busy: deletingRef.current, hasResult: Boolean(deleteError) },
+    confirmDelete,
+    () => setTarget(null),
+    load,
+  );
+  const closeDeleteDialog = () => {
+    if (deletingRef.current) return;
+    if (deleteError) void confirmDeleteDialog();
+    else setTarget(null);
+  };
 
   const loginRequired = error?.status === 401;
   const selectedChild = children.find((child) => child.id === selectedChildId) ?? children[0] ?? null;
@@ -131,9 +147,10 @@ export function ChildrenList({ requestedChildId, allergenSaved, settingsSaved }:
 
         {loading && <><ChildSkeleton /><ChildSkeleton /></>}
         {!loading && error && (
-          <div className="rounded-2xl border border-red-200 bg-white p-8 text-center dark:border-red-950 dark:bg-[#101419]">
-            <AlertTriangle className="mx-auto h-9 w-9 text-red-500" /><h2 className="mt-3 text-lg font-extrabold">{error.status === 403 ? "자녀 목록에 접근할 수 없습니다" : loginRequired ? "로그인이 필요합니다" : "자녀 목록을 불러오지 못했습니다"}</h2><p className="mt-2 text-sm font-medium text-zinc-500">{error.status === 403 ? "이메일 인증 또는 접근 권한을 확인한 뒤 다시 시도해 주세요." : error.message}</p>
-            {loginRequired ? <Link href="/auth/login" className="mt-5 inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 font-bold text-white">로그인</Link> : <button type="button" onClick={() => void load()} className="mt-5 inline-flex h-11 items-center gap-2 rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700"><RefreshCw className="h-4 w-4" />다시 시도</button>}
+          <div className="rounded-2xl border border-zinc-200 bg-white px-5 py-8 sm:py-10 dark:border-zinc-800 dark:bg-[#101419]">
+            <ApiNotice centered title={error.status === 403 ? "자녀 목록에 접근할 수 없습니다" : loginRequired ? "로그인이 필요합니다" : "자녀 목록을 불러오지 못했어요."} action={loginRequired ? <Link href="/auth/login" className="inline-flex h-10 items-center rounded-[10px] bg-mint-500 px-4 text-sm font-semibold text-white">로그인</Link> : <button type="button" onClick={() => void load()} className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"><RefreshCw className="h-3.5 w-3.5" />다시 시도</button>}>
+              {error.status === 403 ? "이메일 인증 또는 접근 권한을 확인한 뒤 다시 시도해 주세요." : error.status === 0 ? "잠시 후 다시 시도해 주세요." : error.message}
+            </ApiNotice>
           </div>
         )}
         {!loading && !error && children.length === 0 && (
@@ -146,7 +163,7 @@ export function ChildrenList({ requestedChildId, allergenSaved, settingsSaved }:
             <section aria-label={`${selectedChild.name} 자녀 관리`} className="overflow-visible rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-[#101419]">
               <div className="flex items-center justify-between gap-4 border-b border-zinc-200 px-5 py-5 dark:border-zinc-800">
                 <div className="min-w-0"><h2 className="text-xl font-extrabold">{selectedChild.name}</h2><p className="mt-0.5 truncate text-sm font-semibold text-zinc-500 dark:text-zinc-400">{schoolNames[selectedChild.schoolId] ? `${schoolNames[selectedChild.schoolId]} · ` : ""}{selectedChild.grade}학년 {selectedChild.classNumber}반</p></div>
-                <div ref={menuRef} className="relative -mr-2"><button type="button" aria-label={`${selectedChild.name} 자녀 관리 메뉴`} aria-expanded={openMenuId === selectedChild.id} onClick={() => setOpenMenuId((current) => current === selectedChild.id ? null : selectedChild.id)} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-white"><MoreVertical className="h-5 w-5" aria-hidden="true" /></button>{openMenuId === selectedChild.id && <div role="menu" className="absolute right-0 top-full z-20 mt-2 w-28 rounded-xl border border-zinc-200 bg-white p-1.5 text-left shadow-lg dark:border-zinc-700 dark:bg-[#151b22]"><Link role="menuitem" href={`/children/${selectedChild.id}`} onClick={() => setOpenMenuId(null)} className="flex h-10 items-center gap-2 rounded-lg px-3 text-sm font-bold text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"><Pencil className="h-4 w-4" />수정</Link><button type="button" role="menuitem" onClick={() => { setOpenMenuId(null); setTarget(selectedChild); setDeleteError(""); }} className="flex h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-bold text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/20"><Trash2 className="h-4 w-4" />삭제</button></div>}</div>
+                <div ref={menuRef} className="relative -mr-2"><button type="button" aria-label={`${selectedChild.name} 자녀 관리 메뉴`} aria-expanded={openMenuId === selectedChild.id} onClick={() => setOpenMenuId((current) => current === selectedChild.id ? null : selectedChild.id)} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-white"><MoreVertical className="h-5 w-5" aria-hidden="true" /></button>{openMenuId === selectedChild.id && <div role="menu" className="absolute right-0 top-full z-20 mt-2 w-28 rounded-xl border border-zinc-200 bg-white p-1.5 text-left shadow-lg dark:border-zinc-700 dark:bg-[#151b22]"><Link role="menuitem" href={`/children/${selectedChild.id}`} onClick={() => setOpenMenuId(null)} className="flex h-10 items-center gap-2 rounded-lg px-3 text-sm font-bold text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"><Pencil className="h-4 w-4" />수정</Link><button type="button" role="menuitem" onClick={() => { setOpenMenuId(null); setTarget(selectedChild); setDeleteError(""); setDeleteOutcomeUnknown(false); }} className="flex h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-bold text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/20"><Trash2 className="h-4 w-4" />삭제</button></div>}</div>
               </div>
               <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
                 <Link href={`/children/${selectedChild.id}/meals`} className="group flex min-h-20 items-center gap-3 px-5 py-4 transition-colors hover:bg-mint-50/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-mint-500 dark:hover:bg-mint-950/10"><Utensils className="h-5 w-5 shrink-0 text-mint-600 dark:text-mint-300" /><div className="min-w-0 flex-1"><h3 className="font-extrabold">자녀 급식</h3><p className="mt-1 text-sm font-medium text-zinc-500 dark:text-zinc-400">자녀의 알레르기 기준으로 급식 위험 여부를 확인합니다.</p></div><ChevronRight className="h-5 w-5 shrink-0 text-zinc-400 transition-transform group-hover:translate-x-0.5 group-hover:text-mint-600 dark:group-hover:text-mint-300" aria-hidden="true" /></Link>
@@ -161,20 +178,21 @@ export function ChildrenList({ requestedChildId, allergenSaved, settingsSaved }:
 
       <SuccessToast notice={notice} />
 
-      <ModalDialog open={Boolean(target)} busy={deleting} onClose={() => { if (!deletingRef.current) setTarget(null); }} initialFocusRef={deleteCancelRef} labelledBy="delete-title" describedBy="delete-description">
+      <ModalDialog open={Boolean(target)} busy={deleting} onClose={closeDeleteDialog} initialFocusRef={deleteCancelRef} labelledBy="delete-title" describedBy="delete-description">
         <div className="border-b border-zinc-200 px-6 pb-4 pt-6 dark:border-zinc-800">
-          <h2 id="delete-title" className="break-keep text-xl font-extrabold">자녀 정보 삭제</h2>
+          <h2 id="delete-title" className="break-keep text-xl font-extrabold">{deleteError ? "자녀 정보 삭제 안내" : "자녀 정보 삭제"}</h2>
         </div>
-        <div className="px-6 pb-6 pt-5">
-          <p id="delete-description" className="text-sm leading-5 text-zinc-900 dark:text-zinc-100">
-            자녀 정보를 삭제하시겠습니까?<br />
-            알레르기 및 알림 설정도 함께 삭제됩니다.
-          </p>
-          {deleteError && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm font-bold text-red-700 dark:bg-red-950/30 dark:text-red-300">{deleteError}</p>}
-          <div className="mt-6 flex flex-wrap justify-end gap-3">
-            <button ref={deleteCancelRef} type="button" disabled={deleting} onClick={() => setTarget(null)} className="h-11 min-w-16 rounded-[10px] border border-zinc-300 px-4 text-sm font-bold transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900">취소</button>
-            <button type="button" disabled={deleting} onClick={() => void confirmDelete()} className="inline-flex h-11 min-w-16 items-center justify-center rounded-[10px] bg-red-600 px-4 text-sm font-extrabold text-white transition-colors hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:opacity-50">{deleting ? <><LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /><span className="sr-only">삭제 중</span></> : "확인"}</button>
-          </div>
+        <div key={deleteError ? "result" : "confirmation"} className="px-6 pb-6 pt-5">
+          {deleteError ? <>
+            <div id="delete-description"><ApiNotice title={deleteOutcomeUnknown ? "삭제 결과를 확인하지 못했습니다." : "자녀 정보를 삭제하지 못했습니다."}>{deleteOutcomeUnknown ? "변경 사항을 확인한 뒤 다시 시도해 주세요." : deleteError}</ApiNotice></div>
+            <div className="-mx-6 -mb-6 mt-5 flex justify-end border-t border-zinc-200 px-6 py-4 dark:border-zinc-800"><button ref={deleteCancelRef} autoFocus type="button" onClick={() => void confirmDeleteDialog()} className="inline-flex h-11 min-w-16 items-center justify-center rounded-[10px] bg-mint-500 px-4 text-sm font-extrabold text-white hover:bg-mint-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 focus-visible:ring-offset-2">확인</button></div>
+          </> : <>
+            <p id="delete-description" className="text-sm leading-5 text-zinc-900 dark:text-zinc-100">자녀 정보를 삭제하시겠습니까?<br />알레르기 및 알림 설정도 함께 삭제됩니다.</p>
+            <div className="-mx-6 -mb-6 mt-5 flex flex-wrap justify-end gap-3 border-t border-zinc-200 px-6 py-4 dark:border-zinc-800">
+              <button ref={deleteCancelRef} type="button" disabled={deleting} onClick={closeDeleteDialog} className="h-11 min-w-16 rounded-[10px] border border-zinc-300 px-4 text-sm font-bold transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900">취소</button>
+              <button type="button" disabled={deleting} onClick={() => void confirmDeleteDialog()} className="inline-flex h-11 min-w-16 items-center justify-center rounded-[10px] bg-red-600 px-4 text-sm font-extrabold text-white transition-colors hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 disabled:opacity-50">{deleting ? <><LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /><span className="sr-only">삭제 중</span></> : "확인"}</button>
+            </div>
+          </>}
         </div>
       </ModalDialog>
     </div>

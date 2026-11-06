@@ -1,8 +1,11 @@
 "use client";
 
+import { runMutationDialogAction } from "@/components/mutation-dialog-action";
+import { ApiNotice } from "@/components/api-notice";
+
 import { SuccessToast, useSuccessToast } from "@/components/success-toast";
 
-import { AlertTriangle, Check, CircleAlert, LoaderCircle, RefreshCw } from "lucide-react";
+import { Check, CircleAlert, LoaderCircle, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ModalDialog } from "@/components/modal-dialog";
@@ -43,6 +46,7 @@ function formatWithdrawalDate(value: string) {
 
 export function AccountWithdrawalPage() {
   const [confirming, setConfirming] = useState(false);
+  const [confirmingCancellation, setConfirmingCancellation] = useState(false);
   const [loadingWithdrawal, setLoadingWithdrawal] = useState(true);
   const [pending, setPending] = useState(false);
   const [withdrawal, setWithdrawal] = useState<AccountWithdrawal>();
@@ -51,7 +55,9 @@ export function AccountWithdrawalPage() {
   const [notificationAgreed, setNotificationAgreed] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [error, setError] = useState("");
+  const [outcomeUnknown, setOutcomeUnknown] = useState(false);
   const backButtonRef = useRef<HTMLButtonElement>(null);
+  const cancelBackButtonRef = useRef<HTMLButtonElement>(null);
   const withdrawalLoadGeneration = useRef(0);
   const mutationGeneration = useRef(0);
   const pendingRef = useRef(false);
@@ -70,6 +76,8 @@ export function AccountWithdrawalPage() {
       }
       if (generation !== withdrawalLoadGeneration.current) return currentWithdrawal;
       setWithdrawal(currentWithdrawal ?? undefined);
+      setOutcomeUnknown(false);
+      setError("");
       return currentWithdrawal;
     } catch (reason) {
       if (generation !== withdrawalLoadGeneration.current) return null;
@@ -100,24 +108,21 @@ export function AccountWithdrawalPage() {
 
   async function handleWithdrawal() {
     if (pendingRef.current || loadingWithdrawal || loadError || !deletionAgreed || !notificationAgreed) return;
+    if (error) return;
     pendingRef.current = true;
     const generation = ++mutationGeneration.current;
     setPending(true);
     setError("");
     setNotice("");
     try {
-      const response = await requestAccountWithdrawal();
+      const response = await requestAccountWithdrawal({ mutationErrorDisplay: "local" });
       if (generation !== mutationGeneration.current) return;
       setWithdrawal(response);
       setConfirming(false);
       setNotice("회원 탈퇴가 예약되었습니다.");
     } catch (reason) {
       if (generation !== mutationGeneration.current) return;
-      if (reason instanceof MemberApiError && reason.status === 409) {
-        setConfirming(false);
-        await loadWithdrawal(true);
-        return;
-      }
+      setOutcomeUnknown(reason instanceof MemberApiError && reason.code === "MUTATION_RESULT_UNKNOWN");
       setError(
         reason instanceof MemberApiError
           ? errorMessage(reason, "request")
@@ -131,15 +136,28 @@ export function AccountWithdrawalPage() {
     }
   }
 
+  const confirmWithdrawalDialog = () => runMutationDialogAction(
+    { busy: pendingRef.current, hasResult: Boolean(error) },
+    handleWithdrawal,
+    () => setConfirming(false),
+    () => loadWithdrawal(),
+  );
+  const closeWithdrawalDialog = () => {
+    if (pendingRef.current) return;
+    if (error) void confirmWithdrawalDialog();
+    else setConfirming(false);
+  };
+
   async function handleCancellation() {
-    if (pendingRef.current || loadingWithdrawal || loadError) return;
+    if (!confirmingCancellation || !withdrawal || pendingRef.current || loadingWithdrawal || loadError || outcomeUnknown) return;
     pendingRef.current = true;
+    setConfirmingCancellation(false);
     const generation = ++mutationGeneration.current;
     setPending(true);
     setError("");
     setNotice("");
     try {
-      await cancelAccountWithdrawal();
+      await cancelAccountWithdrawal({ mutationErrorDisplay: "local" });
       if (generation !== mutationGeneration.current) return;
       setWithdrawal(undefined);
       setDeletionAgreed(false);
@@ -147,6 +165,8 @@ export function AccountWithdrawalPage() {
       setNotice("회원 탈퇴 예약이 취소되었습니다.");
     } catch (reason) {
       if (generation !== mutationGeneration.current) return;
+      if (reason instanceof MemberApiError && reason.status === 409) await loadWithdrawal();
+      setOutcomeUnknown(reason instanceof MemberApiError && reason.code === "MUTATION_RESULT_UNKNOWN");
       setError(
         reason instanceof MemberApiError
           ? errorMessage(reason, "cancel")
@@ -164,7 +184,7 @@ export function AccountWithdrawalPage() {
    * A load failure is intentionally terminal for this render. Rendering the
    * normal guide would make a request or cancellation from an unknown state.
    */
-  const canMutateWithdrawal = !loadingWithdrawal && !loadError && !pending;
+  const canMutateWithdrawal = !loadingWithdrawal && !loadError && !pending && !outcomeUnknown;
   const canRequestWithdrawal = canMutateWithdrawal && deletionAgreed && notificationAgreed;
 
   return (
@@ -173,13 +193,7 @@ export function AccountWithdrawalPage() {
 
       <div className="mt-7 space-y-4">
         {error && !confirming ? (
-          <div
-            role="alert"
-            className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300"
-          >
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            {error}
-          </div>
+          <div className="rounded-[10px] bg-zinc-50 px-4 py-3 dark:bg-zinc-900/60"><ApiNotice title={error === "회원 탈퇴 예약을 취소하지 못했습니다. 잠시 후 다시 시도해 주세요." ? "탈퇴 예약을 취소하지 못했습니다." : error}>{outcomeUnknown ? "확인을 누르면 현재 탈퇴 예약 상태를 다시 조회합니다." : error === "회원 탈퇴 예약을 취소하지 못했습니다. 잠시 후 다시 시도해 주세요." ? "잠시 후 다시 시도해 주세요." : null}</ApiNotice></div>
         ) : null}
 
         {loadingWithdrawal ? (
@@ -192,28 +206,8 @@ export function AccountWithdrawalPage() {
             불러오고 있습니다.
           </div>
         ) : loadError ? (
-          <section
-            aria-labelledby="withdrawal-load-error-heading"
-            className="rounded-2xl border border-red-200 bg-white p-5 text-center dark:border-red-950 dark:bg-[#101419]"
-          >
-            <AlertTriangle className="mx-auto h-9 w-9 text-red-500" />
-            <h2
-              id="withdrawal-load-error-heading"
-              className="mt-3 text-lg font-extrabold"
-            >
-              회원 탈퇴 상태를 불러오지 못했습니다
-            </h2>
-            <p className="mt-2 text-sm font-medium leading-6 text-zinc-500 dark:text-zinc-400">
-              {loadError}
-            </p>
-            <button
-              type="button"
-              onClick={() => void loadWithdrawal()}
-              disabled={pending}
-              className="mt-5 inline-flex h-11 items-center gap-2 rounded-[10px] border border-zinc-300 px-5 text-sm font-bold transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
-            >
-              <RefreshCw className="h-4 w-4" /> 다시 시도
-            </button>
+          <section className="rounded-2xl border border-zinc-200 bg-white px-5 py-8 sm:py-10 dark:border-zinc-800 dark:bg-[#101419]">
+            <ApiNotice centered title="회원 탈퇴 상태를 불러오지 못했어요." action={<button type="button" onClick={() => void loadWithdrawal()} disabled={pending} className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"><RefreshCw className="h-3.5 w-3.5" />다시 시도</button>}>{loadError}</ApiNotice>
           </section>
         ) : withdrawal ? (
           <section
@@ -258,7 +252,7 @@ export function AccountWithdrawalPage() {
             <button
               type="button"
               disabled={!canMutateWithdrawal}
-              onClick={() => void handleCancellation()}
+              onClick={() => setConfirmingCancellation(true)}
               className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[10px] border border-zinc-300 px-5 text-sm font-extrabold text-zinc-700 transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
             >
               {pending ? (
@@ -330,17 +324,28 @@ export function AccountWithdrawalPage() {
 
       <SuccessToast notice={notice} />
 
-      <ModalDialog open={confirming} busy={pending} onClose={() => { if (!pendingRef.current) setConfirming(false); }} initialFocusRef={backButtonRef} labelledBy="withdrawal-confirm-title" describedBy="withdrawal-confirm-description">
-        <div className="border-b border-zinc-200 px-6 pb-4 pt-6 dark:border-zinc-800">
-          <h2 id="withdrawal-confirm-title" className="break-keep text-xl font-extrabold">회원 탈퇴를 예약할까요?</h2>
+      <ModalDialog open={confirmingCancellation && Boolean(withdrawal)} onClose={() => setConfirmingCancellation(false)} initialFocusRef={cancelBackButtonRef} labelledBy="withdrawal-cancel-title" describedBy="withdrawal-cancel-description">
+        <div className="border-b border-zinc-200 px-6 pb-4 pt-6 dark:border-zinc-800"><h2 id="withdrawal-cancel-title" className="break-keep text-xl font-extrabold">탈퇴 예약을 취소할까요?</h2></div>
+        <div className="px-6 py-5"><p id="withdrawal-cancel-description" className="text-sm leading-6 text-zinc-600 dark:text-zinc-300">확인하면 예약된 회원 탈퇴가 취소됩니다.</p></div>
+        <div className="flex flex-wrap justify-end gap-3 border-t border-zinc-200 px-6 py-4 dark:border-zinc-800">
+          <button ref={cancelBackButtonRef} type="button" onClick={() => setConfirmingCancellation(false)} className="h-11 min-w-16 rounded-[10px] border border-zinc-300 px-4 text-sm font-bold transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900">취소</button>
+          <button type="button" onClick={() => void handleCancellation()} className="inline-flex h-11 min-w-16 items-center justify-center rounded-[10px] bg-mint-500 px-4 text-sm font-extrabold text-white transition-colors hover:bg-mint-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 disabled:opacity-50">확인</button>
         </div>
-        <div className="px-6 pb-6 pt-5">
-          <p id="withdrawal-confirm-description" className="text-sm leading-6 text-zinc-600 dark:text-zinc-300">예약 후 예정일 전까지는 이 화면에서 직접 취소할 수 있어요.</p>
-          {error && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm font-bold text-red-700 dark:bg-red-950/30 dark:text-red-300">{error}</p>}
-          <div className="mt-6 flex flex-wrap justify-end gap-3">
-            <button ref={backButtonRef} type="button" disabled={pending} onClick={() => setConfirming(false)} className="h-11 min-w-16 rounded-[10px] border border-zinc-300 px-4 text-sm font-bold transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900">취소</button>
-            <button type="button" disabled={pending} onClick={() => void handleWithdrawal()} className="inline-flex h-11 min-w-16 items-center justify-center rounded-[10px] bg-mint-500 px-4 text-sm font-extrabold text-white transition-colors hover:bg-mint-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 disabled:opacity-50">{pending ? <><LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /><span className="sr-only">처리 중</span></> : "확인"}</button>
-          </div>
+      </ModalDialog>
+
+      <ModalDialog open={confirming} busy={pending} onClose={closeWithdrawalDialog} initialFocusRef={backButtonRef} labelledBy="withdrawal-confirm-title" describedBy="withdrawal-confirm-description">
+        <div className="border-b border-zinc-200 px-6 pb-4 pt-6 dark:border-zinc-800"><h2 id="withdrawal-confirm-title" className="break-keep text-xl font-extrabold">{error ? "회원 탈퇴 예약 안내" : "회원 탈퇴를 예약할까요?"}</h2></div>
+        <div key={error ? "result" : "confirmation"} className={error ? undefined : "px-6 pb-6 pt-5"}>
+          {error ? <>
+            <div id="withdrawal-confirm-description" className="px-6 py-5"><ApiNotice title={outcomeUnknown ? "탈퇴 예약 결과를 확인하지 못했습니다." : "탈퇴 예약 요청을 완료하지 못했습니다."}>{outcomeUnknown ? "확인을 누르면 현재 상태를 다시 확인합니다." : error}</ApiNotice></div>
+            <div className="flex justify-end border-t border-zinc-200 px-6 py-4 dark:border-zinc-800"><button ref={backButtonRef} autoFocus type="button" onClick={() => void confirmWithdrawalDialog()} className="inline-flex h-11 min-w-16 items-center justify-center rounded-[10px] bg-mint-500 px-4 text-sm font-extrabold text-white hover:bg-mint-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 focus-visible:ring-offset-2">확인</button></div>
+          </> : <>
+            <p id="withdrawal-confirm-description" className="text-sm leading-6 text-zinc-600 dark:text-zinc-300">예약 후 예정일 전까지는 이 화면에서 직접 취소할 수 있습니다.</p>
+            <div className="-mx-6 -mb-6 mt-5 flex flex-wrap justify-end gap-3 border-t border-zinc-200 px-6 py-4 dark:border-zinc-800">
+              <button ref={backButtonRef} type="button" disabled={pending} onClick={closeWithdrawalDialog} className="h-11 min-w-16 rounded-[10px] border border-zinc-300 px-4 text-sm font-bold transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900">취소</button>
+              <button type="button" disabled={pending} onClick={() => void confirmWithdrawalDialog()} className="inline-flex h-11 min-w-16 items-center justify-center rounded-[10px] bg-mint-500 px-4 text-sm font-extrabold text-white transition-colors hover:bg-mint-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 disabled:opacity-50">{pending ? <><LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /><span className="sr-only">처리 중</span></> : "확인"}</button>
+            </div>
+          </>}
         </div>
       </ModalDialog>
     </main>

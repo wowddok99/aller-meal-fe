@@ -55,12 +55,12 @@ export type NotificationHistory = Required<Pick<GeneratedNotificationHistory, "p
 export type AccountWithdrawal = { userId: string; withdrawalRequestedAt: string; withdrawalDueAt: string; maskedNotificationCount: number };
 
 export class MemberApiError extends Error {
-  constructor(public readonly status: number, message: string) { super(message); this.name = "MemberApiError"; }
+  constructor(public readonly status: number, message: string, public readonly code?: string) { super(message); this.name = "MemberApiError"; }
 }
 
 function asMemberApiError(error: unknown, fallbackMessage: string): MemberApiError {
   if (error instanceof MemberApiError) return error;
-  if (error instanceof ApiClientError) return new MemberApiError(error.status, error.message);
+  if (error instanceof ApiClientError) return new MemberApiError(error.status, error.message, error.code);
   return new MemberApiError(0, error instanceof Error ? error.message : fallbackMessage);
 }
 
@@ -244,32 +244,35 @@ export async function searchSchools(keyword: string): Promise<SchoolSearchResult
   try { return toSchoolSearchResult(await requestSchoolSearch({ keyword, page: 1, pageSize: 20 }), 1, 20); }
   catch (error) { throw asMemberApiError(error, "학교를 검색하지 못했습니다."); }
 }
-export async function createChild(input: CreateChildProfileInput): Promise<ChildProfile> {
-  try { return requiredChild(await requestCreateChild(input)); }
+export async function createChild(input: CreateChildProfileInput, options?: { mutationErrorDisplay: "local" }): Promise<ChildProfile> {
+  try { return requiredChild(await (options ? requestCreateChild(input, options) : requestCreateChild(input))); }
   catch (error) { throw asMemberApiError(error, "자녀를 등록하지 못했습니다."); }
 }
-export async function updateChild(childId: string, input: UpdateChildProfileInput): Promise<ChildProfile> {
-  try { return requiredChild(await requestUpdateChild(childId, input)); }
+export async function updateChild(childId: string, input: UpdateChildProfileInput, options?: { mutationErrorDisplay: "local" }): Promise<ChildProfile> {
+  try { return requiredChild(await (options ? requestUpdateChild(childId, input, options) : requestUpdateChild(childId, input))); }
   catch (error) { throw asMemberApiError(error, "자녀 정보를 수정하지 못했습니다."); }
 }
-export async function deleteChild(childId: string): Promise<void> {
-  try { await requestDeleteChild(childId); }
+export async function deleteChild(childId: string, options?: { mutationErrorDisplay: "local" }): Promise<void> {
+  try {
+    if (options) await requestDeleteChild(childId, options);
+    else await requestDeleteChild(childId);
+  }
   catch (error) { throw asMemberApiError(error, "자녀 정보를 삭제하지 못했습니다."); }
 }
 export async function getChildAllergens(childId: string): Promise<ChildAllergen> {
   try { return requiredChildAllergen(await requestChildAllergens(childId)); }
   catch (error) { throw asMemberApiError(error, "자녀 알레르기 설정을 불러오지 못했습니다."); }
 }
-export async function replaceChildAllergens(childId: string, allergenCodes: number[]): Promise<ChildAllergen> {
-  try { return requiredChildAllergen(await requestReplaceChildAllergens(childId, { allergenCodes })); }
+export async function replaceChildAllergens(childId: string, allergenCodes: number[], options?: { mutationErrorDisplay: "local" }): Promise<ChildAllergen> {
+  try { return requiredChildAllergen(await (options ? requestReplaceChildAllergens(childId, { allergenCodes }, options) : requestReplaceChildAllergens(childId, { allergenCodes }))); }
   catch (error) { throw asMemberApiError(error, "자녀 알레르기 설정을 저장하지 못했습니다."); }
 }
 export async function getChildNotificationPreference(childId: string): Promise<ChildNotificationPreference> {
   try { return requiredChildNotificationPreference(await requestChildNotificationPreference(childId)); }
   catch (error) { throw asMemberApiError(error, "자녀 알림 설정을 불러오지 못했습니다."); }
 }
-export async function updateChildNotificationPreference(childId: string, input: UpdateChildNotificationPreferenceInput): Promise<ChildNotificationPreference> {
-  try { return requiredChildNotificationPreference(await requestUpdateChildNotificationPreference(childId, input)); }
+export async function updateChildNotificationPreference(childId: string, input: UpdateChildNotificationPreferenceInput, options?: { mutationErrorDisplay: "local" }): Promise<ChildNotificationPreference> {
+  try { return requiredChildNotificationPreference(await (options ? requestUpdateChildNotificationPreference(childId, input, options) : requestUpdateChildNotificationPreference(childId, input))); }
   catch (error) { throw asMemberApiError(error, "자녀 알림 설정을 저장하지 못했습니다."); }
 }
 export async function getPersonalizedMeals(childId: string, mode: PersonalizedMealMode, date: string): Promise<PersonalizedMealQuery> {
@@ -286,8 +289,8 @@ export async function getNotificationHistory(childId: string, page = 1, pageSize
   try { return requiredNotificationHistory(await requestNotificationHistory(childId, { page, pageSize })); }
   catch (error) { throw asMemberApiError(error, "알림 이력을 불러오지 못했습니다."); }
 }
-export async function requestAccountWithdrawal(): Promise<AccountWithdrawal> {
-  try { return requiredAccountWithdrawal(await requestWithdrawal()); }
+export async function requestAccountWithdrawal(options?: { mutationErrorDisplay: "local" }): Promise<AccountWithdrawal> {
+  try { return requiredAccountWithdrawal(await (options ? requestWithdrawal(options) : requestWithdrawal())); }
   catch (error) { throw asMemberApiError(error, "회원 탈퇴를 예약하지 못했습니다."); }
 }
 export async function getAccountWithdrawal(): Promise<AccountWithdrawal | null> {
@@ -301,7 +304,7 @@ export async function getAccountWithdrawal(): Promise<AccountWithdrawal | null> 
     return withdrawal;
   } catch (error) { throw asMemberApiError(error, "회원 탈퇴 상태를 불러오지 못했습니다."); }
 }
-export async function cancelAccountWithdrawal(): Promise<void> {
-  try { await requestCancelAccountWithdrawal(); }
+export async function cancelAccountWithdrawal(options?: { mutationErrorDisplay: "local" }): Promise<void> {
+  try { if (options) await requestCancelAccountWithdrawal(options); else await requestCancelAccountWithdrawal(); }
   catch (error) { throw asMemberApiError(error, "회원 탈퇴 예약을 취소하지 못했습니다."); }
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { ApiNotice } from "@/components/api-notice";
+
 import { SuccessToast } from "@/components/success-toast";
 
 import Link from "next/link";
@@ -7,6 +9,7 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LoaderCircle, MoreVertical } from "lucide-react";
 import { AdminApiError, getCollectionJob, isAdminActionId, type CollectionJob } from "@/lib/admin-api";
+import { isCollectionOperationForSelection, isCollectionRequestUnresolved } from "./collection-operation-selection";
 import { useCollectionRequest } from "./use-collection-request";
 import { CollectionRequestConfirmation } from "./collection-request-confirmation";
 import { CollectionRequestResult } from "./collection-request-result";
@@ -15,6 +18,10 @@ import { CollectionBadge, CollectionJobStatus, collectionButtonStyle, collection
 export function CollectionJobDetail({ refreshList }: { refreshList: () => Promise<void> }) {
   const searchParams = useSearchParams();
   const selectedId = searchParams.get("collectionJobId")?.toLowerCase();
+  return <CollectionJobDetailForSelection key={selectedId ?? "none"} selectedId={selectedId} refreshList={refreshList} />;
+}
+
+function CollectionJobDetailForSelection({ selectedId, refreshList }: { selectedId?: string; refreshList: () => Promise<void> }) {
   const [loadedJob, setJob] = useState<CollectionJob>();
   const job = loadedJob?.collectionJobId?.toLowerCase() === selectedId ? loadedJob : undefined;
   const [error, setError] = useState<AdminApiError>();
@@ -23,9 +30,11 @@ export function CollectionJobDetail({ refreshList }: { refreshList: () => Promis
   const request = useRef(0);
   const refreshAll = useCallback(async () => { setRevision((value) => value + 1); await refreshList(); }, [refreshList]);
   const operation = useCollectionRequest(refreshAll);
+  const trackingIsCurrent = isCollectionOperationForSelection(selectedId, operation.tracking?.sourceId);
+  const operationUnresolved = isCollectionRequestUnresolved(Boolean(operation.retryIntent), trackingIsCurrent, operation.trackedJob?.status);
   const [confirmation, setConfirmation] = useState<{ job: CollectionJob; kind: "recollection" | "execution" }>();
   const closeConfirmation = useCallback(() => setConfirmation(undefined), []);
-  const canConfirm = Boolean(confirmation && job && job.collectionJobId?.toLowerCase() === confirmation.job.collectionJobId?.toLowerCase() && !loading && !error && !operation.authStatus && !operation.busy && !operation.retryIntent && job.recovery?.status !== "SUCCEEDED" && isJobActionAvailable(job) && (confirmation.kind === "recollection" ? job.availableActions.canRecollect : job.availableActions.canExecute));
+  const canConfirm = Boolean(confirmation && job && job.collectionJobId?.toLowerCase() === confirmation.job.collectionJobId?.toLowerCase() && !loading && !error && !operation.authStatus && !operation.busy && !operationUnresolved && job.recovery?.status !== "SUCCEEDED" && isJobActionAvailable(job) && (confirmation.kind === "recollection" ? job.availableActions.canRecollect : job.availableActions.canExecute));
 
   useEffect(() => {
     if (confirmation && !canConfirm) closeConfirmation();
@@ -55,13 +64,13 @@ export function CollectionJobDetail({ refreshList }: { refreshList: () => Promis
   }, [selectedId, revision]);
 
   return <><SuccessToast notice={operation.successNotice} /><section aria-labelledby="collection-detail-title" aria-busy={loading} className={collectionPanelStyle}>
-    <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap items-center gap-3"><h2 id="collection-detail-title" tabIndex={-1} className="text-xl font-extrabold">급식 수집 상세</h2>{job && !loading && !error ? job.status === "FAILED" ? <CollectionJobStatus job={job} /> : <CollectionBadge status={job.status} label={collectionOriginalStatusLabel(job.status)} /> : null}</div>{job && !loading && !error && !operation.authStatus && job.recovery?.status !== "SUCCEEDED" && isJobActionAvailable(job) ? <CollectionActionMenu key={job.collectionJobId} label={job.availableActions.canRecollect ? "재수집 요청" : "수집 실행"} disabled={operation.busy || Boolean(operation.retryIntent)} processing={operation.processing} onAction={() => setConfirmation({ job, kind: job.availableActions.canRecollect ? "recollection" : "execution" })} /> : null}</div>
-    {loading ? <p role="status" className="mt-5 flex items-center gap-2 text-sm text-zinc-500"><LoaderCircle className="h-4 w-4 animate-spin" />상세를 불러오고 있습니다.</p> : error ? <div role="alert" className="mt-5 space-y-3 text-sm"><p>{error.status === 404 ? "수집 작업을 찾을 수 없습니다." : error.status === 401 ? "로그인한 후 다시 확인해 주세요." : error.status === 403 ? "관리자 권한이 필요합니다." : error.message}</p>{error.status === 401 ? <Link className={collectionButtonStyle} href={`/auth/login?next=${encodeURIComponent(selectedId ? collectionJobHref(selectedId) : "/admin/collection-jobs")}`}>로그인</Link> : null}<Link href="/admin/collection-jobs" className={collectionButtonStyle}>전체 목록 보기</Link></div> : job ? <CollectionJobInformation key={job.collectionJobId} job={job} /> : <p className="mt-8 text-center text-sm text-zinc-500">행을 선택하면 상세 정보를 표시합니다.</p>}
-    {operation.retryIntent ? <button type="button" disabled={operation.processing} className={`${collectionButtonStyle} mt-3`} onClick={() => void operation.retry()}>요청 다시 시도</button> : null}
+    <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap items-center gap-3"><h2 id="collection-detail-title" tabIndex={-1} className="text-xl font-extrabold">급식 수집 상세</h2>{job && !loading && !error ? job.status === "FAILED" ? <CollectionJobStatus job={job} /> : <CollectionBadge status={job.status} label={collectionOriginalStatusLabel(job.status)} /> : null}</div>{job && !loading && !error && !operation.authStatus && job.recovery?.status !== "SUCCEEDED" && isJobActionAvailable(job) ? <CollectionActionMenu key={job.collectionJobId} label={job.availableActions.canRecollect ? "재수집 요청" : "수집 실행"} disabled={operation.busy || operationUnresolved} processing={operation.processing} onAction={() => setConfirmation({ job, kind: job.availableActions.canRecollect ? "recollection" : "execution" })} /> : null}</div>
+    {loading ? <p role="status" className="mt-5 flex items-center gap-2 text-sm text-zinc-500"><LoaderCircle className="h-4 w-4 animate-spin" />상세를 불러오고 있습니다.</p> : error ? <div className="py-8"><ApiNotice centered title={error.status === 404 ? "수집 작업을 찾을 수 없습니다." : error.status === 401 ? "로그인이 필요합니다." : error.status === 403 ? "관리자 권한이 필요합니다." : "수집 상세를 불러오지 못했습니다."} action={<>{error.status === 401 ? <Link className={collectionButtonStyle} href={`/auth/login?next=${encodeURIComponent(selectedId ? collectionJobHref(selectedId) : "/admin/collection-jobs")}`}>로그인</Link> : error.status !== 403 && error.status !== 404 ? <button type="button" className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900" onClick={() => setRevision((value) => value + 1)}>다시 시도</button> : null}</>}>{error.status === 0 ? "잠시 후 다시 시도해 주세요." : error.message}</ApiNotice></div> : job ? <CollectionJobInformation key={job.collectionJobId} job={job} /> : <p className="mt-8 text-center text-sm text-zinc-500">행을 선택하면 상세 정보를 표시합니다.</p>}
+    {trackingIsCurrent && operation.paused ? <div className="mt-5 rounded-[10px] bg-zinc-50 px-4 py-3 dark:bg-zinc-900/60"><ApiNotice title={operation.paused} /></div> : null}
     {operation.authStatus === 401 ? <Link className={`${collectionButtonStyle} mt-3`} href={`/auth/login?next=${encodeURIComponent(selectedId ? collectionJobHref(selectedId) : "/admin/collection-jobs")}`}>로그인</Link> : null}
   </section>
   {confirmation && canConfirm ? <CollectionRequestConfirmation job={confirmation.job} kind={confirmation.kind} onClose={closeConfirmation} onConfirm={confirmRequest} /> : null}
-  {operation.notice && (operation.notice.kind === "accepted" || !operation.processing) && !confirmation ? <CollectionRequestResult title={operation.notice.title || "결과 확인 안내"} message={operation.notice.text} onClose={operation.dismiss} /> : null}</>;
+  {operation.notice && (operation.notice.kind === "accepted" || !operation.processing) && !confirmation ? <CollectionRequestResult title={operation.notice.title || "결과 확인 안내"} message={operation.notice.text} description={operation.notice.description} onClose={operation.dismiss} /> : null}</>;
 }
 
 function CollectionActionMenu({ label, disabled, processing, onAction }: { label: string; disabled: boolean; processing: boolean; onAction: () => void }) {

@@ -1,5 +1,8 @@
 "use client";
 
+import { ApiClientError } from "@/shared/api/api-client-error";
+import { ApiNotice } from "@/components/api-notice";
+
 import {
   ChevronLeft,
   ChevronRight,
@@ -323,18 +326,7 @@ export function PublicSchoolSearchPage() {
               </p>
             ) : null}
             {searchQuery.isError ? (
-              <div role="alert" className="px-5 py-10 text-center">
-                <p className="text-sm font-semibold text-red-600">
-                  {getErrorMessage(searchQuery.error)}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => void searchQuery.refetch()}
-                  className="mt-4 h-10 rounded-[10px] border border-zinc-300 px-4 text-sm font-bold text-zinc-700 transition-colors hover:border-mint-500 hover:text-mint-600 dark:border-zinc-700 dark:text-zinc-200"
-                >
-                  다시 시도
-                </button>
-              </div>
+              <div className="px-5 py-8 sm:py-10"><ApiNotice centered title="학교 목록을 불러오지 못했어요." action={<button type="button" onClick={() => void searchQuery.refetch()} className="h-8 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900">다시 시도</button>}>{searchQuery.error instanceof ApiClientError && searchQuery.error.status === 0 ? "잠시 후 다시 시도해 주세요." : getErrorMessage(searchQuery.error)}</ApiNotice></div>
             ) : null}
             {result &&
             !isLoading &&

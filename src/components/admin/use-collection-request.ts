@@ -7,8 +7,8 @@ import { AdminApiError, createIdempotencyKey, getCollectionJob, isAdminActionId,
 
 type RequestKind = "recollection" | "execution";
 type Intent = { sourceId: string; kind: RequestKind; key: string };
-type Tracking = { id: string; kind: RequestKind; token: number };
-export type CollectionNotice = { error: boolean; text: string; kind: "accepted" | "request-error" | "information"; title?: string };
+type Tracking = { id: string; sourceId: string; kind: RequestKind; token: number };
+export type CollectionNotice = { error: boolean; text: string; description?: string; kind: "accepted" | "request-error" | "information"; title?: string };
 
 export function useCollectionRequest(refresh: () => Promise<void>) {
   const [processing, setProcessing] = useState(false);
@@ -32,22 +32,22 @@ export function useCollectionRequest(refresh: () => Promise<void>) {
     if (guard.current || !isAdminActionId(intent.sourceId)) return;
     guard.current = true; notify(""); setProcessing(true); setNotice(undefined); setRetryIntent(undefined); setAuthStatus(undefined);
     try {
-      const result = await (intent.kind === "recollection" ? requestRecollection : requestCollectionExecution)(intent.sourceId, intent.key);
+      const result = await (intent.kind === "recollection" ? requestRecollection : requestCollectionExecution)(intent.sourceId, intent.key, { mutationErrorDisplay: "local" });
       if (!mounted.current) return;
       if (!isAdminActionId(result.collectionJobId)) {
         setRetryIntent(intent);
-        setNotice({ kind: "information", title: "결과 확인 안내", error: true, text: "요청 응답에 작업 ID가 없어 결과를 확인할 수 없습니다. 상태를 새로고침해 주세요." });
+        setNotice({ kind: "information", title: "결과 확인 안내", error: true, text: "요청 결과를 확인하지 못했습니다.", description: "목록에서 현재 상태를 확인해 주세요." });
         await refreshRef.current(); return;
       }
       notify(result.duplicate ? "이미 접수된 요청입니다." : intent.kind === "recollection" ? "재수집 요청이 접수되었습니다." : "수집 실행 요청이 접수되었습니다.");
       setTrackedJob(undefined); setPaused(undefined);
-      setTracking({ id: result.collectionJobId!, kind: intent.kind, token: ++sequence.current });
+      setTracking({ id: result.collectionJobId!, sourceId: intent.sourceId, kind: intent.kind, token: ++sequence.current });
       await refreshRef.current();
     } catch (cause) {
       if (!mounted.current) return;
       const error = cause instanceof AdminApiError ? cause : new AdminApiError(0, "요청을 처리하지 못했습니다.");
       if (error.status === 401 || error.status === 403) setAuthStatus(error.status);
-      setNotice({ kind: "request-error", title: error.status === 0 || error.status >= 500 ? "결과 확인 안내" : "요청 실패", error: true, text: error.status === 401 ? "로그인한 후 다시 요청해 주세요." : error.status === 403 ? "관리자 권한이 필요합니다." : error.status === 409 ? "상태가 변경되어 요청하지 못했습니다. 최신 상태를 다시 확인해 주세요." : error.status === 404 ? "수집 작업을 찾을 수 없습니다." : "요청 결과를 확인하지 못했습니다. 다시 시도하면 같은 요청으로 확인합니다." });
+      setNotice({ kind: "request-error", title: error.status === 0 || error.status >= 500 ? "결과 확인 안내" : "요청 실패", error: true, text: error.status === 401 ? "로그인한 후 다시 요청해 주세요." : error.status === 403 ? "관리자 권한이 필요합니다." : error.status === 409 ? "상태가 변경되어 요청하지 못했습니다." : error.status === 404 ? "수집 작업을 찾을 수 없습니다." : `${intent.kind === "recollection" ? "재수집" : "수집 실행"} 요청 결과를 확인하지 못했습니다.`, description: error.status === 409 ? "최신 상태를 다시 확인해 주세요." : error.status === 401 || error.status === 403 || error.status === 404 ? undefined : "목록에서 현재 상태를 확인해 주세요." });
       if (error.status === 0 || error.status >= 500) setRetryIntent(intent);
       if (error.status === 409 || error.status === 404) await refreshRef.current();
     } finally {

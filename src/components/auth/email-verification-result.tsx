@@ -1,9 +1,11 @@
 "use client";
 
+import { ApiNotice } from "@/components/api-notice";
+
 import { SuccessToast, useSuccessToast } from "@/components/success-toast";
 
 import {
-  AlertTriangle,
+  Info,
   LoaderCircle,
   Mail,
 } from "lucide-react";
@@ -11,6 +13,7 @@ import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { PageHeading } from "@/components/page-heading";
 import {
+  AuthApiError,
   confirmEmailVerification,
   getAuthErrorMessage,
   requestEmailVerification,
@@ -21,12 +24,12 @@ type ResultState = "loading" | "success" | "error" | "missing";
 export function EmailVerificationResult({ token }: { token?: string }) {
   const [state, setState] = useState<ResultState>(token ? "loading" : "missing");
   const [message, setMessage] = useState("");
+  const [transportFailure, setTransportFailure] = useState(false);
   const { notice, notify } = useSuccessToast();
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState("");
   const [isResending, setIsResending] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
-  const [resendFailed, setResendFailed] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -45,7 +48,9 @@ export function EmailVerificationResult({ token }: { token?: string }) {
       })
       .catch((error) => {
         if (!active) return;
-        setMessage(getAuthErrorMessage(error, "email-verification-confirm"));
+        const unavailable = !(error instanceof AuthApiError) || error.status === 0 || error.status >= 500;
+        setTransportFailure(unavailable);
+        setMessage(unavailable ? "잠시 후 인증 링크를 다시 열어 주세요. 인증 메일이 필요하면 아래에서 요청할 수 있어요." : getAuthErrorMessage(error, "email-verification-confirm"));
         setState("error");
       });
 
@@ -66,13 +71,11 @@ export function EmailVerificationResult({ token }: { token?: string }) {
     notify("");
     setIsResending(true);
     setResendMessage("");
-    setResendFailed(false);
     try {
       await requestEmailVerification(normalizedEmail);
       setEmail(normalizedEmail);
       notify("인증 메일을 다시 보냈습니다. 받은편지함을 확인해 주세요.");
     } catch (error) {
-      setResendFailed(true);
       setResendMessage(getAuthErrorMessage(error, "email-verification-request"));
     } finally {
       setIsResending(false);
@@ -81,7 +84,7 @@ export function EmailVerificationResult({ token }: { token?: string }) {
 
   return (
     <>
-      <section className="rounded-2xl bg-white p-6 shadow-[0_10px_32px_rgba(24,24,27,0.06)] dark:bg-[#101419] dark:shadow-none sm:p-8">
+      <section className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-[#101419] sm:p-8">
         <div className="mb-6"><PageHeading title="이메일 인증" parents={[{ label: "회원가입", href: "/auth/signup" }]} /></div>
         {state === "loading" ? (
           <ResultPanel
@@ -105,12 +108,13 @@ export function EmailVerificationResult({ token }: { token?: string }) {
           </ResultPanel>
         ) : (
           <ResultPanel
-            icon={<AlertTriangle className="h-8 w-8" />}
-            iconClass="bg-orange-50 text-orange-500 dark:bg-orange-950/30 dark:text-orange-400"
-            title={state === "missing" ? "인증 토큰이 필요해요" : "인증 링크를 확인해 주세요"}
+            compact
+            icon={<Info aria-hidden="true" className="h-6 w-6" strokeWidth={1.8} />}
+            iconClass="bg-zinc-100 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400"
+            title={state === "missing" ? "인증 링크로 접속해 주세요" : transportFailure ? "이메일 인증을 확인하지 못했어요" : "인증 링크를 확인해 주세요"}
             description={state === "missing" ? "이메일에서 받은 인증 링크로 다시 접속해 주세요." : message}
           >
-            <form className="mt-7 border-t border-zinc-200 pt-6 dark:border-zinc-800" onSubmit={handleResend} noValidate>
+            <form className="mt-7 border-t border-zinc-200 pt-6 text-left dark:border-zinc-800" onSubmit={handleResend} noValidate>
               <div>
                 <label htmlFor="verification-email" className="text-sm font-bold text-zinc-800 dark:text-zinc-200">인증 메일을 받을 이메일</label>
                 <span className={`mt-3 flex h-12 w-full items-center gap-3 rounded-[10px] border bg-white px-4 transition dark:bg-[#101419] ${emailError ? "border-red-500" : "border-zinc-200 focus-within:border-mint-500 focus-within:ring-2 focus-within:ring-mint-500/15 dark:border-zinc-700"}`}>
@@ -122,7 +126,7 @@ export function EmailVerificationResult({ token }: { token?: string }) {
                   {isResending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
                   {isResending ? "보내는 중" : "인증 메일 다시 요청"}
                 </button>
-                {resendMessage ? <p aria-live="polite" className={`mt-3 text-sm font-semibold ${resendFailed ? "text-red-600 dark:text-red-400" : "text-mint-600 dark:text-mint-400"}`}>{resendMessage}</p> : null}
+                {resendMessage ? <div className="mt-3 rounded-[10px] bg-zinc-50 px-4 py-3 dark:bg-zinc-900/60"><ApiNotice title={resendMessage} /></div> : null}
               </div>
               <p className="mt-5 text-center text-sm font-medium text-zinc-500 dark:text-zinc-400">
                 다른 이메일로 가입하려면 <Link href="/auth/signup" className="font-extrabold text-mint-600 hover:text-mint-500 dark:text-mint-400">회원가입으로 이동</Link>
@@ -136,13 +140,13 @@ export function EmailVerificationResult({ token }: { token?: string }) {
   );
 }
 
-function ResultPanel({ icon, iconClass, title, description, children }: { icon: React.ReactNode; iconClass: string; title: string; description: string; children?: React.ReactNode }) {
+function ResultPanel({ icon, iconClass, title, description, children, compact = false }: { icon: React.ReactNode; iconClass: string; title: string; description: string; children?: React.ReactNode; compact?: boolean }) {
   return (
-    <div>
-      <span className={`flex h-16 w-16 items-center justify-center rounded-full ${iconClass}`}>{icon}</span>
-      <div className="mt-6 min-w-0">
-        <h2 className="text-2xl font-extrabold tracking-[-0.03em] sm:text-[28px]">{title}</h2>
-        <p className="mt-2 text-base font-medium leading-6 text-zinc-500 dark:text-zinc-400">{description}</p>
+    <div className={compact ? "text-center" : undefined}>
+      <span className={`flex items-center justify-center rounded-full ${compact ? "mx-auto h-12 w-12" : "h-16 w-16"} ${iconClass}`}>{icon}</span>
+      <div className={compact ? "mt-3 min-w-0" : "mt-6 min-w-0"}>
+        <h2 className={compact ? "text-base font-bold text-zinc-800 dark:text-zinc-100" : "text-2xl font-extrabold tracking-[-0.03em] sm:text-[28px]"}>{title}</h2>
+        <p className={`mt-2 leading-6 text-zinc-500 dark:text-zinc-400 ${compact ? "text-sm" : "text-base font-medium"}`}>{description}</p>
         {children}
       </div>
     </div>

@@ -1,11 +1,12 @@
 "use client";
 
+import { ApiNotice } from "@/components/api-notice";
+
 import { createChildSaveNotice } from "./allergen-save-notice";
 
 import { PageHeading } from "@/components/page-heading";
 
 import {
-  AlertTriangle,
   Clock3,
   Info,
   LoaderCircle,
@@ -24,6 +25,7 @@ import {
   MemberApiError,
   updateChildNotificationPreference,
 } from "@/lib/member-api";
+import { useMutationRecovery } from "./mutation-recovery";
 import { useUnsavedChangesGuard } from "./edit-navigation-guard";
 
 const DEFAULT_TIMEZONE = "Asia/Seoul";
@@ -64,6 +66,7 @@ function formatDateTime(value?: string, timezone = DEFAULT_TIMEZONE) {
 
 export function ChildNotificationPreferenceForm({ childId }: { childId: string }) {
   const router = useRouter();
+  const recovery = useMutationRecovery(childId);
   const [child, setChild] = useState<ChildProfile | null>(null);
   const [schoolName, setSchoolName] = useState("");
   const [preference, setPreference] = useState<ChildNotificationPreference | null>(null);
@@ -122,16 +125,16 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
     [form, saved, loading, child, childId],
   );
 
-  const navigation = useUnsavedChangesGuard({ dirty, busy: saving });
+  const navigation = useUnsavedChangesGuard({ dirty: dirty || recovery.unknown, busy: saving });
 
   function updateForm(next: Partial<FormValue>) {
     if (savingRef.current) return;
     setForm((current) => ({ ...current, ...next }));
-    setSaveError("");
+    if (!recovery.isBlocked()) setSaveError("");
   }
 
   async function save() {
-    if (savingRef.current || !dirty || child?.id !== childId) return;
+    if (savingRef.current || recovery.isBlocked() || !dirty || child?.id !== childId) return;
     if (!/^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,3})?)?$/.test(form.notificationTime)) {
       setSaveError("알림 시간을 올바르게 입력해 주세요.");
       return;
@@ -139,13 +142,13 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
     savingRef.current = true;
     const generation = generationRef.current;
     setSaving(true);
-    setSaveError("");
+    if (!recovery.isBlocked()) setSaveError("");
     let completed = false;
     try {
       const result = await updateChildNotificationPreference(childId, {
         ...form,
         notificationTime: normalizeTime(form.notificationTime),
-      });
+      }, { mutationErrorDisplay: "local" });
       if (generation !== generationRef.current) return;
       const next = {
         emailEnabled: result.emailEnabled,
@@ -162,7 +165,10 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
       completed = true;
     } catch (reason) {
       if (generation !== generationRef.current) return;
-      setSaveError(
+      if (reason instanceof MemberApiError && reason.code === "MUTATION_RESULT_UNKNOWN") {
+        recovery.markUnknown();
+        setSaveError("저장 결과를 확인하지 못했습니다. 자녀 목록으로 돌아가 설정을 확인해 주세요.");
+      } else setSaveError(
         reason instanceof MemberApiError
           ? errorMessage(reason)
           : "알림 설정을 저장하지 못했습니다.",
@@ -171,6 +177,7 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
       if (generation === generationRef.current && !completed) { savingRef.current = false; setSaving(false); }
     }
   }
+
 
   function requestLeave() {
     navigation.requestLeave(() => router.push(`/children?${new URLSearchParams({ childId })}`));
@@ -189,23 +196,16 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
     const loginRequired = loadError.status === 401;
     return (
       <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">{heading}
-        <section className="rounded-2xl border border-red-200 bg-white p-10 text-center dark:border-red-950 dark:bg-[#101419]">
-          <AlertTriangle className="mx-auto h-10 w-10 text-red-500" />
-          <h2 className="mt-4 text-xl font-extrabold">
-            {loadError.status === 404 ? "자녀 정보를 찾을 수 없습니다" : loadError.status === 403 ? "알림 설정에 접근할 수 없습니다" : loginRequired ? "로그인이 필요합니다" : "알림 설정을 불러오지 못했습니다"}
-          </h2>
-          <p className="mt-2 text-sm font-medium text-zinc-500">{errorMessage(loadError)}</p>
-          {loginRequired ? (
-            <Link href="/auth/login" className="mt-5 inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 font-bold text-white">로그인</Link>
+        <section className="rounded-2xl border border-zinc-200 bg-white px-5 py-8 sm:py-10 dark:border-zinc-800 dark:bg-[#101419]"><ApiNotice centered title={loadError.status === 404 ? "자녀 정보를 찾을 수 없습니다" : loadError.status === 403 ? "알림 설정에 접근할 수 없습니다" : loginRequired ? "로그인이 필요합니다" : "알림 설정을 불러오지 못했습니다"} action={loginRequired ? (
+            <Link href="/auth/login" className="inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 font-bold text-white">로그인</Link>
           ) : loadError.status === 403 ? (
-            <div className="mt-5 flex flex-wrap justify-center gap-2">
+            <div className="flex flex-wrap justify-center gap-2">
               <Link href="/children" className="inline-flex h-11 items-center rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700">자녀 관리로 돌아가기</Link>
-              <button type="button" onClick={() => void load()} className="inline-flex h-11 items-center gap-2 rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700"><RefreshCw className="h-4 w-4" /> 다시 시도</button>
+              <button type="button" onClick={() => void load()} className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"><RefreshCw className="h-3.5 w-3.5" /> 다시 시도</button>
             </div>
           ) : (
-            <button type="button" onClick={() => void load()} className="mt-5 inline-flex h-11 items-center gap-2 rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700"><RefreshCw className="h-4 w-4" /> 다시 시도</button>
-          )}
-        </section>
+            <button type="button" onClick={() => void load()} className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"><RefreshCw className="h-3.5 w-3.5" /> 다시 시도</button>
+          )}>{loadError.status === 0 ? "잠시 후 다시 시도해 주세요." : errorMessage(loadError)}</ApiNotice></section>
       </div>
     );
   }
@@ -257,11 +257,11 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
         </div>
       </section>
 
-      {saveError && <p role="alert" className="flex items-center gap-2 text-sm font-bold text-red-600 dark:text-red-400"><AlertTriangle className="h-4 w-4" /> {saveError}</p>}
+      {saveError && <div className="mt-3 rounded-[10px] bg-zinc-50 px-4 py-3 dark:bg-zinc-900/60"><ApiNotice title={saveError} /></div>}
       <div className="flex justify-end">
         <div className="grid w-full grid-cols-2 gap-3 md:flex md:w-auto">
           <button type="button" onClick={requestLeave} disabled={saving} className="inline-flex h-11 w-full items-center justify-center rounded-[10px] border border-zinc-300 bg-white px-5 text-sm font-bold text-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 md:w-24 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-200">취소</button>
-          <button type="button" onClick={() => void save()} disabled={saving || !dirty} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[10px] bg-mint-500 px-5 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50 md:w-24">{saving && <LoaderCircle className="h-4 w-4 animate-spin" />}{saving ? "저장 중" : "저장"}</button>
+          <button type="button" onClick={() => void save()} disabled={saving || recovery.unknown || !dirty} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[10px] bg-mint-500 px-5 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50 md:w-24">{saving && <LoaderCircle className="h-4 w-4 animate-spin" />}{saving ? "저장 중" : "저장"}</button>
         </div>
       </div>
 

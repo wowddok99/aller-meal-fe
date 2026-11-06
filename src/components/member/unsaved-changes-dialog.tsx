@@ -21,7 +21,7 @@ export function UnsavedChangesDialog({ open, onStay, onLeave }: UnsavedChangesDi
       </div>
       <div className="px-6 pb-6 pt-5">
         <p id={descriptionId} className="text-sm leading-6 text-zinc-600 dark:text-zinc-300">저장하지 않은 내용은 반영되지 않습니다.</p>
-        <div className="mt-6 flex flex-wrap justify-end gap-3">
+        <div className="-mx-6 -mb-6 mt-5 flex flex-wrap justify-end gap-3 border-t border-zinc-200 px-6 py-4 dark:border-zinc-800">
           <button type="button" onClick={onLeave} className="inline-flex min-h-11 items-center justify-center rounded-[10px] border border-zinc-300 px-4 text-sm font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 focus-visible:ring-offset-2 dark:border-zinc-700 dark:focus-visible:ring-offset-[#101419]">나가기</button>
           <button ref={stayRef} type="button" onClick={onStay} className="inline-flex min-h-11 items-center justify-center rounded-[10px] bg-mint-500 px-4 text-sm font-extrabold text-white hover:bg-mint-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#101419]">계속 편집</button>
         </div>

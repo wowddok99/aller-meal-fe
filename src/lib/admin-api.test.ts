@@ -85,6 +85,18 @@ describe("PR-06 admin operation adapters", () => {
     expect(adminApi.reprocessNotificationDeadLetterEvent).toHaveBeenCalledWith("b1111111-1111-4111-8111-111111111111", { headers: { "Idempotency-Key": "dlq-key" } });
   });
 
+  it("preserves a local DLQ retry's idempotency key and unknown outcome", async () => {
+    adminApi.reprocessNotificationDeadLetterEvent.mockRejectedValueOnce(new ApiClientError({ status: 0, code: "MUTATION_RESULT_UNKNOWN", message: "결과 확인 필요" }));
+    await expect(reprocessDeadLetterEvent("b1111111-1111-4111-8111-111111111111", "same-dlq-key", { mutationErrorDisplay: "local" })).rejects.toMatchObject({ code: "MUTATION_RESULT_UNKNOWN" });
+    expect(adminApi.reprocessNotificationDeadLetterEvent).toHaveBeenLastCalledWith("b1111111-1111-4111-8111-111111111111", { mutationErrorDisplay: "local", headers: { "Idempotency-Key": "same-dlq-key" } });
+  });
+
+  it("preserves local collection error ownership and idempotency without hiding an unknown outcome", async () => {
+    adminApi.requestCollectionRecollection.mockRejectedValueOnce(new ApiClientError({ status: 0, code: "MUTATION_RESULT_UNKNOWN", message: "결과 확인 필요" }));
+    await expect(requestRecollection("a1111111-1111-4111-8111-111111111111", "same-key", { mutationErrorDisplay: "local" })).rejects.toMatchObject({ status: 0, code: "MUTATION_RESULT_UNKNOWN" });
+    expect(adminApi.requestCollectionRecollection).toHaveBeenLastCalledWith("a1111111-1111-4111-8111-111111111111", { mutationErrorDisplay: "local", headers: { "Idempotency-Key": "same-key" } });
+  });
+
   it("keeps 409 distinct from a successful duplicate response", async () => {
     adminApi.requestCollectionRecollection.mockRejectedValueOnce(new ApiClientError({ status: 409, code: "IDEMPOTENCY_KEY_CONFLICT", message: "conflict" }));
     await expect(requestRecollection("a1111111-1111-4111-8111-111111111111", "conflict-key")).rejects.toMatchObject({ name: "AdminApiError", status: 409 } satisfies Partial<AdminApiError>);

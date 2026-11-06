@@ -1,10 +1,12 @@
 "use client";
 
+import { ApiNotice } from "@/components/api-notice";
+
 import { PageHeading } from "@/components/page-heading";
 import { DatePicker } from "@/components/date-picker";
 
 import {
-  AlertTriangle, ChevronDown, Info, LoaderCircle, RefreshCw, Utensils,
+  ChevronDown, Info, LoaderCircle, RefreshCw, Utensils,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -138,6 +140,7 @@ export function ChildPersonalizedMeals({ childId }: { childId?: string }) {
       setChild(profile); setSchoolName(school?.name ?? ""); setAllergenNames(new Map(allergens.map((allergen) => [allergen.code, allergen.name]))); setData(meals);
     } catch (reason) {
       if (requestId !== requestSequence.current) return;
+      setChild(null); setData(null); setSchoolName(""); setAllergenNames(new Map());
       setError(reason instanceof MemberApiError ? reason : new MemberApiError(0, "자녀 급식을 불러오지 못했습니다."));
     } finally {
       if (requestId === requestSequence.current) setLoading(false);
@@ -163,10 +166,15 @@ export function ChildPersonalizedMeals({ childId }: { childId?: string }) {
   }, [data]);
 
   const heading = <PageHeading title="자녀 급식" description="자녀의 알레르기 기준으로 급식 위험 여부를 확인하세요." parents={[{ label: "자녀 관리", href: "/children" }]} />;
-  if (loading && !data) return <div className="mx-auto w-full max-w-[1220px] px-5 pb-12 pt-5">{heading}<div role="status" className="flex min-h-80 items-center justify-center text-sm font-bold text-zinc-500"><LoaderCircle aria-hidden="true" className="mr-2 h-5 w-5 animate-spin" /> 자녀 급식을 불러오고 있습니다.</div></div>;
-  if (error) {
-    const auth = error.status === 401;
-    return <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">{heading}<section className="rounded-2xl border border-red-200 bg-white p-10 text-center dark:border-red-950 dark:bg-[#101419]"><AlertTriangle className="mx-auto h-10 w-10 text-red-500" /><h2 className="mt-4 text-xl font-extrabold">{auth ? "로그인이 필요합니다" : "자녀 급식을 불러오지 못했습니다"}</h2><p className="mt-2 text-sm font-medium text-zinc-500">{message(error)}</p>{auth ? <Link href="/auth/login" className="mt-5 inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 font-bold text-white">로그인</Link> : <button type="button" onClick={() => void load()} className="mt-5 inline-flex h-11 items-center gap-2 rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700"><RefreshCw className="h-4 w-4" /> 다시 시도</button>}</section></div>;
+  const queryControls = <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_190px]"><div className="grid h-11 grid-cols-3 rounded-[10px] border border-zinc-300 p-0.5 dark:border-zinc-700">{[["today","오늘"],["daily","일간"],["weekly","주간"]].map(([value,label]) => <button key={value} type="button" aria-pressed={mode === value} onClick={() => selectMode(value as PersonalizedMealMode)} className={`rounded-[8px] text-sm font-extrabold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 ${mode === value ? "bg-mint-500 text-white" : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"}`}>{label}</button>)}</div><DatePicker label={mode === "weekly" ? "기준 날짜" : "조회 날짜"} value={date} disabled={mode === "today"} onChange={setDate} /></div>;
+  if (hasChild && ((loading && !data) || error)) {
+    const auth = error?.status === 401;
+    return <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">
+      {heading}
+      <section className="rounded-2xl border border-zinc-200 bg-white px-6 py-5 md:px-8 md:py-6 dark:border-zinc-800 dark:bg-[#101419]"><div className="grid gap-5 lg:grid-cols-[minmax(220px,0.7fr)_minmax(460px,1.3fr)] lg:items-center"><h2 className="text-xl font-extrabold">급식 조회</h2>{queryControls}</div></section>
+      <section className="rounded-2xl border border-zinc-200 bg-white px-6 py-6 md:px-8 dark:border-zinc-800 dark:bg-[#101419]"><h2 className="text-lg font-extrabold">{mode === "weekly" ? "주간 위험 요약" : "위험 요약"}</h2><div className="mt-5 grid divide-y divide-zinc-200 sm:grid-cols-3 sm:divide-x sm:divide-y-0 dark:divide-zinc-800"><Summary label="주의" description="알레르기 확인이 필요한 메뉴" tone="amber" /><Summary label="안전" description="등록된 알레르기 성분이 없는 메뉴" tone="mint" /><Summary label="확인 필요" description="정보 확인 또는 판별이 필요한 메뉴" tone="zinc" /></div></section>
+      <section aria-busy={loading} className="rounded-2xl border border-zinc-200 bg-white px-6 py-6 md:px-8 dark:border-zinc-800 dark:bg-[#101419]"><h2 className="text-lg font-extrabold">급식 정보</h2><div className="py-8">{error ? <ApiNotice centered title={auth ? "로그인이 필요합니다" : "자녀 급식을 불러오지 못했습니다"} action={auth ? <Link href="/auth/login" className="inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 font-bold text-white">로그인</Link> : <button type="button" onClick={() => void load()} className="inline-flex h-8 items-center rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:border-zinc-700">다시 시도</button>}>{error.status === 0 ? "잠시 후 다시 시도해 주세요." : message(error)}</ApiNotice> : <p role="status" className="flex items-center justify-center text-sm font-bold text-zinc-500"><LoaderCircle aria-hidden="true" className="mr-2 h-5 w-5 animate-spin" />자녀 급식을 불러오고 있습니다.</p>}</div></section>
+    </div>;
   }
   if (!hasChild) return <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">{heading}<section className="w-full rounded-2xl border border-dashed border-zinc-300 bg-white p-10 text-center dark:border-zinc-700 dark:bg-[#101419]"><Utensils className="mx-auto h-9 w-9 text-zinc-400" /><h2 className="mt-3 text-xl font-extrabold">등록된 자녀를 먼저 선택해 주세요</h2><p className="mt-2 text-sm font-medium text-zinc-500">자녀를 등록하면 알레르기 기준에 맞춘 급식을 확인할 수 있어요.</p><Link href="/children" className="mt-5 inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 text-sm font-extrabold text-white">자녀 관리로 이동</Link></section></div>;
   if (!child || !data) return null;
@@ -177,7 +185,7 @@ export function ChildPersonalizedMeals({ childId }: { childId?: string }) {
     <section className="rounded-2xl border border-zinc-200 bg-white px-6 py-5 md:px-8 md:py-6 dark:border-zinc-800 dark:bg-[#101419]">
       <div className="grid gap-5 lg:grid-cols-[minmax(220px,0.7fr)_minmax(460px,1.3fr)] lg:items-center">
         <div><div className="flex flex-wrap items-center gap-2.5"><h2 className="min-w-0 break-keep text-2xl font-extrabold tracking-[-0.02em] [overflow-wrap:anywhere]">{child.name}</h2><span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-bold text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">{child.grade}학년 {child.classNumber}반</span></div>{schoolName && <p className="mt-1.5 text-sm font-medium text-zinc-500 dark:text-zinc-400">{schoolName}</p>}</div>
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_190px]"><div className="grid h-11 grid-cols-3 rounded-[10px] border border-zinc-300 p-0.5 dark:border-zinc-700">{[["today","오늘"],["daily","일간"],["weekly","주간"]].map(([value,label]) => <button key={value} type="button" aria-pressed={mode === value} onClick={() => selectMode(value as PersonalizedMealMode)} className={`rounded-[8px] text-sm font-extrabold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 ${mode === value ? "bg-mint-500 text-white" : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"}`}>{label}</button>)}</div><DatePicker label={mode === "weekly" ? "기준 날짜" : "조회 날짜"} value={date} disabled={mode === "today"} onChange={setDate} /></div>
+        {queryControls}
       </div>
       <div className="mt-4 border-t border-zinc-200 pt-4 text-sm dark:border-zinc-800"><p className="font-medium text-zinc-500 dark:text-zinc-400">{mode === "weekly" ? "조회 기간" : "조회 날짜"} <span className="font-bold text-zinc-700 dark:text-zinc-200">{mode === "weekly" ? `${data.rangeStart} ~ ${data.rangeEnd}` : data.rangeStart}</span></p></div>
     </section>
@@ -186,11 +194,11 @@ export function ChildPersonalizedMeals({ childId }: { childId?: string }) {
   </div>;
 }
 
-function Summary({ label, description, value, tone }: { label: string; description: string; value: number; tone: "mint" | "amber" | "zinc" }) {
+function Summary({ label, description, value, tone }: { label: string; description: string; value?: number; tone: "mint" | "amber" | "zinc" }) {
   const config = {
     mint: { value: "text-mint-700 dark:text-mint-300" },
     amber: { value: "text-amber-800 dark:text-amber-300" },
     zinc: { value: "text-zinc-800 dark:text-zinc-100" },
   }[tone];
-  return <div className="min-h-[116px] px-0 py-4 first:pt-0 sm:px-6 sm:py-0 sm:first:pl-0 sm:[&:not(:first-child)]:pl-6"><p className="text-sm font-bold text-zinc-600 dark:text-zinc-300">{label}</p><p className={`mt-1.5 text-2xl font-extrabold leading-none tracking-[-0.03em] ${config.value}`}>{value}<span className="ml-0.5 text-base font-bold">개</span></p><p className="mt-2 text-sm font-medium leading-5 text-zinc-500 dark:text-zinc-400">{description}</p></div>;
+  return <div className="min-h-[116px] px-0 py-4 first:pt-0 sm:px-6 sm:py-0 sm:first:pl-0 sm:[&:not(:first-child)]:pl-6"><p className="text-sm font-bold text-zinc-600 dark:text-zinc-300">{label}</p><p className={`mt-1.5 text-2xl font-extrabold leading-none tracking-[-0.03em] ${config.value}`}>{value === undefined ? <><span aria-hidden="true">-</span><span className="sr-only">조회 전</span></> : <>{value}<span className="ml-0.5 text-base font-bold">개</span></>}</p><p className="mt-2 text-sm font-medium leading-5 text-zinc-500 dark:text-zinc-400">{description}</p></div>;
 }

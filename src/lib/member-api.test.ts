@@ -179,6 +179,31 @@ describe("child CRUD adapter", () => {
     expect(requestDeleteChild).toHaveBeenCalledWith(child.id);
   });
 
+  it("passes local ownership for form writes while preserving unknown outcome codes", async () => {
+    const failure = new ApiClientError({ status: 0, code: "MUTATION_RESULT_UNKNOWN", message: "결과 확인 필요" });
+    const options = { mutationErrorDisplay: "local" } as const;
+    const profile = { name: child.name, grade: child.grade, classNumber: child.classNumber, schoolId: child.schoolId };
+    const preference = { emailEnabled: true, notificationTime: "08:30:00", timezone: "Asia/Seoul" };
+    vi.mocked(requestCreateChild).mockRejectedValueOnce(failure);
+    vi.mocked(requestUpdateChild).mockRejectedValueOnce(failure);
+    vi.mocked(requestReplaceChildAllergens).mockRejectedValueOnce(failure);
+    vi.mocked(requestUpdateChildNotificationPreference).mockRejectedValueOnce(failure);
+    await expect(createChild(profile, options)).rejects.toMatchObject({ code: "MUTATION_RESULT_UNKNOWN" });
+    await expect(updateChild(child.id, profile, options)).rejects.toMatchObject({ code: "MUTATION_RESULT_UNKNOWN" });
+    await expect(replaceChildAllergens(child.id, [2], options)).rejects.toMatchObject({ code: "MUTATION_RESULT_UNKNOWN" });
+    await expect(updateChildNotificationPreference(child.id, preference, options)).rejects.toMatchObject({ code: "MUTATION_RESULT_UNKNOWN" });
+    expect(requestCreateChild).toHaveBeenCalledWith(profile, options);
+    expect(requestUpdateChild).toHaveBeenCalledWith(child.id, profile, options);
+    expect(requestReplaceChildAllergens).toHaveBeenCalledWith(child.id, { allergenCodes: [2] }, options);
+    expect(requestUpdateChildNotificationPreference).toHaveBeenCalledWith(child.id, preference, options);
+  });
+
+  it("passes explicit local deletion error ownership and preserves unknown-outcome code", async () => {
+    vi.mocked(requestDeleteChild).mockRejectedValue(new ApiClientError({ status: 0, code: "MUTATION_RESULT_UNKNOWN", message: "결과 확인 필요" }));
+    await expect(deleteChild(child.id, { mutationErrorDisplay: "local" })).rejects.toMatchObject({ status: 0, code: "MUTATION_RESULT_UNKNOWN" });
+    expect(requestDeleteChild).toHaveBeenCalledWith(child.id, { mutationErrorDisplay: "local" });
+  });
+
   it("preserves API failures as status-aware member errors", async () => {
     vi.mocked(requestChild).mockRejectedValue(new ApiClientError({ status: 404, code: "CHILD_NOT_FOUND", message: "자녀를 찾을 수 없습니다." }));
 
@@ -246,6 +271,16 @@ describe("account withdrawal adapter", () => {
 
     await expect(createWithdrawal()).resolves.toEqual(withdrawal);
     await expect(cancelWithdrawal()).resolves.toBeUndefined();
+  });
+
+  it("lets the withdrawal screen own unknown-outcome display while preserving its error code", async () => {
+    const failure = new ApiClientError({ status: 0, code: "MUTATION_RESULT_UNKNOWN", message: "결과 확인 필요" });
+    vi.mocked(requestAccountWithdrawal).mockRejectedValueOnce(failure);
+    vi.mocked(requestCancelAccountWithdrawal).mockRejectedValueOnce(failure);
+    await expect(createWithdrawal({ mutationErrorDisplay: "local" })).rejects.toMatchObject({ code: "MUTATION_RESULT_UNKNOWN" });
+    await expect(cancelWithdrawal({ mutationErrorDisplay: "local" })).rejects.toMatchObject({ code: "MUTATION_RESULT_UNKNOWN" });
+    expect(requestAccountWithdrawal).toHaveBeenCalledWith({ mutationErrorDisplay: "local" });
+    expect(requestCancelAccountWithdrawal).toHaveBeenCalledWith({ mutationErrorDisplay: "local" });
   });
 
   it("maps the current withdrawal response and normalizes a 204 response to null", async () => {
