@@ -27,8 +27,8 @@ function unavailableError() {
 function retryError() {
   return new ApiClientError({ status: 0, code: "REFRESH_RETRY_REQUIRED", message: "로그인 상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요." });
 }
-function mutationUnknownError() {
-  emit(API_MUTATION_RESULT_UNKNOWN_EVENT);
+function mutationUnknownError(localDisplay = false) {
+  if (!localDisplay) emit(API_MUTATION_RESULT_UNKNOWN_EVENT);
   return new ApiClientError({ status: 0, code: "MUTATION_RESULT_UNKNOWN", message: "요청 결과를 확인하지 못했습니다. 변경 사항을 확인한 뒤 다시 시도해 주세요." });
 }
 function uncertainStatusError() {
@@ -111,7 +111,7 @@ async function timedFetch(url: string, options: RequestInit, timeout = AUTH_TIME
   if (signal?.aborted) abort(); else signal?.addEventListener("abort", abort, { once: true });
   const timer = setTimeout(abort, timeout);
   try { return await fetch(url, requestOptions({ ...options, signal: controller.signal })); }
-  catch { throw new ApiClientError({ status: 0, code: "NETWORK_ERROR", message: "네트워크 연결을 확인하고 요청 결과를 확인한 뒤 다시 시도해 주세요." }); }
+  catch { throw new ApiClientError({ status: 0, code: "NETWORK_ERROR", message: "요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요." }); }
   finally { clearTimeout(timer); signal?.removeEventListener("abort", abort); }
 }
 async function parseError(response: Response) {
@@ -353,7 +353,7 @@ export async function refreshSession() {
   }
   return refreshPromise;
 }
-async function request<T>(url: string, options: RequestInit, retried = false): Promise<T> {
+async function request<T>(url: string, options: RequestInit, retried = false, localMutationError = false): Promise<T> {
   const protectedRequest = isProtectedApiPath(url);
   const mutation = !["GET", "HEAD", "OPTIONS"].includes((options.method ?? "GET").toUpperCase());
   let expected: SessionMarker | undefined;
@@ -363,10 +363,10 @@ async function request<T>(url: string, options: RequestInit, retried = false): P
     if (expected?.sessionId) headers.set("X-Expected-Session-Id", expected.sessionId);
     let response: Response;
     try { response = await timedFetch(url, { ...options, headers }, 15_000); }
-    catch (error) { if (protectedRequest && mutation) throw mutationUnknownError(); throw error; }
+    catch (error) { if (protectedRequest && mutation) throw mutationUnknownError(localMutationError); throw error; }
     if (expected) {
       try { assertMarker(expected); }
-      catch (error) { if (protectedRequest && mutation) throw mutationUnknownError(); throw error; }
+      catch (error) { if (protectedRequest && mutation) throw mutationUnknownError(localMutationError); throw error; }
     }
     if (response.ok) {
       try {
@@ -374,10 +374,10 @@ async function request<T>(url: string, options: RequestInit, retried = false): P
         if (expected) assertMarker(expected);
         return value;
       }
-      catch (error) { if (protectedRequest && mutation) throw mutationUnknownError(); throw error; }
+      catch (error) { if (protectedRequest && mutation) throw mutationUnknownError(localMutationError); throw error; }
     }
     const error = await parseError(response);
-    if (protectedRequest && mutation && error.status >= 500) throw mutationUnknownError();
+    if (protectedRequest && mutation && error.status >= 500) throw mutationUnknownError(localMutationError);
     if (protectedRequest && error.status === 401 && error.code === "SESSION_INACTIVE") {
       if (!expected) throw sessionChangedError();
       try {
@@ -395,8 +395,8 @@ async function request<T>(url: string, options: RequestInit, retried = false): P
         // server confirmed the same active family; never replay a mutation.
         await refreshSession();
         await requireSameSession(expected);
-        if (mutation) throw mutationUnknownError();
-        return request<T>(url, options, true);
+        if (mutation) throw mutationUnknownError(localMutationError);
+        return request<T>(url, options, true, localMutationError);
       }
       throw new ApiClientError({ status: 0, code: "SESSION_RETRY_REQUIRED", message: "로그인 상태를 확인했습니다. 요청 결과를 확인한 뒤 다시 시도해 주세요." });
     }
@@ -404,21 +404,24 @@ async function request<T>(url: string, options: RequestInit, retried = false): P
     await refreshSession();
     if (!expected) throw sessionChangedError();
     await requireSameSession(expected);
-    if (mutation) throw mutationUnknownError();
-    return request<T>(url, options, true);
+    if (mutation) throw mutationUnknownError(localMutationError);
+    return request<T>(url, options, true, localMutationError);
   } catch (failure) {
     if (protectedRequest && failure instanceof ApiClientError && failure.code === "SESSION_STATUS_UNCERTAIN") {
       emit(API_SESSION_UNCERTAIN_EVENT);
     }
     if (protectedRequest && failure instanceof ApiClientError && failure.status === 401) {
-      emit(API_SESSION_EXPIRED_EVENT);
+      if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(API_SESSION_EXPIRED_EVENT, { detail: "protected-request" }));
       throw expired(failure);
     }
     throw failure;
   }
 }
-export async function orvalFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
-  return request<T>(normalizeApiUrl(url), options);
+export type ApiRequestOptions = RequestInit & { mutationErrorDisplay?: "local" };
+
+export async function orvalFetch<T>(url: string, options: ApiRequestOptions = {}): Promise<T> {
+  const { mutationErrorDisplay, ...requestInit } = options;
+  return request<T>(normalizeApiUrl(url), requestInit, false, mutationErrorDisplay === "local");
 }
 export function resetOrvalMutatorForTests() {
   refreshPromise = undefined;

@@ -1,8 +1,10 @@
 "use client";
 
+import { ApiNotice } from "@/components/api-notice";
+
 import { SuccessToast, useSuccessToast } from "@/components/success-toast";
 
-import { AlertCircle, Eye, EyeOff, LoaderCircle, LockKeyhole, Mail } from "lucide-react";
+import { Eye, EyeOff, LoaderCircle, LockKeyhole, Mail } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { confirmPasswordReset, getAuthErrorMessage, requestPasswordReset } from "@/lib/auth-api";
@@ -40,7 +42,7 @@ export function PasswordResetRequestForm() {
         <label className="flex flex-col gap-2" htmlFor="reset-email"><span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">이메일</span><span className={`flex h-12 items-center gap-3 rounded-[10px] border bg-white px-4 transition focus-within:border-mint-500 focus-within:ring-2 focus-within:ring-mint-500/15 dark:bg-[#0b0f13] ${fieldError ? "border-red-500" : "border-zinc-200 dark:border-zinc-700"}`}><Mail className="h-5 w-5 text-zinc-400"/><input id="reset-email" type="email" autoComplete="email" maxLength={320} disabled={loading} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="example@email.com" className="auth-autofill h-full min-w-0 flex-1 bg-transparent font-semibold outline-none placeholder:text-zinc-400" /></span>{fieldError ? <span className="text-[13px] font-semibold text-red-600 dark:text-red-400">{fieldError}</span> : null}</label>
         <button disabled={loading} className="flex h-12 items-center justify-center gap-2 rounded-[10px] bg-mint-500 font-extrabold text-white transition hover:bg-mint-600 active:scale-[0.98] disabled:bg-zinc-300">{loading ? <LoaderCircle className="h-5 w-5 animate-spin"/> : null}{loading ? "요청 중" : "재설정 메일 받기"}</button>
       </form>
-      {error ? <p role="alert" className="mt-4 flex gap-2 rounded-[10px] border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700"><AlertCircle className="h-5 w-5 shrink-0"/>{error}</p> : null}
+      {error ? <div className="mt-4 rounded-[10px] bg-zinc-50 px-4 py-3 dark:bg-zinc-900/60"><ApiNotice title={error} /></div> : null}
       <p className="mt-4 text-sm font-medium text-zinc-500 dark:text-zinc-400">보안을 위해 가입 여부와 관계없이 같은 안내를 보여줘요.</p>
       <SuccessToast notice={notice} />
     </section>
@@ -75,7 +77,7 @@ export function PasswordResetConfirmForm({ initialToken }: { initialToken: strin
         <label className="flex flex-col gap-2"><span className="text-sm font-semibold">인증 토큰</span><span className="flex h-12 items-center gap-3 rounded-[10px] border border-zinc-200 px-4 transition focus-within:border-mint-500 focus-within:ring-2 focus-within:ring-mint-500/15 dark:border-zinc-700 dark:bg-[#0b0f13]"><LockKeyhole className="h-5 w-5 text-zinc-400"/><input value={token} onChange={(e) => setToken(e.target.value)} maxLength={512} disabled={loading} placeholder="이메일로 받은 인증 링크의 토큰" className="h-full min-w-0 flex-1 bg-transparent font-semibold outline-none placeholder:text-zinc-400"/></span></label>
         <label className="flex flex-col gap-2"><span className="text-sm font-semibold">새 비밀번호</span><span className="flex h-12 items-center gap-3 rounded-[10px] border border-zinc-200 px-4 transition focus-within:border-mint-500 focus-within:ring-2 focus-within:ring-mint-500/15 dark:border-zinc-700 dark:bg-[#0b0f13]"><LockKeyhole className="h-5 w-5 text-zinc-400"/><input type={show ? "text" : "password"} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} disabled={loading} placeholder="8자 이상 입력해 주세요" className="auth-autofill h-full min-w-0 flex-1 bg-transparent font-semibold outline-none placeholder:text-zinc-400"/><button type="button" onClick={() => setShow((v) => !v)} className="rounded-md p-1 text-zinc-400 hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:hover:text-zinc-200" aria-label={show ? "비밀번호 숨기기" : "비밀번호 보기"}>{show ? <EyeOff className="h-5 w-5"/> : <Eye className="h-5 w-5"/>}</button></span></label>
         {fieldError ? <p className="text-[13px] font-semibold text-red-600">{fieldError}</p> : null}
-        {error ? <div role="alert" className="flex flex-col gap-3 rounded-[10px] border border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-800"><span className="flex gap-2"><AlertCircle className="h-5 w-5 shrink-0"/>{error}</span><Link href="/auth/password-reset" className="font-extrabold underline">새 링크 요청하기</Link></div> : null}
+        {error ? <div className="rounded-[10px] bg-zinc-50 px-4 py-3 dark:bg-zinc-900/60"><ApiNotice title={error} action={<Link href="/auth/password-reset" className="font-semibold underline underline-offset-4">새 링크 요청하기</Link>} /></div> : null}
         <button disabled={loading} className="flex h-12 items-center justify-center gap-2 rounded-[10px] bg-mint-500 font-extrabold text-white transition hover:bg-mint-600 active:scale-[0.98] disabled:opacity-50">{loading ? <LoaderCircle className="h-5 w-5 animate-spin"/> : null}{loading ? "변경 중" : "비밀번호 변경"}</button>
       </form>}
       <SuccessToast notice={notice} />

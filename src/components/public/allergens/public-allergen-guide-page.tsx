@@ -1,5 +1,8 @@
 "use client";
 
+import { ApiClientError } from "@/shared/api/api-client-error";
+import { ApiNotice } from "@/components/api-notice";
+
 import { Search } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { PublicPageShell } from "@/components/public/public-page-shell";
@@ -168,22 +171,7 @@ export function PublicAllergenGuidePage() {
             </p>
           ) : null}
           {allergensQuery.isError ? (
-            <div
-              role="alert"
-              className="rounded-xl border border-dashed border-zinc-300 px-5 py-10 text-center dark:border-zinc-700"
-            >
-              <p className="text-sm font-semibold text-red-600">
-                {allergensQuery.error.message ||
-                  "알레르기 코드를 불러오는 중 문제가 발생했습니다."}
-              </p>
-              <button
-                type="button"
-                onClick={() => void allergensQuery.refetch()}
-                className="mt-4 h-10 rounded-[10px] border border-zinc-300 px-4 text-sm font-bold text-zinc-700 transition-colors hover:border-mint-500 hover:text-mint-600 dark:border-zinc-700 dark:text-zinc-200"
-              >
-                다시 시도
-              </button>
-            </div>
+            <div className="py-3"><ApiNotice centered title="알레르기 코드를 불러오지 못했어요." action={<button type="button" onClick={() => void allergensQuery.refetch()} className="h-8 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900">다시 시도</button>}>{allergensQuery.error instanceof ApiClientError && allergensQuery.error.status === 0 ? "잠시 후 다시 시도해 주세요." : allergensQuery.error.message}</ApiNotice></div>
           ) : null}
           {!allergensQuery.isLoading &&
           !allergensQuery.isError &&

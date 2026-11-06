@@ -1,12 +1,15 @@
 "use client";
 
+import { ApiNotice } from "@/components/api-notice";
+
 import { PageHeading } from "@/components/page-heading";
 
-import { AlertTriangle, Check, Info, LoaderCircle, School as SchoolIcon, Search } from "lucide-react";
+import { Check, Info, LoaderCircle, School as SchoolIcon, Search } from "lucide-react";
 import { GuardedLink as Link } from "./guarded-link";
 import { useRouter } from "next/navigation";
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
 import { createChild, MemberApiError, School, searchSchools } from "@/lib/member-api";
+import { useMutationRecovery } from "./mutation-recovery";
 import { useUnsavedChangesGuard } from "./edit-navigation-guard";
 import { NumberStepper } from "./number-stepper";
 import { createChildRegistrationNotice } from "./allergen-save-notice";
@@ -28,6 +31,7 @@ function messageFor(error: MemberApiError) {
 
 export function ChildRegistrationForm() {
   const router = useRouter();
+  const recovery = useMutationRecovery("registration");
   const [name, setName] = useState("");
   const [grade, setGrade] = useState(1);
   const [classNumber, setClassNumber] = useState(1);
@@ -73,7 +77,7 @@ export function ChildRegistrationForm() {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    if (savingRef.current) return;
+    if (savingRef.current || recovery.isBlocked()) return;
     const normalizedName = name.trim().replace(/\s+/g, " ");
     if (!normalizedName || normalizedName.length > 100) { setFormError("이름을 1자 이상 100자 이하로 입력해 주세요."); return; }
     if (!selected) { setFormError("학교를 검색하고 선택해 주세요."); return; }
@@ -81,7 +85,7 @@ export function ChildRegistrationForm() {
     setSaving(true); setFormError("");
     let completed = false;
     try {
-      const child = await createChild({ name: normalizedName, grade, classNumber, schoolId: selected.id });
+      const child = await createChild({ name: normalizedName, grade, classNumber, schoolId: selected.id }, { mutationErrorDisplay: "local" });
       if (!mountedRef.current) return;
       completed = true;
       setCreated(true);
@@ -90,7 +94,14 @@ export function ChildRegistrationForm() {
         router.push(`/children/${child.id}/allergens?${new URLSearchParams({ registered })}`);
       });
       router.refresh();
-    } catch (reason) { if (mountedRef.current) setFormError(reason instanceof MemberApiError ? messageFor(reason) : "자녀를 등록하지 못했습니다."); }
+    } catch (reason) {
+      if (mountedRef.current) {
+        if (reason instanceof MemberApiError && reason.code === "MUTATION_RESULT_UNKNOWN") {
+          recovery.markUnknown();
+          setFormError("등록 결과를 확인하지 못했습니다. 자녀 목록에서 등록 여부를 확인해 주세요.");
+        } else setFormError(reason instanceof MemberApiError ? messageFor(reason) : "자녀를 등록하지 못했습니다.");
+      }
+    }
     finally { if (mountedRef.current && !completed) { savingRef.current = false; setSaving(false); } }
   }
 
@@ -125,19 +136,19 @@ export function ChildRegistrationForm() {
             <label className="flex h-12 min-w-0 flex-1 items-center gap-2 rounded-[10px] border border-zinc-300 px-4 transition focus-within:border-mint-500 focus-within:ring-2 focus-within:ring-mint-500/20 dark:border-zinc-700"><Search className="h-4 w-4 shrink-0 text-zinc-400" /><span className="sr-only">학교명</span><input type="search" onKeyDown={handleSchoolSearchKeyDown} className="h-full min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none" value={keyword} disabled={saving} onChange={(event) => setKeyword(event.target.value)} placeholder="학교명을 입력해 주세요" /></label>
             <button type="button" onClick={(event) => void handleSearch(event)} disabled={searching || saving} className="h-12 w-20 shrink-0 rounded-[10px] bg-mint-500 px-3 text-sm font-bold text-white transition-colors hover:bg-mint-600 disabled:opacity-50">{searching ? "검색 중" : "검색"}</button>
           </div>
-          {searchError && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700 dark:bg-red-950/30 dark:text-red-300"><AlertTriangle className="mr-2 inline h-4 w-4" />{searchError}</p>}
+          {searchError && <div className="mt-3 rounded-[10px] bg-zinc-50 px-4 py-3 dark:bg-zinc-900/60"><ApiNotice title={searchError} /></div>}
           {searching && <div className="flex h-28 items-center justify-center text-sm font-bold text-zinc-500"><LoaderCircle className="mr-2 h-5 w-5 animate-spin" />학교를 검색하고 있습니다.</div>}
           {!searching && searched && !searchError && schools.length === 0 && <div className="rounded-xl border border-dashed border-zinc-300 p-7 text-center text-sm font-semibold text-zinc-500 dark:border-zinc-700">검색 결과가 없습니다. 학교명을 다시 확인해 주세요.</div>}
-          {!searching && schools.length > 0 && <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">{schools.map((school) => <article key={school.id} className="flex flex-col gap-3 border-b border-zinc-200 p-4 last:border-0 sm:flex-row sm:items-center dark:border-zinc-800"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300"><SchoolIcon className="h-4 w-4" /></span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h3 className="font-extrabold">{school.name}</h3><span className="rounded-full border border-zinc-300 px-2 py-0.5 text-xs font-bold dark:border-zinc-700">{school.region}</span></div><p className="truncate text-sm font-medium text-zinc-500">{school.address}</p><p className="mt-1 text-xs font-medium text-zinc-400">NEIS {school.neisSchoolCode} · 교육청 {school.educationOfficeCode}</p></div><button type="button" disabled={saving} onClick={() => { setSelected(school); setFormError(""); }} className={`h-10 rounded-[10px] border px-5 text-sm font-bold transition-colors ${selected?.id === school.id ? "border-mint-500 bg-mint-50 text-mint-700 dark:bg-mint-950/30 dark:text-mint-300" : "border-zinc-300 text-mint-600 hover:border-mint-500 dark:border-zinc-700 dark:text-mint-400"}`}>{selected?.id === school.id ? "선택됨" : "선택"}</button></article>)}</div>}
+          {!searching && schools.length > 0 && <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">{schools.map((school) => <article key={school.id} className="flex flex-col gap-3 border-b border-zinc-200 p-4 last:border-0 sm:flex-row sm:items-center dark:border-zinc-800"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300"><SchoolIcon className="h-4 w-4" /></span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h3 className="font-extrabold">{school.name}</h3><span className="rounded-full border border-zinc-300 px-2 py-0.5 text-xs font-bold dark:border-zinc-700">{school.region}</span></div><p className="truncate text-sm font-medium text-zinc-500">{school.address}</p><p className="mt-1 text-xs font-medium text-zinc-400">NEIS {school.neisSchoolCode} · 교육청 {school.educationOfficeCode}</p></div><button type="button" disabled={saving} onClick={() => { setSelected(school); if (!recovery.isBlocked()) setFormError(""); }} className={`h-10 rounded-[10px] border px-5 text-sm font-bold transition-colors ${selected?.id === school.id ? "border-mint-500 bg-mint-50 text-mint-700 dark:bg-mint-950/30 dark:text-mint-300" : "border-zinc-300 text-mint-600 hover:border-mint-500 dark:border-zinc-700 dark:text-mint-400"}`}>{selected?.id === school.id ? "선택됨" : "선택"}</button></article>)}</div>}
           {selected && <div role="status" className="flex items-center gap-3 rounded-xl border border-mint-400/60 bg-mint-50 p-4 dark:bg-mint-950/20"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-mint-500 text-white"><Check className="h-4 w-4" /></span><div><p className="text-xs font-bold text-mint-700 dark:text-mint-300">선택된 학교</p><p className="font-extrabold">{selected.name}</p></div></div>}
         </div>
       </section>
 
       <section className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-5 md:p-7 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800 dark:bg-[#101419]">
         <div><StepTitle step={3}>저장</StepTitle><p className="mt-2 grid grid-cols-[1.5rem_minmax(0,1fr)] items-center gap-x-1 text-sm font-medium text-zinc-500"><Info className="h-4 w-4 justify-self-center" /><span>저장 후 알레르기 설정으로 이어서 진행할 수 있어요.</span></p></div>
-        <div className="grid w-full grid-cols-2 gap-3 sm:flex sm:w-auto"><button type="button" onClick={requestLeave} disabled={saving} className="inline-flex h-12 w-full items-center justify-center rounded-[10px] border border-zinc-300 bg-white px-5 font-bold text-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-28 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-200">취소</button><button type="submit" disabled={saving || !name.trim() || !selected} className="h-12 w-full rounded-[10px] bg-mint-500 px-5 font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50 sm:w-28">{saving ? "저장 중" : "저장"}</button></div>
+        <div className="grid w-full grid-cols-2 gap-3 sm:flex sm:w-auto"><button type="button" onClick={requestLeave} disabled={saving} className="inline-flex h-12 w-full items-center justify-center rounded-[10px] border border-zinc-300 bg-white px-5 font-bold text-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-28 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-200">취소</button><button type="submit" disabled={saving || recovery.unknown || !name.trim() || !selected} className="h-12 w-full rounded-[10px] bg-mint-500 px-5 font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50 sm:w-28">{saving ? "저장 중" : "저장"}</button></div>
       </section>
-      {formError && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300"><AlertTriangle className="mr-2 inline h-4 w-4" />{formError}{(formError === "로그인이 필요합니다." || formError.includes("인증")) && <Link href="/auth/login" className="ml-3 underline">로그인</Link>}</div>}
+      {formError && <div className="mt-3 rounded-[10px] bg-zinc-50 px-4 py-3 dark:bg-zinc-900/60"><ApiNotice title={formError} action={!recovery.unknown && (formError === "로그인이 필요합니다." || formError.includes("인증")) && <Link href="/auth/login" className="ml-3 underline">로그인</Link>} /></div>}
     </form>
   );
 }

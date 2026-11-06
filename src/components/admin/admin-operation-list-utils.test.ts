@@ -56,3 +56,32 @@ describe("admin operation list utilities", () => {
     expect(getSchoolSearchQuery("  목포항도여자중학교 ")).toEqual({ query: "목포항도여자중학교" });
   });
 });
+
+describe("unknown operation idempotency", () => {
+  it("reuses the same key for an unresolved target and isolates other targets", async () => {
+    const { createAdminOperationIntentTracker } = await import("./admin-operation-list-utils");
+    const tracker = createAdminOperationIntentTracker();
+    let count = 0;
+    const key = () => `key-${++count}`;
+    expect(tracker.canStart("event-a")).toBe(true);
+    const first = tracker.keyFor("event-a", key);
+    expect(tracker.canStart("event-a")).toBe(false);
+    expect(tracker.canStart("event-b")).toBe(true);
+    expect(tracker.keyFor("event-a", key)).toBe(first);
+    expect(tracker.keyFor("event-b", key)).not.toBe(first);
+    expect(tracker.has("event-a")).toBe(true);
+    tracker.complete("event-a");
+    expect(tracker.canStart("event-a")).toBe(true);
+    expect(tracker.keyFor("event-a", key)).not.toBe(first);
+  });
+});
+
+describe("admin operation confirmation", () => {
+  it("permits only the confirmed selected target when no request is pending", async () => {
+    const { canConfirmAdminOperation } = await import("./admin-operation-list-utils");
+    expect(canConfirmAdminOperation("event-a", "event-a", false)).toBe(true);
+    expect(canConfirmAdminOperation("event-a", "event-b", false)).toBe(false);
+    expect(canConfirmAdminOperation("event-a", undefined, false)).toBe(false);
+    expect(canConfirmAdminOperation("event-a", "event-a", true)).toBe(false);
+  });
+});

@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  AlertCircle,
   Check,
   Eye,
   EyeOff,
@@ -13,6 +12,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { AuthApiError, login } from "@/lib/auth-api";
+import { ApiNotice } from "@/components/api-notice";
 import { PageHeading } from "@/components/page-heading";
 
 type FieldErrors = { email?: string; password?: string };
@@ -34,7 +34,7 @@ function validate(email: string, password: string): FieldErrors {
 
 function getLoginError(error: unknown) {
   if (!(error instanceof AuthApiError)) {
-    return "네트워크 연결을 확인한 뒤 다시 시도해 주세요.";
+    return "로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.";
   }
   if (error.status === 401) {
     return "이메일 또는 비밀번호를 확인해 주세요.";
@@ -48,6 +48,7 @@ function getLoginError(error: unknown) {
   if (error.status === 429) {
     return "로그인 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.";
   }
+  if (error.status === 0 || error.status >= 500) return "로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.";
   return error.message;
 }
 
@@ -59,7 +60,6 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [errorMessage, setErrorMessage] = useState("");
-  const [needsVerification, setNeedsVerification] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -69,7 +69,6 @@ export function LoginForm() {
 
     setFieldErrors(errors);
     setErrorMessage("");
-    setNeedsVerification(false);
     if (Object.keys(errors).length > 0) return;
 
     setIsSubmitting(true);
@@ -86,9 +85,6 @@ export function LoginForm() {
       router.push(destination);
       router.refresh();
     } catch (error) {
-      setNeedsVerification(
-        error instanceof AuthApiError && error.code === "EMAIL_NOT_VERIFIED",
-      );
       setErrorMessage(getLoginError(error));
     } finally {
       setIsSubmitting(false);
@@ -207,13 +203,9 @@ export function LoginForm() {
         </div>
 
         {errorMessage ? (
-          <p
-            role="alert"
-            className={`flex items-start gap-2 rounded-[10px] border px-4 py-3 text-sm font-semibold ${needsVerification ? "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-300" : "border-red-200 bg-red-50 text-red-700 dark:border-red-950 dark:bg-red-950/30 dark:text-red-300"}`}
-          >
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            {errorMessage}
-          </p>
+          <div className="rounded-[10px] bg-zinc-50 px-4 py-3 dark:bg-zinc-900/60">
+            <ApiNotice title={errorMessage} />
+          </div>
         ) : null}
 
         <button

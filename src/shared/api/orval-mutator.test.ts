@@ -36,6 +36,19 @@ beforeEach(() => {
   resetOrvalMutatorForTests();
 });
 
+describe("protected requests without a restored session", () => {
+  it("does not send a mutation when the initial session check fails", async () => {
+    values.clear();
+    resetOrvalMutatorForTests();
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(orvalFetch("/api/v1/children", { method: "POST", body: "{}" })).rejects.toBeDefined();
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/auth/session-status");
+  });
+});
+
 describe("authentication transitions", () => {
   it("binds a successful login only after the server confirms the returned family", async () => {
     const nextIdentity = { sessionId: "session-b", userId: "user-b" };
@@ -339,6 +352,16 @@ describe("orvalFetch", () => {
     expect(unknown).toHaveBeenCalledOnce();
   });
 
+  it("leaves mutation-unknown display to an explicit local owner without replaying or leaking the option", async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError("offline"));
+    const unknown = vi.fn(); events.addEventListener(API_MUTATION_RESULT_UNKNOWN_EVENT, unknown);
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(orvalFetch("/api/v1/children/1", { method: "DELETE", mutationErrorDisplay: "local" })).rejects.toMatchObject({ code: "MUTATION_RESULT_UNKNOWN" });
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls[0][1]).not.toHaveProperty("mutationErrorDisplay");
+    expect(unknown).not.toHaveBeenCalled();
+  });
+
   it.each([500, 502, 503, 504])("does not replay a mutation after HTTP %i with unknown outcome", async (status) => {
     const fetchMock = vi.fn().mockResolvedValue(error("SERVER_FAILURE", status));
     const unknown = vi.fn(); events.addEventListener(API_MUTATION_RESULT_UNKNOWN_EVENT, unknown);
@@ -373,5 +396,22 @@ describe("orvalFetch", () => {
     await expect(orvalFetch("/api/v1/children")).rejects.toMatchObject({ code: "SESSION_STATUS_UNCERTAIN", sessionExpired: false });
     expect(uncertain).toHaveBeenCalledOnce();
     expect(expired).not.toHaveBeenCalled();
+  });
+});
+
+describe("protected page session expiry", () => {
+  it("reports request expiry to the current protected page", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url === "/api/v1/auth/session-status") return json(identity);
+      if (url === "/api/v1/children") return error("UNAUTHORIZED", 401);
+      if (url === "/api/v1/auth/refresh-operations") return error("UNAUTHORIZED", 401);
+      throw new Error("Unexpected request");
+    });
+    const expired = vi.fn();
+    events.addEventListener(API_SESSION_EXPIRED_EVENT, expired);
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(orvalFetch("/api/v1/children")).rejects.toMatchObject({ status: 401, sessionExpired: true });
+    expect(expired).toHaveBeenCalledOnce();
+    expect((expired.mock.calls[0][0] as CustomEvent).detail).toBe("protected-request");
   });
 });

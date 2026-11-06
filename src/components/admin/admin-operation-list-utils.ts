@@ -90,3 +90,22 @@ export function getSchoolSearchQuery(value: string) {
   if (!normalized) return {};
   return uuidPattern.test(normalized) ? { schoolId: normalized.toLowerCase() } : { query: normalized };
 }
+
+export function canConfirmAdminOperation(confirmedId: string | undefined, selectedId: string | undefined, busy: boolean) {
+  return Boolean(confirmedId && selectedId && confirmedId === selectedId && !busy);
+}
+
+/** A target keeps its key until its mutation outcome is known. */
+export function createAdminOperationIntentTracker() {
+  const keys = new Map<string, string>();
+  return {
+    keyFor(targetId: string, createKey: () => string) {
+      let key = keys.get(targetId);
+      if (!key) { key = createKey(); keys.set(targetId, key); }
+      return key;
+    },
+    has: (targetId: string) => keys.has(targetId),
+    canStart: (targetId: string) => !keys.has(targetId),
+    complete: (targetId: string) => { keys.delete(targetId); },
+  };
+}

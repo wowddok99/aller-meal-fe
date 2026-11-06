@@ -87,7 +87,7 @@ export type AdminOperationQuery = {
 };
 
 export class AdminApiError extends Error {
-  constructor(public readonly status: number, message: string) {
+  constructor(public readonly status: number, message: string, public readonly code?: string) {
     super(message);
     this.name = "AdminApiError";
   }
@@ -95,7 +95,7 @@ export class AdminApiError extends Error {
 
 function asAdminApiError(cause: unknown, fallback: string): AdminApiError {
   if (cause instanceof AdminApiError) return cause;
-  if (cause instanceof ApiClientError) return new AdminApiError(cause.status, cause.message);
+  if (cause instanceof ApiClientError) return new AdminApiError(cause.status, cause.message, cause.code);
   return new AdminApiError(0, cause instanceof Error && cause.message.trim() ? cause.message : fallback);
 }
 
@@ -168,9 +168,9 @@ export async function getCollectionJob(collectionJobId: string, signal?: AbortSi
   try { return await requestCollectionJob(collectionJobId, { signal }); } catch (cause) { throw asAdminApiError(cause, "수집 작업 상세를 불러오지 못했습니다."); }
 }
 
-export async function requestCollectionExecution(collectionJobId: string, idempotencyKey: string): Promise<RecollectionResult> {
+export async function requestCollectionExecution(collectionJobId: string, idempotencyKey: string, options?: { mutationErrorDisplay: "local" }): Promise<RecollectionResult> {
   if (!isAdminActionId(collectionJobId)) throw new AdminApiError(400, "올바른 수집 작업 ID가 아닙니다.");
-  try { return await requestExecutionOperation(collectionJobId, { headers: { "Idempotency-Key": idempotencyKey } }); } catch (cause) { throw asAdminApiError(cause, "수집 실행 요청을 처리하지 못했습니다."); }
+  try { return await requestExecutionOperation(collectionJobId, { ...options, headers: { "Idempotency-Key": idempotencyKey } }); } catch (cause) { throw asAdminApiError(cause, "수집 실행 요청을 처리하지 못했습니다."); }
 }
 
 export async function getMealItemLabelings(input: AdminOperationQuery): Promise<AdminOperationPage> {
@@ -209,13 +209,13 @@ export async function getDeadLetterEvents(page: number, pageSize: number): Promi
   try { const response = await requestDeadLetterEvents({ page: String(page), pageSize: String(pageSize) }); return { ...pageMeta(page, pageSize, response), items: (response.items ?? []).map(mapDeadLetterEvent) }; } catch (cause) { throw asAdminApiError(cause, "DLQ 이벤트를 불러오지 못했습니다."); }
 }
 
-export async function requestRecollection(collectionJobId: string, idempotencyKey = createIdempotencyKey()): Promise<RecollectionResult> {
+export async function requestRecollection(collectionJobId: string, idempotencyKey = createIdempotencyKey(), options?: { mutationErrorDisplay: "local" }): Promise<RecollectionResult> {
   if (!isAdminActionId(collectionJobId)) throw new AdminApiError(400, "올바른 수집 작업 ID가 아닙니다.");
-  try { return await requestRecollectionOperation(collectionJobId, { headers: { "Idempotency-Key": idempotencyKey } }); } catch (cause) { throw asAdminApiError(cause, "재수집 요청을 처리하지 못했습니다."); }
+  try { return await requestRecollectionOperation(collectionJobId, { ...options, headers: { "Idempotency-Key": idempotencyKey } }); } catch (cause) { throw asAdminApiError(cause, "재수집 요청을 처리하지 못했습니다."); }
 }
 
-export async function reprocessDeadLetterEvent(deadLetterEventId: string, idempotencyKey = createIdempotencyKey()): Promise<NotificationReprocessResult> {
-  try { return await requestDeadLetterReprocess(deadLetterEventId, { headers: { "Idempotency-Key": idempotencyKey } }); } catch (cause) { throw asAdminApiError(cause, "DLQ 이벤트를 재처리하지 못했습니다."); }
+export async function reprocessDeadLetterEvent(deadLetterEventId: string, idempotencyKey = createIdempotencyKey(), options?: { mutationErrorDisplay: "local" }): Promise<NotificationReprocessResult> {
+  try { return await requestDeadLetterReprocess(deadLetterEventId, { ...options, headers: { "Idempotency-Key": idempotencyKey } }); } catch (cause) { throw asAdminApiError(cause, "DLQ 이벤트를 재처리하지 못했습니다."); }
 }
 
 export async function getAdminUserDetail(userId: string): Promise<AdminUserDetail> {
@@ -232,10 +232,10 @@ export async function getAdminUserHistory(userId: string, page: number, pageSize
   try { return await requestAdminUserAccessHistory(userId, { page: String(page), pageSize: String(pageSize) }); } catch (cause) { throw asAdminApiError(cause, "사용자 접근 이력을 불러오지 못했습니다."); }
 }
 
-export async function promoteUserToAdmin(userId: string, request: AdminUserRoleChangeRequest): Promise<AdminUserRole> {
-  try { return await requestUserPromotion(userId, request); } catch (cause) { throw asAdminApiError(cause, "관리자 권한을 변경하지 못했습니다."); }
+export async function promoteUserToAdmin(userId: string, request: AdminUserRoleChangeRequest, options?: { mutationErrorDisplay: "local" }): Promise<AdminUserRole> {
+  try { return await (options ? requestUserPromotion(userId, request, options) : requestUserPromotion(userId, request)); } catch (cause) { throw asAdminApiError(cause, "관리자 권한을 변경하지 못했습니다."); }
 }
 
-export async function changeUserSuspension(userId: string, request: AdminUserSuspensionRequest): Promise<AdminUserRole> {
-  try { return await requestUserSuspension(userId, request); } catch (cause) { throw asAdminApiError(cause, "사용자 이용 상태를 변경하지 못했습니다."); }
+export async function changeUserSuspension(userId: string, request: AdminUserSuspensionRequest, options?: { mutationErrorDisplay: "local" }): Promise<AdminUserRole> {
+  try { return await (options ? requestUserSuspension(userId, request, options) : requestUserSuspension(userId, request)); } catch (cause) { throw asAdminApiError(cause, "사용자 이용 상태를 변경하지 못했습니다."); }
 }

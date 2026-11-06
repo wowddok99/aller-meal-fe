@@ -57,7 +57,11 @@ const invalidResetTokenMessage =
 /** Returns a user-actionable message while keeping the shared ApiClientError contract. */
 export function getAuthErrorMessage(error: unknown, action: AuthAction) {
   if (!(error instanceof ApiClientError)) {
-    return "네트워크 연결을 확인한 뒤 다시 시도해 주세요.";
+    return "요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.";
+  }
+
+  if (error.status === 0 || error.status >= 500) {
+    return "요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.";
   }
 
   if (error.status === 429) {
