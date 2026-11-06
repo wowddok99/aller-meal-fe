@@ -34,7 +34,10 @@ import type {
   PasswordResetConfirmRequest,
   PasswordResetRequest,
   PublicMealQueryResponse,
+  RefreshOperationCancelResponse,
+  RefreshOperationResponse,
   RefreshResponse,
+  RefreshSessionStatusResponse,
   SchoolResponse,
   SchoolSearchResponse,
   SearchPublicSchoolsParams,
@@ -162,6 +165,93 @@ export const useSignUp = <
   return useMutation(getSignUpMutationOptions(options), queryClient);
 };
 
+export const getGetRefreshSessionStatusUrl = () => {
+  return `/api/v1/auth/session-status`;
+};
+
+export const getRefreshSessionStatus = async (
+  options?: Parameters<typeof orvalFetch>[1],
+): Promise<RefreshSessionStatusResponse> => {
+  return orvalFetch<RefreshSessionStatusResponse>(
+    getGetRefreshSessionStatusUrl(),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getGetRefreshSessionStatusMutationKey = () =>
+  ["getRefreshSessionStatus"] as const;
+
+export const getGetRefreshSessionStatusMutationOptions = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof getRefreshSessionStatus>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof getRefreshSessionStatus>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = getGetRefreshSessionStatusMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof getRefreshSessionStatus>>,
+    void
+  > = () => {
+    return getRefreshSessionStatus(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GetRefreshSessionStatusMutationResult = NonNullable<
+  Awaited<ReturnType<typeof getRefreshSessionStatus>>
+>;
+
+export type GetRefreshSessionStatusMutationError = ErrorType<ApiErrorResponse>;
+
+export const useGetRefreshSessionStatus = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof getRefreshSessionStatus>>,
+      TError,
+      void,
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof getRefreshSessionStatus>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(
+    getGetRefreshSessionStatusMutationOptions(options),
+    queryClient,
+  );
+};
+
 export const getRefreshAuthenticationUrl = () => {
   return `/api/v1/auth/refresh`;
 };
@@ -242,6 +332,272 @@ export const useRefreshAuthentication = <
 > => {
   return useMutation(
     getRefreshAuthenticationMutationOptions(options),
+    queryClient,
+  );
+};
+
+export const getReserveRefreshOperationUrl = () => {
+  return `/api/v1/auth/refresh-operations`;
+};
+
+export const reserveRefreshOperation = async (
+  options?: Parameters<typeof orvalFetch>[1],
+): Promise<RefreshOperationResponse> => {
+  return orvalFetch<RefreshOperationResponse>(getReserveRefreshOperationUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getReserveRefreshOperationMutationKey = () =>
+  ["reserveRefreshOperation"] as const;
+
+export const getReserveRefreshOperationMutationOptions = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reserveRefreshOperation>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reserveRefreshOperation>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = getReserveRefreshOperationMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reserveRefreshOperation>>,
+    void
+  > = () => {
+    return reserveRefreshOperation(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReserveRefreshOperationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reserveRefreshOperation>>
+>;
+
+export type ReserveRefreshOperationMutationError = ErrorType<ApiErrorResponse>;
+
+export const useReserveRefreshOperation = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof reserveRefreshOperation>>,
+      TError,
+      void,
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof reserveRefreshOperation>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(
+    getReserveRefreshOperationMutationOptions(options),
+    queryClient,
+  );
+};
+
+export const getExecuteRefreshOperationUrl = (operationId: string) => {
+  return `/api/v1/auth/refresh-operations/${operationId}/execute`;
+};
+
+export const executeRefreshOperation = async (
+  operationId: string,
+  options?: Parameters<typeof orvalFetch>[1],
+): Promise<RefreshResponse> => {
+  return orvalFetch<RefreshResponse>(
+    getExecuteRefreshOperationUrl(operationId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getExecuteRefreshOperationMutationKey = () =>
+  ["executeRefreshOperation"] as const;
+
+export const getExecuteRefreshOperationMutationOptions = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof executeRefreshOperation>>,
+    TError,
+    ExecuteRefreshOperationMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof executeRefreshOperation>>,
+  TError,
+  ExecuteRefreshOperationMutationVariables,
+  TContext
+> => {
+  const mutationKey = getExecuteRefreshOperationMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof executeRefreshOperation>>,
+    ExecuteRefreshOperationMutationVariables
+  > = (props) => {
+    const { operationId } = props ?? {};
+
+    return executeRefreshOperation(operationId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ExecuteRefreshOperationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof executeRefreshOperation>>
+>;
+
+export type ExecuteRefreshOperationMutationError = ErrorType<ApiErrorResponse>;
+export type ExecuteRefreshOperationMutationVariables = { operationId: string };
+
+export const useExecuteRefreshOperation = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof executeRefreshOperation>>,
+      TError,
+      ExecuteRefreshOperationMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof executeRefreshOperation>>,
+  TError,
+  ExecuteRefreshOperationMutationVariables,
+  TContext
+> => {
+  return useMutation(
+    getExecuteRefreshOperationMutationOptions(options),
+    queryClient,
+  );
+};
+
+export const getCancelRefreshOperationUrl = (operationId: string) => {
+  return `/api/v1/auth/refresh-operations/${operationId}/cancel`;
+};
+
+export const cancelRefreshOperation = async (
+  operationId: string,
+  options?: Parameters<typeof orvalFetch>[1],
+): Promise<RefreshOperationCancelResponse> => {
+  return orvalFetch<RefreshOperationCancelResponse>(
+    getCancelRefreshOperationUrl(operationId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getCancelRefreshOperationMutationKey = () =>
+  ["cancelRefreshOperation"] as const;
+
+export const getCancelRefreshOperationMutationOptions = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cancelRefreshOperation>>,
+    TError,
+    CancelRefreshOperationMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cancelRefreshOperation>>,
+  TError,
+  CancelRefreshOperationMutationVariables,
+  TContext
+> => {
+  const mutationKey = getCancelRefreshOperationMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cancelRefreshOperation>>,
+    CancelRefreshOperationMutationVariables
+  > = (props) => {
+    const { operationId } = props ?? {};
+
+    return cancelRefreshOperation(operationId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CancelRefreshOperationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cancelRefreshOperation>>
+>;
+
+export type CancelRefreshOperationMutationError = ErrorType<ApiErrorResponse>;
+export type CancelRefreshOperationMutationVariables = { operationId: string };
+
+export const useCancelRefreshOperation = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof cancelRefreshOperation>>,
+      TError,
+      CancelRefreshOperationMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof cancelRefreshOperation>>,
+  TError,
+  CancelRefreshOperationMutationVariables,
+  TContext
+> => {
+  return useMutation(
+    getCancelRefreshOperationMutationOptions(options),
     queryClient,
   );
 };

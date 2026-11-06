@@ -11,4 +11,5 @@ export interface RefreshResponse {
   emailVerificationStatus?: string;
   accessTokenExpiresAt?: string;
   refreshTokenExpiresAt?: string;
+  sessionId?: string;
 }

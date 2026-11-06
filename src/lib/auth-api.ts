@@ -18,6 +18,7 @@ import type {
   SignupResponse as GeneratedSignupResponse,
 } from "@/generated/api/public/models";
 import { ApiClientError } from "@/shared/api/api-client-error";
+import { withAuthSessionTransition } from "@/shared/api/orval-mutator";
 
 export type EmailVerificationStatus = string;
 export type SignupRequest = GeneratedSignupRequest;
@@ -36,9 +37,9 @@ export type PasswordResetConfirmRequest = GeneratedPasswordResetConfirmRequest;
 // Preserve the import used by the login slice while propagating the shared error model.
 export { ApiClientError as AuthApiError } from "@/shared/api/api-client-error";
 
-/** A 401 logout response means the server has already ended this browser session. */
+/** A 401 may indicate a different session, so it cannot prove logout succeeded. */
 export function shouldTerminateSessionAfterLogout(error: unknown) {
-  return error instanceof ApiClientError && error.status === 401;
+  return error instanceof ApiClientError && error.status === 401 && error.sessionExpired;
 }
 
 type AuthAction =
@@ -113,11 +114,14 @@ export async function signup(request: SignupRequest): Promise<SignupResponse> {
 }
 
 export async function login(request: LoginRequest): Promise<LoginResponse> {
-  return loginRequest(request);
+  return withAuthSessionTransition(() => loginRequest(request), "login");
 }
 
 export async function logout(): Promise<void> {
-  return logoutRequest();
+  return withAuthSessionTransition((sessionId) => {
+    if (!sessionId) throw new ApiClientError({ status: 0, code: "SESSION_CHANGED", message: "로그인 상태가 변경되었습니다. 다시 확인해 주세요." });
+    return logoutRequest({ headers: { "X-Expected-Session-Id": sessionId } });
+  }, "logout");
 }
 
 export async function requestEmailVerification(

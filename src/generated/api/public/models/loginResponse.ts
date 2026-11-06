@@ -11,4 +11,5 @@ export interface LoginResponse {
   emailVerificationStatus?: string;
   accessTokenExpiresAt?: string;
   refreshTokenExpiresAt?: string;
+  sessionId?: string;
 }
