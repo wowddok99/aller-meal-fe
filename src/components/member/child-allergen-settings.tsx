@@ -8,6 +8,7 @@ import { PageHeading } from "@/components/page-heading";
 import {
   Check,
   HelpCircle,
+  Info,
   LoaderCircle,
   RefreshCw,
 } from "lucide-react";
@@ -190,11 +191,11 @@ export function ChildAllergenSettings({ childId, registered }: { childId: string
           ) : loadError.status === 403 ? (
             <div className="flex flex-wrap justify-center gap-2">
               <Link href="/children" className="inline-flex h-11 items-center rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700">자녀 관리로 돌아가기</Link>
-              <button type="button" onClick={() => void load()} className="inline-flex h-8 items-center gap-1.5 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold dark:border-zinc-700"><RefreshCw className="h-3.5 w-3.5" /> 다시 시도</button>
+              <button type="button" onClick={() => void load()} className="inline-flex h-8 items-center gap-1.5 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold dark:border-zinc-700"><RefreshCw aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /> 다시 시도</button>
             </div>
           ) : (
             <button type="button" onClick={() => void load()} className="inline-flex h-8 items-center gap-1.5 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold dark:border-zinc-700">
-              <RefreshCw className="h-3.5 w-3.5" /> 다시 시도
+              <RefreshCw aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /> 다시 시도
             </button>
           )}>
             {loadError.status === 0 ? "잠시 후 다시 시도해 주세요." : errorMessage(loadError)}
@@ -235,10 +236,11 @@ export function ChildAllergenSettings({ childId, registered }: { childId: string
 
         {allergens.length === 0 ? (
           <div className="mt-5 rounded-xl border border-dashed border-zinc-300 px-5 py-10 text-center dark:border-zinc-700">
-            <p className="font-extrabold">선택할 수 있는 알레르기 코드가 없습니다</p>
-            <p className="mt-2 text-sm font-medium text-zinc-500">잠시 후 다시 불러와 주세요.</p>
-            <button type="button" onClick={() => void load()} className="mt-4 inline-flex h-10 items-center gap-2 rounded-[10px] border border-zinc-300 px-4 text-sm font-bold dark:border-zinc-700">
-              <RefreshCw className="h-4 w-4" /> 다시 불러오기
+            <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400"><Info aria-hidden="true" className="h-6 w-6" /></span>
+            <p className="text-base font-bold text-zinc-800 dark:text-zinc-100">선택할 수 있는 알레르기 코드가 없습니다</p>
+            <p className="mt-2 text-sm font-medium text-zinc-500">잠시 후 다시 시도해 주세요.</p>
+            <button type="button" onClick={() => void load()} className="mt-3 inline-flex h-8 items-center gap-1.5 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:border-zinc-700 dark:text-zinc-200">
+              <RefreshCw aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /> 다시 시도
             </button>
           </div>
         ) : (

@@ -3,7 +3,7 @@
 import { ApiClientError } from "@/shared/api/api-client-error";
 import { ApiNotice } from "@/components/api-notice";
 
-import { Search } from "lucide-react";
+import { RefreshCw, Info, Search } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { PublicPageShell } from "@/components/public/public-page-shell";
 import { PageHeading } from "@/components/page-heading";
@@ -171,7 +171,7 @@ export function PublicAllergenGuidePage() {
             </p>
           ) : null}
           {allergensQuery.isError ? (
-            <div className="py-3"><ApiNotice centered title="알레르기 코드를 불러오지 못했어요." action={<button type="button" onClick={() => void allergensQuery.refetch()} className="h-8 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900">다시 시도</button>}>{allergensQuery.error instanceof ApiClientError && allergensQuery.error.status === 0 ? "잠시 후 다시 시도해 주세요." : allergensQuery.error.message}</ApiNotice></div>
+            <div className="py-3"><ApiNotice centered title="알레르기 코드를 불러오지 못했어요." action={<button type="button" onClick={() => void allergensQuery.refetch()} className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"><RefreshCw aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /> 다시 시도</button>}>{allergensQuery.error instanceof ApiClientError && allergensQuery.error.status === 0 ? "잠시 후 다시 시도해 주세요." : allergensQuery.error.message}</ApiNotice></div>
           ) : null}
           {!allergensQuery.isLoading &&
           !allergensQuery.isError &&
@@ -180,7 +180,8 @@ export function PublicAllergenGuidePage() {
               role="status"
               className="rounded-xl border border-dashed border-zinc-300 px-5 py-10 text-center dark:border-zinc-700"
             >
-              <p className="text-base font-extrabold text-zinc-900 dark:text-zinc-100">
+              <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400"><Info aria-hidden="true" className="h-6 w-6" /></span>
+              <p className="text-base font-bold text-zinc-800 dark:text-zinc-100">
                 제공되는 알레르기 코드가 없습니다.
               </p>
               <p className="mt-2 text-sm font-semibold text-zinc-500 dark:text-zinc-400">

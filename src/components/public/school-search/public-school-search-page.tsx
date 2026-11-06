@@ -10,6 +10,7 @@ import {
   Info,
   School,
   Search,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
@@ -326,7 +327,7 @@ export function PublicSchoolSearchPage() {
               </p>
             ) : null}
             {searchQuery.isError ? (
-              <div className="px-5 py-8 sm:py-10"><ApiNotice centered title="학교 목록을 불러오지 못했어요." action={<button type="button" onClick={() => void searchQuery.refetch()} className="h-8 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900">다시 시도</button>}>{searchQuery.error instanceof ApiClientError && searchQuery.error.status === 0 ? "잠시 후 다시 시도해 주세요." : getErrorMessage(searchQuery.error)}</ApiNotice></div>
+              <div className="px-5 py-8 sm:py-10"><ApiNotice centered title="학교 목록을 불러오지 못했어요." action={<button type="button" onClick={() => void searchQuery.refetch()} className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"><RefreshCw aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /> 다시 시도</button>}>{searchQuery.error instanceof ApiClientError && searchQuery.error.status === 0 ? "잠시 후 다시 시도해 주세요." : getErrorMessage(searchQuery.error)}</ApiNotice></div>
             ) : null}
             {result &&
             !isLoading &&

@@ -2,7 +2,7 @@
 
 import { SuccessToast, useSuccessToast } from "@/components/success-toast";
 
-import { ChevronLeft, ChevronRight, LoaderCircle, MoreVertical, Search } from "lucide-react";
+import { RefreshCw, ChevronLeft, ChevronRight, LoaderCircle, MoreVertical, Search, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -99,7 +99,7 @@ function RoleBadge({ role }: { role: string }) {
 function ErrorPanel({ error, retry, title = "사용자 정보를 불러오지 못했어요." }: { error: string; retry: () => void; title?: string }) {
   return (
     <div className="border-t border-zinc-100 px-5 py-8 sm:py-10 dark:border-zinc-800">
-      <ApiNotice centered title={title} action={<button type="button" onClick={retry} className={`inline-flex h-8 items-center justify-center rounded-[10px] border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-200 dark:hover:bg-zinc-900 ${focusRing}`}>다시 시도</button>}>
+      <ApiNotice centered title={title} action={<button type="button" onClick={retry} className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-200 dark:hover:bg-zinc-900 ${focusRing}`}><RefreshCw aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /> 다시 시도</button>}>
         {error.includes("네트워크") ? "잠시 후 다시 시도해 주세요." : error}
       </ApiNotice>
     </div>
@@ -142,7 +142,7 @@ function ActionDialog({
         </div>
         {requestError ? <>
           <div className="mt-5"><ApiNotice title={resultUnknown ? "변경 결과를 확인하지 못했습니다." : "변경 요청을 완료하지 못했습니다."}>{resultUnknown ? "확인을 누르면 현재 사용자 상태를 다시 확인합니다." : requestError}</ApiNotice></div>
-          <div className="-mx-6 -mb-6 mt-5 flex justify-end border-t border-zinc-200 px-6 py-4 dark:border-zinc-800"><button ref={cancelButtonRef} autoFocus type="button" onClick={onClose} className={`inline-flex h-11 min-w-16 items-center justify-center rounded-[10px] bg-mint-500 px-4 text-sm font-extrabold text-white hover:bg-mint-600 ${focusRing}`}>확인</button></div>
+          <div className="-mx-6 -mb-6 mt-5 flex justify-end border-t border-zinc-200 px-6 py-4 dark:border-zinc-800"><button ref={cancelButtonRef} autoFocus type="button" onClick={onClose} className={`inline-flex h-11 min-w-16 items-center justify-center gap-1.5 rounded-[10px] bg-mint-500 px-4 text-sm font-extrabold text-white hover:bg-mint-600 ${focusRing}`}>확인</button></div>
         </> : <>
         <div className="mt-5">
           <p className="text-sm text-zinc-600 dark:text-zinc-300">
@@ -203,7 +203,7 @@ function ActionDialog({
               }
               onSubmit(result.value.reason);
             }}
-            className={`inline-flex h-11 w-16 items-center justify-center rounded-[10px] px-4 text-sm font-extrabold disabled:opacity-50 ${resultUnknown ? "border border-zinc-300 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-200" : action === "suspend" ? "bg-red-600 text-white" : "bg-mint-500 text-white"} ${focusRing}`}
+            className={`inline-flex h-11 w-16 items-center justify-center gap-1.5 rounded-[10px] px-4 text-sm font-extrabold disabled:opacity-50 ${resultUnknown ? "border border-zinc-300 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-200" : action === "suspend" ? "bg-red-600 text-white" : "bg-mint-500 text-white"} ${focusRing}`}
           >
             {pending ? <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" /> : "확인"}
           </button>
@@ -699,7 +699,8 @@ export function AdminUserManagement() {
             </p>
           ) : !list?.items.length ? (
             <div className="px-5 py-12 text-center">
-              <h2 className="font-extrabold">조건에 맞는 사용자가 없습니다</h2>
+              <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400"><UsersRound aria-hidden="true" className="h-6 w-6" /></span>
+              <h2 className="text-base font-bold text-zinc-800 dark:text-zinc-100">조건에 맞는 사용자가 없습니다</h2>
               <p className="mt-2 text-sm text-zinc-500">
                 다른 검색어 또는 상태를 선택해 보세요.
               </p>

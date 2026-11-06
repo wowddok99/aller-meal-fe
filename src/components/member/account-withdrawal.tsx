@@ -5,7 +5,7 @@ import { ApiNotice } from "@/components/api-notice";
 
 import { SuccessToast, useSuccessToast } from "@/components/success-toast";
 
-import { Check, CircleAlert, LoaderCircle, RefreshCw } from "lucide-react";
+import { RefreshCw, Check, CircleAlert, LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ModalDialog } from "@/components/modal-dialog";
@@ -207,7 +207,7 @@ export function AccountWithdrawalPage() {
           </div>
         ) : loadError ? (
           <section className="rounded-2xl border border-zinc-200 bg-white px-5 py-8 sm:py-10 dark:border-zinc-800 dark:bg-[#101419]">
-            <ApiNotice centered title="회원 탈퇴 상태를 불러오지 못했어요." action={<button type="button" onClick={() => void loadWithdrawal()} disabled={pending} className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"><RefreshCw className="h-3.5 w-3.5" />다시 시도</button>}>{loadError}</ApiNotice>
+            <ApiNotice centered title="회원 탈퇴 상태를 불러오지 못했어요." action={<button type="button" onClick={() => void loadWithdrawal()} disabled={pending} className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"><RefreshCw aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /> 다시 시도</button>}>{loadError}</ApiNotice>
           </section>
         ) : withdrawal ? (
           <section

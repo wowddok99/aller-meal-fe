@@ -6,7 +6,7 @@ import { createChildSaveNotice } from "./allergen-save-notice";
 
 import { PageHeading } from "@/components/page-heading";
 
-import { LoaderCircle, RefreshCw, School as SchoolIcon, Search } from "lucide-react";
+import { RefreshCw, LoaderCircle, School as SchoolIcon, Search } from "lucide-react";
 import { GuardedLink as Link } from "./guarded-link";
 import { useRouter } from "next/navigation";
 import { FormEvent, KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
@@ -133,7 +133,7 @@ export function ChildDetailForm({ childId }: { childId: string }) {
   if (loading || (child && child.id !== childId)) return <div className="mx-auto w-full max-w-[1220px] px-5 pb-12 pt-5">{heading}<div role="status" className="flex min-h-80 items-center justify-center text-sm font-bold text-zinc-500"><LoaderCircle aria-hidden="true" className="mr-2 h-5 w-5 animate-spin" />자녀 정보를 불러오고 있습니다.</div></div>;
   if (loadError) {
     const loginRequired = loadError.status === 401;
-    return <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">{heading}<section className="rounded-2xl border border-zinc-200 bg-white px-5 py-8 sm:py-10 dark:border-zinc-800 dark:bg-[#101419]"><ApiNotice centered title={loadError.status === 404 ? "자녀 정보를 찾을 수 없습니다" : loadError.status === 403 ? "자녀 정보에 접근할 수 없습니다" : loginRequired ? "로그인이 필요합니다" : "정보를 불러오지 못했습니다"} action={loginRequired ? <Link href="/auth/login" className="inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 font-bold text-white">로그인</Link> : <button onClick={() => void load()} className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"><RefreshCw className="h-3.5 w-3.5" />다시 시도</button>}>{loadError.status === 0 ? "잠시 후 다시 시도해 주세요." : errorMessage(loadError)}</ApiNotice></section></div>;
+    return <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">{heading}<section className="rounded-2xl border border-zinc-200 bg-white px-5 py-8 sm:py-10 dark:border-zinc-800 dark:bg-[#101419]"><ApiNotice centered title={loadError.status === 404 ? "자녀 정보를 찾을 수 없습니다" : loadError.status === 403 ? "자녀 정보에 접근할 수 없습니다" : loginRequired ? "로그인이 필요합니다" : "정보를 불러오지 못했습니다"} action={loginRequired ? <Link href="/auth/login" className="inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 font-bold text-white">로그인</Link> : <button onClick={() => void load()} className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"><RefreshCw aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /> 다시 시도</button>}>{loadError.status === 0 ? "잠시 후 다시 시도해 주세요." : errorMessage(loadError)}</ApiNotice></section></div>;
   }
   if (!child) return null;
 

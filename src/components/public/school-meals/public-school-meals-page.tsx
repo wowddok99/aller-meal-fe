@@ -12,9 +12,9 @@ import {
   Info,
   LoaderCircle,
   MapPin,
-  RefreshCw,
   School,
   Utensils,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -84,9 +84,9 @@ function RetryButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="h-8 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 transition-colors hover:border-mint-500 hover:text-mint-600 dark:border-zinc-700 dark:text-zinc-200"
+      className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 transition-colors hover:border-mint-500 hover:text-mint-600 dark:border-zinc-700 dark:text-zinc-200"
     >
-      다시 시도
+      <RefreshCw aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /> 다시 시도
     </button>
   );
 }
@@ -436,8 +436,7 @@ export function PublicSchoolMealsPage({
                 disabled={activeMealQuery.isFetching}
                 className="mt-4 inline-flex h-10 items-center gap-2 rounded-[10px] border border-amber-500/40 bg-white px-4 text-sm font-bold text-amber-700 transition-opacity disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#101419] dark:text-amber-300"
               >
-                <RefreshCw className="h-4 w-4" strokeWidth={2.2} />
-                지금 다시 확인
+                <RefreshCw aria-hidden="true" className="h-4 w-4 shrink-0" /> 다시 확인
               </button>
             </div>
           ) : null}
@@ -446,7 +445,8 @@ export function PublicSchoolMealsPage({
               role="status"
               className="rounded-xl border border-dashed border-zinc-300 px-5 py-10 text-center dark:border-zinc-700"
             >
-              <p className="text-base font-extrabold text-zinc-900 dark:text-zinc-100">
+              <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400"><Utensils aria-hidden="true" className="h-6 w-6" /></span>
+              <p className="text-base font-bold text-zinc-800 dark:text-zinc-100">
                 등록된 급식이 없습니다.
               </p>
               <p className="mt-2 text-sm font-semibold text-zinc-500 dark:text-zinc-400">
