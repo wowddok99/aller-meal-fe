@@ -103,22 +103,21 @@ export function SignupForm() {
       <section className="mx-auto w-full max-w-[640px] rounded-2xl border border-zinc-200 bg-white p-5 text-center dark:border-zinc-800 dark:bg-[#101419] md:p-8">
         <SuccessToast notice={notice} />
         <div className="text-left"><PageHeading title="회원가입" /></div>
-        <span className="mx-auto mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-mint-500/10 text-mint-600 dark:text-mint-400">
-          <MailCheck className="h-7 w-7" />
+        <span className="mx-auto mt-6 flex h-12 w-12 items-center justify-center rounded-full bg-mint-500/10 text-mint-600 dark:text-mint-400">
+          <MailCheck className="h-6 w-6" />
         </span>
-        <h2 className="mt-5 text-2xl font-extrabold tracking-[-0.02em]">
+        <h2 className="mt-3 text-base font-bold text-zinc-800 dark:text-zinc-100">
           인증 메일을 확인해 주세요
         </h2>
-        <p className="mt-3 text-sm font-medium leading-6 text-zinc-500 dark:text-zinc-400">
+        <p className="mt-2 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
           아래 이메일로 보낸 인증 링크를 열어 인증을 완료해 주세요.
         </p>
 
         <div className="mt-6 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-4 text-left dark:border-zinc-800 dark:bg-[#0b0f13]">
           <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">가입 이메일</p>
-          <p className="mt-1 break-all font-extrabold">{registeredEmail}</p>
-          <div className="mt-3 flex items-center justify-between gap-3 border-t border-zinc-200 pt-3 dark:border-zinc-800">
-            <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">이메일 인증</span>
-            <span className="inline-flex h-7 items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-3 text-xs font-extrabold text-amber-700 dark:text-amber-400">
+          <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+            <p className="min-w-0 break-all font-extrabold">{registeredEmail}</p>
+            <span className="inline-flex h-7 shrink-0 items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-3 text-xs font-extrabold text-amber-700 dark:text-amber-400">
               인증 대기
             </span>
           </div>

@@ -10,8 +10,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
-import { AuthApiError, login } from "@/lib/auth-api";
+import { FormEvent, useRef, useState } from "react";
+import { AuthApiError, getAuthErrorMessage, login, requestEmailVerification } from "@/lib/auth-api";
 import { ApiNotice } from "@/components/api-notice";
 import { PageHeading } from "@/components/page-heading";
 
@@ -36,11 +36,11 @@ function getLoginError(error: unknown) {
   if (!(error instanceof AuthApiError)) {
     return "로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.";
   }
-  if (error.status === 401) {
-    return "이메일 또는 비밀번호를 확인해 주세요.";
-  }
   if (error.code === "EMAIL_NOT_VERIFIED") {
     return "이메일 인증을 완료한 뒤 로그인해 주세요.";
+  }
+  if (error.status === 401) {
+    return "이메일 또는 비밀번호를 확인해 주세요.";
   }
   if (error.code === "CSRF_VALIDATION_FAILED") {
     return "보안 확인에 실패했습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요. 계속되면 사이트 쿠키를 삭제해 주세요.";
@@ -61,6 +61,10 @@ export function LoginForm() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState("");
+  const [resendMessage, setResendMessage] = useState("");
+  const [isResending, setIsResending] = useState(false);
+  const resendPending = useRef(false);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -69,6 +73,8 @@ export function LoginForm() {
 
     setFieldErrors(errors);
     setErrorMessage("");
+    setUnverifiedEmail("");
+    setResendMessage("");
     if (Object.keys(errors).length > 0) return;
 
     setIsSubmitting(true);
@@ -86,8 +92,25 @@ export function LoginForm() {
       router.refresh();
     } catch (error) {
       setErrorMessage(getLoginError(error));
+      if (error instanceof AuthApiError && error.code === "EMAIL_NOT_VERIFIED") setUnverifiedEmail(normalizedEmail);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (!unverifiedEmail || email.trim().toLowerCase() !== unverifiedEmail || resendPending.current) return;
+    resendPending.current = true;
+    setIsResending(true);
+    setResendMessage("");
+    try {
+      await requestEmailVerification(unverifiedEmail);
+      setResendMessage("인증 메일 발송을 요청했습니다. 메일함을 확인해 주세요.");
+    } catch (error) {
+      setResendMessage(getAuthErrorMessage(error, "email-verification-request"));
+    } finally {
+      resendPending.current = false;
+      setIsResending(false);
     }
   };
 
@@ -118,7 +141,7 @@ export function LoginForm() {
               maxLength={320}
               disabled={isSubmitting}
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              onChange={(event) => { setEmail(event.target.value); setUnverifiedEmail(""); setResendMessage(""); }}
               placeholder="example@email.com"
               aria-invalid={Boolean(fieldErrors.email)}
               aria-describedby={
@@ -205,6 +228,7 @@ export function LoginForm() {
         {errorMessage ? (
           <div className="rounded-[10px] bg-zinc-50 px-4 py-3 dark:bg-zinc-900/60">
             <ApiNotice title={errorMessage} />
+            {unverifiedEmail && email.trim().toLowerCase() === unverifiedEmail ? <div className="ml-[26px] mt-2"><button type="button" onClick={() => void handleResend()} disabled={isResending || isSubmitting} className="text-sm font-bold text-mint-700 underline underline-offset-4 disabled:opacity-50 dark:text-mint-400">{isResending ? "요청 중" : "인증 메일 다시 요청"}</button><p role="status" className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">{resendMessage}</p></div> : null}
           </div>
         ) : null}
 
