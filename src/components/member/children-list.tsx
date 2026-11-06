@@ -2,7 +2,7 @@
 
 import { SuccessToast, useSuccessToast } from "@/components/success-toast";
 
-import { Bell, ChevronRight, History, LoaderCircle, MoreVertical, Pencil, Plus, RefreshCw, ShieldCheck, Trash2, UsersRound, Utensils } from "lucide-react";
+import { RefreshCw, Bell, ChevronRight, History, LoaderCircle, MoreVertical, Pencil, Plus, ShieldCheck, Trash2, UsersRound, Utensils } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -148,13 +148,13 @@ export function ChildrenList({ requestedChildId, allergenSaved, settingsSaved }:
         {loading && <><ChildSkeleton /><ChildSkeleton /></>}
         {!loading && error && (
           <div className="rounded-2xl border border-zinc-200 bg-white px-5 py-8 sm:py-10 dark:border-zinc-800 dark:bg-[#101419]">
-            <ApiNotice centered title={error.status === 403 ? "자녀 목록에 접근할 수 없습니다" : loginRequired ? "로그인이 필요합니다" : "자녀 목록을 불러오지 못했어요."} action={loginRequired ? <Link href="/auth/login" className="inline-flex h-10 items-center rounded-[10px] bg-mint-500 px-4 text-sm font-semibold text-white">로그인</Link> : <button type="button" onClick={() => void load()} className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"><RefreshCw className="h-3.5 w-3.5" />다시 시도</button>}>
+            <ApiNotice centered title={error.status === 403 ? "자녀 목록에 접근할 수 없습니다" : loginRequired ? "로그인이 필요합니다" : "자녀 목록을 불러오지 못했어요."} action={loginRequired ? <Link href="/auth/login" className="inline-flex h-10 items-center rounded-[10px] bg-mint-500 px-4 text-sm font-semibold text-white">로그인</Link> : <button type="button" onClick={() => void load()} className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"><RefreshCw aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /> 다시 시도</button>}>
               {error.status === 403 ? "이메일 인증 또는 접근 권한을 확인한 뒤 다시 시도해 주세요." : error.status === 0 ? "잠시 후 다시 시도해 주세요." : error.message}
             </ApiNotice>
           </div>
         )}
         {!loading && !error && children.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-zinc-300 bg-white p-10 text-center dark:border-zinc-700 dark:bg-[#101419]"><UsersRound className="mx-auto h-10 w-10 text-zinc-400" /><h2 className="mt-4 text-xl font-extrabold">등록된 자녀가 없어요</h2><p className="mt-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">자녀를 등록하고 자녀 급식과 알레르기 설정을 관리해 보세요.</p><Link href="/children/new" className="mt-5 inline-flex h-11 items-center rounded-[10px] border border-mint-500 px-5 font-bold text-mint-600 transition-colors hover:bg-mint-50 dark:text-mint-400 dark:hover:bg-mint-950/20">자녀 등록하기</Link></div>
+          <div className="rounded-2xl border border-dashed border-zinc-300 bg-white p-10 text-center dark:border-zinc-700 dark:bg-[#101419]"><span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400"><UsersRound aria-hidden="true" className="h-6 w-6" /></span><h2 className="mt-3 text-base font-bold text-zinc-800 dark:text-zinc-100">등록된 자녀가 없어요</h2><p className="mt-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">자녀를 등록하고 자녀 급식과 알레르기 설정을 관리해 보세요.</p><Link href="/children/new" className="mt-5 inline-flex h-11 items-center rounded-[10px] border border-mint-500 px-5 font-bold text-mint-600 transition-colors hover:bg-mint-50 dark:text-mint-400 dark:hover:bg-mint-950/20">자녀 등록하기</Link></div>
         )}
         {!loading && !error && selectedChild && (
           <>

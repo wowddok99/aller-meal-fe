@@ -13,7 +13,7 @@ export function ApiNotice({ title, children, action, centered = false }: {
     <div role="alert" className={centered ? "text-center" : "flex items-start gap-2.5"}>
       {centered ? <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-900"><Info aria-hidden="true" className="h-6 w-6 text-zinc-500 dark:text-zinc-400" strokeWidth={1.8} /></span> : <span className="flex h-6 shrink-0 items-center"><Info aria-hidden="true" className="h-4 w-4 text-zinc-400 dark:text-zinc-500" strokeWidth={1.8} /></span>}
       <div className="min-w-0">
-        <Title className="text-sm font-semibold leading-6 text-zinc-700 dark:text-zinc-200">{title}</Title>
+        <Title className={`${centered ? "text-base font-bold" : "text-sm font-semibold"} leading-6 text-zinc-700 dark:text-zinc-200`}>{title}</Title>
         {children ? <div className="mt-1 text-sm leading-6 text-zinc-500 dark:text-zinc-400">{children}</div> : null}
         {action ? <div className={centered ? "mt-3 flex flex-wrap items-center justify-center gap-2" : "mt-3"}>{action}</div> : null}
       </div>

@@ -15,7 +15,7 @@ export default async function EmailVerificationConfirmPage({
   const normalizedToken = Array.isArray(token) ? token[0] : token;
 
   return (
-    <AuthShell description="이메일 인증 결과를 확인하세요." showDescription={false} showSecurityNotice={false} centered compact>
+    <AuthShell description="이메일 인증 결과를 확인하세요." showDescription={false} showSecurityNotice={false} compact>
       <EmailVerificationResult token={normalizedToken} />
     </AuthShell>
   );

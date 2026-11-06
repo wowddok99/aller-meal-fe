@@ -2,7 +2,7 @@
 
 import { ApiNotice } from "@/components/api-notice";
 
-import { ChevronRight } from "lucide-react";
+import { RefreshCw, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AdminApiError, type DashboardSummary, getDashboardSummary } from "@/lib/admin-api";
@@ -11,7 +11,7 @@ import { PageHeading } from "@/components/page-heading";
 const numberFormatter = new Intl.NumberFormat("ko-KR");
 const panel = "rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-[#101419]";
 const focusRing = "focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#101419]";
-const noticeActionStyle = `inline-flex h-8 shrink-0 items-center justify-center rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900 ${focusRing}`;
+const noticeActionStyle = `inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900 ${focusRing}`;
 
 function Count({ value }: { value: number | undefined }) {
   return value === undefined
@@ -91,7 +91,7 @@ export function AdminDashboard() {
       <section aria-label="서비스 운영 현황" aria-busy={loading} className={`${panel} px-6 py-3 md:px-8 md:py-4`}>
         {error ? <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-zinc-200 py-3 dark:border-zinc-800">
           <ApiNotice title={forbidden ? "관리자 권한이 필요합니다." : unauthenticated ? "로그인한 후 운영 현황을 확인해 주세요." : "운영 현황을 불러오지 못했습니다."} />
-          {unauthenticated ? <Link href="/auth/login?next=/admin" className={noticeActionStyle}>로그인</Link> : !forbidden ? <button type="button" onClick={() => void load()} disabled={loading} className={noticeActionStyle}>다시 시도</button> : null}
+          {unauthenticated ? <Link href="/auth/login?next=/admin" className={noticeActionStyle}>로그인</Link> : !forbidden ? <button type="button" onClick={() => void load()} disabled={loading} className={noticeActionStyle}><RefreshCw aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /> 다시 시도</button> : null}
         </div> : null}
         <div className="divide-y divide-zinc-200 dark:divide-zinc-800"><SummaryRow title="급식 수집" description="수집 작업의 현재 처리 현황입니다." primaryLabel="미해결 수집 실패" primaryCount={summary?.collection?.unresolvedFailedCount} primaryHref="/admin/collection-jobs?status=FAILED&unresolvedFailure=true" secondaryLabel="수집 대기" secondaryCount={summary?.collection?.pendingCount} secondaryHref="/admin/collection-jobs?status=PENDING" href="/admin/collection-jobs" linkLabel="급식 수집 작업 보기" /><SummaryRow title="알레르기 라벨링" description="알레르기 분석 작업의 처리 현황입니다." primaryLabel="라벨링 실패" primaryCount={summary?.labeling?.labelingFailedCount} primaryHref="/admin/meal-item-labelings?status=LABELING_FAILED" secondaryLabel="라벨링 대기" secondaryCount={summary?.labeling?.pendingCount} secondaryHref="/admin/meal-item-labelings?status=PENDING" href="/admin/meal-item-labelings" linkLabel="라벨링 작업 보기" /><SummaryRow title="이벤트 발행" description="outbox 이벤트의 발행 처리 현황입니다." primaryLabel="발행 완료" primaryCount={summary?.outbox?.publishedCount} primaryHref="/admin/outbox-events?status=PUBLISHED" secondaryLabel="발행 대기" secondaryCount={summary?.outbox?.pendingCount} secondaryHref="/admin/outbox-events?status=PENDING" href="/admin/outbox-events" linkLabel="발행 작업 보기" /><SummaryRow title="DLQ 이벤트" description="자동 재시도 후 재처리를 기다리는 이벤트입니다." primaryLabel="재처리 대기" primaryCount={summary?.dlq?.pendingCount} primaryHref="/admin/notification-dlq-events?status=PENDING" secondaryLabel="재처리 완료" secondaryCount={summary?.dlq?.reprocessedCount} secondaryHref="/admin/notification-dlq-events?status=REPROCESSED" href="/admin/notification-dlq-events" linkLabel="DLQ 이벤트 보기" /><SummaryRow title="알림 발송" description="발송에 실패했거나 재시도 중인 알림입니다." primaryLabel="발송 실패" primaryCount={summary?.notifications?.failedCount} primaryHref="/admin/notification-requests?status=FAILED" secondaryLabel="재시도 대기" secondaryCount={summary?.notifications?.retryPendingCount} secondaryHref="/admin/notification-requests?status=RETRY_PENDING" href="/admin/notification-requests" linkLabel="알림 발송 작업 보기" /></div></section>
     </div>

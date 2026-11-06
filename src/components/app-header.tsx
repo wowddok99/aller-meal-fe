@@ -9,6 +9,7 @@ import {
   LogIn,
   LogOut,
   Menu,
+  RefreshCw,
   Search,
   Settings2,
   Soup,
@@ -471,7 +472,7 @@ export function AppHeader() {
         <div className="mx-auto w-full max-w-[1220px] px-5 pb-3">
           <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[10px] bg-zinc-50 px-4 py-2 text-xs text-zinc-500 dark:bg-zinc-900/60 dark:text-zinc-400">
             <span className="inline-flex items-center gap-2"><Info aria-hidden="true" className="h-4 w-4" />로그인 상태 확인 불가</span>
-            <button type="button" aria-label="로그인 상태 다시 확인" disabled={sessionChecking} onClick={() => setSessionAttempt((value) => value + 1)} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-600 transition-colors hover:bg-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 disabled:opacity-50 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-300 dark:hover:bg-zinc-800">{sessionChecking ? <LoaderCircle aria-hidden="true" className="h-3.5 w-3.5 animate-spin" /> : null}{sessionChecking ? "확인 중" : "다시 확인"}</button>
+            <button type="button" aria-label="로그인 상태 다시 확인" disabled={sessionChecking} onClick={() => setSessionAttempt((value) => value + 1)} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-600 transition-colors hover:bg-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 disabled:opacity-50 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-300 dark:hover:bg-zinc-800">{sessionChecking ? <LoaderCircle aria-hidden="true" className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw aria-hidden="true" className="h-3.5 w-3.5" />}{sessionChecking ? "확인 중" : "다시 확인"}</button>
           </div>
         </div>
       ) : null}
