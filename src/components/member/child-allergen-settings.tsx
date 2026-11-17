@@ -1,5 +1,7 @@
 "use client";
 
+import { LoginLink } from "@/components/auth/login-link";
+
 import { SuccessToast, useSuccessToast } from "@/components/success-toast";
 
 import { ApiNotice } from "@/components/api-notice";
@@ -185,9 +187,9 @@ export function ChildAllergenSettings({ childId, registered }: { childId: string
                 ? "로그인이 필요합니다"
                 : "알레르기 설정을 불러오지 못했어요."
           } action={loginRequired ? (
-            <Link href="/auth/login" className="inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 font-bold text-white">
+            <LoginLink className="inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 font-bold text-white">
               로그인
-            </Link>
+            </LoginLink>
           ) : loadError.status === 403 ? (
             <div className="flex flex-wrap justify-center gap-2">
               <Link href="/children" className="inline-flex h-11 items-center rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700">자녀 관리로 돌아가기</Link>

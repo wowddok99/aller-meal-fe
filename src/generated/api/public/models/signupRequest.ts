@@ -5,8 +5,16 @@
  * Aller Meal Release 1 public, member, and admin API contract.
  * OpenAPI spec version: 1.0.0
  */
+import type { SignupRequestUsageType } from "./signupRequestUsageType";
 
 export interface SignupRequest {
   email?: string;
   password?: string;
+  /**
+   * 양 끝 공백 제거 후 1~50 Unicode code point. C0/C1 제어문자와 짝 없는 surrogate 불가.
+   * @nullable
+   */
+  displayName?: string | null;
+  /** @nullable */
+  usageType?: SignupRequestUsageType;
 }

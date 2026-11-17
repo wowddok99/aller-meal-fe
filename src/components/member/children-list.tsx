@@ -1,5 +1,7 @@
 "use client";
 
+import { LoginLink } from "@/components/auth/login-link";
+
 import { SuccessToast, useSuccessToast } from "@/components/success-toast";
 
 import { RefreshCw, Bell, ChevronRight, History, LoaderCircle, MoreVertical, Pencil, Plus, ShieldCheck, Trash2, UsersRound, Utensils } from "lucide-react";
@@ -148,7 +150,7 @@ export function ChildrenList({ requestedChildId, allergenSaved, settingsSaved }:
         {loading && <><ChildSkeleton /><ChildSkeleton /></>}
         {!loading && error && (
           <div className="rounded-2xl border border-zinc-200 bg-white px-5 py-8 sm:py-10 dark:border-zinc-800 dark:bg-[#101419]">
-            <ApiNotice centered title={error.status === 403 ? "자녀 목록에 접근할 수 없습니다" : loginRequired ? "로그인이 필요합니다" : "자녀 목록을 불러오지 못했어요."} action={loginRequired ? <Link href="/auth/login" className="inline-flex h-10 items-center rounded-[10px] bg-mint-500 px-4 text-sm font-semibold text-white">로그인</Link> : <button type="button" onClick={() => void load()} className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"><RefreshCw aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /> 다시 시도</button>}>
+            <ApiNotice centered title={error.status === 403 ? "자녀 목록에 접근할 수 없습니다" : loginRequired ? "로그인이 필요합니다" : "자녀 목록을 불러오지 못했어요."} action={loginRequired ? <LoginLink className="inline-flex h-10 items-center rounded-[10px] bg-mint-500 px-4 text-sm font-semibold text-white">로그인</LoginLink> : <button type="button" onClick={() => void load()} className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"><RefreshCw aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /> 다시 시도</button>}>
               {error.status === 403 ? "이메일 인증 또는 접근 권한을 확인한 뒤 다시 시도해 주세요." : error.status === 0 ? "잠시 후 다시 시도해 주세요." : error.message}
             </ApiNotice>
           </div>

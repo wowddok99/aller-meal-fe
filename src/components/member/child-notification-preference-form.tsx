@@ -1,5 +1,7 @@
 "use client";
 
+import { LoginLink } from "@/components/auth/login-link";
+
 import { ApiNotice } from "@/components/api-notice";
 
 import { createChildSaveNotice } from "./allergen-save-notice";
@@ -197,7 +199,7 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
     return (
       <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">{heading}
         <section className="rounded-2xl border border-zinc-200 bg-white px-5 py-8 sm:py-10 dark:border-zinc-800 dark:bg-[#101419]"><ApiNotice centered title={loadError.status === 404 ? "자녀 정보를 찾을 수 없습니다" : loadError.status === 403 ? "알림 설정에 접근할 수 없습니다" : loginRequired ? "로그인이 필요합니다" : "알림 설정을 불러오지 못했습니다"} action={loginRequired ? (
-            <Link href="/auth/login" className="inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 font-bold text-white">로그인</Link>
+            <LoginLink className="inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 font-bold text-white">로그인</LoginLink>
           ) : loadError.status === 403 ? (
             <div className="flex flex-wrap justify-center gap-2">
               <Link href="/children" className="inline-flex h-11 items-center rounded-[10px] border border-zinc-300 px-5 font-bold dark:border-zinc-700">자녀 관리로 돌아가기</Link>
@@ -213,8 +215,8 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
   if (!child) return null;
 
   const notificationSummary = form.emailEnabled
-    ? `매일 ${form.notificationTime}에 위험 메뉴가 있을 때 이메일로 알려드려요.`
-    : "이메일 알림이 꺼져 있어요. 켜면 위험 메뉴를 미리 알려드릴게요.";
+    ? `매일 ${form.notificationTime}에 급식과 알레르기 확인 상태를 이메일로 알려드려요.`
+    : "이메일 알림이 꺼져 있어요. 켜면 급식과 알레르기 확인 상태를 알려드려요.";
 
   return (
     <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">
@@ -233,16 +235,16 @@ export function ChildNotificationPreferenceForm({ childId }: { childId: string }
 
       <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-[#101419]">
         <div className="border-b border-zinc-200 p-5 md:p-7 dark:border-zinc-800">
-          <div><h2 className="text-xl font-extrabold tracking-[-0.02em]">알림 설정</h2><p className="mt-0.5 text-sm font-medium text-zinc-500 dark:text-zinc-400">위험 메뉴를 미리 확인할 수 있도록 설정해요.</p></div>
+          <div><h2 className="text-xl font-extrabold tracking-[-0.02em]">알림 설정</h2><p className="mt-0.5 text-sm font-medium text-zinc-500 dark:text-zinc-400">급식과 알레르기 확인 상태를 이메일로 받아보세요.</p></div>
         </div>
         <div className="p-5 md:p-7">
         <div className="divide-y divide-zinc-200 overflow-hidden rounded-xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
           <div className="flex min-h-20 items-center justify-between gap-5 p-4 md:px-5">
-            <div><h3 className="font-extrabold">이메일 알림</h3><p className="mt-1 text-sm font-medium text-zinc-500">이메일로 위험 메뉴 알림을 받아요.</p></div>
+            <div><h3 className="font-extrabold">이메일 알림</h3><p className="mt-1 text-sm font-medium text-zinc-500">위험 감지, 확인 필요, 급식 정보 없음 등의 안내를 받아요.</p></div>
             <button type="button" role="switch" aria-checked={form.emailEnabled} aria-label="이메일 알림 사용" onClick={() => updateForm({ emailEnabled: !form.emailEnabled })} disabled={saving} className={`relative h-7 w-12 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${form.emailEnabled ? "bg-mint-500" : "bg-zinc-300 dark:bg-zinc-700"}`}><span className={`absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${form.emailEnabled ? "translate-x-5" : "translate-x-0"}`} /></button>
           </div>
           <label className="flex min-h-20 flex-col justify-between gap-3 p-4 md:flex-row md:items-center md:px-5">
-            <span><span className="block font-extrabold">알림 발송 시간</span><span className="mt-1 block text-sm font-medium text-zinc-500">위험 메뉴 알림을 받을 시간을 설정해요.</span></span>
+            <span><span className="block font-extrabold">알림 발송 시간</span><span className="mt-1 block text-sm font-medium text-zinc-500">급식 상태 안내를 받을 시간을 설정해요.</span></span>
             <span className="relative block w-full md:w-52"><Clock3 className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" /><input type="time" step="1" value={form.notificationTime} onChange={(event) => updateForm({ notificationTime: event.target.value })} disabled={saving || !form.emailEnabled} required className="h-12 w-full appearance-none rounded-[10px] border border-zinc-300 bg-white pl-11 pr-4 text-sm font-bold text-zinc-700 outline-none focus:border-mint-500 focus:ring-2 focus:ring-mint-500/20 disabled:cursor-not-allowed disabled:opacity-50 [&::-webkit-calendar-picker-indicator]:opacity-0 dark:border-zinc-700 dark:bg-[#0b0f13] dark:text-zinc-200" /></span>
           </label>
           <div className="flex min-h-20 flex-col justify-between gap-3 p-4 md:flex-row md:items-center md:px-5">

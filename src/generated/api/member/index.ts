@@ -22,6 +22,7 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AccountProfileResponse,
   AccountWithdrawalResponse,
   ApiErrorResponse,
   ChildAllergenResponse,
@@ -2234,6 +2235,155 @@ export function useGetPersonalizedTodayMeal<
     childId,
     options,
   );
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getGetAccountProfileUrl = () => {
+  return `/api/v1/account/profile`;
+};
+
+export const getAccountProfile = async (
+  options?: Parameters<typeof orvalFetch>[1],
+): Promise<AccountProfileResponse> => {
+  return orvalFetch<AccountProfileResponse>(getGetAccountProfileUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAccountProfileQueryKey = () => {
+  return [`/api/v1/account/profile`] as const;
+};
+
+export const getGetAccountProfileQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAccountProfile>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<
+      Awaited<ReturnType<typeof getAccountProfile>>,
+      TError,
+      TData
+    >
+  >;
+  request?: SecondParameter<typeof orvalFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAccountProfileQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAccountProfile>>
+  > = ({ signal }) => getAccountProfile({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAccountProfile>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetAccountProfileQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAccountProfile>>
+>;
+export type GetAccountProfileQueryError = ErrorType<ApiErrorResponse>;
+
+export function useGetAccountProfile<
+  TData = Awaited<ReturnType<typeof getAccountProfile>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAccountProfile>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAccountProfile>>,
+          TError,
+          Awaited<ReturnType<typeof getAccountProfile>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetAccountProfile<
+  TData = Awaited<ReturnType<typeof getAccountProfile>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAccountProfile>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAccountProfile>>,
+          TError,
+          Awaited<ReturnType<typeof getAccountProfile>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetAccountProfile<
+  TData = Awaited<ReturnType<typeof getAccountProfile>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAccountProfile>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+
+export function useGetAccountProfile<
+  TData = Awaited<ReturnType<typeof getAccountProfile>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAccountProfile>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof orvalFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getGetAccountProfileQueryOptions(options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,

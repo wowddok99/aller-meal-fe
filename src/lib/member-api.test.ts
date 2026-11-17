@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ACCOUNT_STATUS_CHANGED_EVENT } from "@/shared/account/account-status-event";
 import {
   createChild as requestCreateChild,
   cancelAccountWithdrawal as requestCancelAccountWithdrawal,
@@ -258,12 +259,62 @@ describe("personalized meals and notification history adapters", () => {
 });
 
 describe("account withdrawal adapter", () => {
+  afterEach(() => vi.unstubAllGlobals());
   const withdrawal = {
     userId: "user-1",
     withdrawalRequestedAt: "2026-09-23T09:00:00+09:00",
     withdrawalDueAt: "2026-10-23T09:00:00+09:00",
     maskedNotificationCount: 3,
   };
+
+  it("notifies account UI only after confirmed reservation and cancellation", async () => {
+    const target = new EventTarget();
+    vi.stubGlobal("window", target);
+    const reloadProfile = vi.fn();
+    target.addEventListener(ACCOUNT_STATUS_CHANGED_EVENT, reloadProfile);
+    let finish!: () => void;
+    vi.mocked(requestAccountWithdrawal).mockImplementationOnce(() => new Promise((resolve) => {
+      finish = () => resolve(withdrawal);
+    }));
+
+    const reservation = createWithdrawal();
+    expect(reloadProfile).not.toHaveBeenCalled();
+    finish();
+    await reservation;
+    expect(reloadProfile).toHaveBeenCalledTimes(1);
+
+    vi.mocked(requestCancelAccountWithdrawal).mockResolvedValueOnce(undefined);
+    await cancelWithdrawal();
+    expect(reloadProfile).toHaveBeenCalledTimes(2);
+  });
+
+  it("waits for successful state reconciliation after an uncertain cancellation", async () => {
+    const target = new EventTarget();
+    vi.stubGlobal("window", target);
+    const reloadProfile = vi.fn();
+    target.addEventListener(ACCOUNT_STATUS_CHANGED_EVENT, reloadProfile);
+    vi.mocked(requestCancelAccountWithdrawal).mockRejectedValueOnce(new ApiClientError({ status: 0, code: "MUTATION_RESULT_UNKNOWN", message: "unconfirmed" }));
+    await expect(cancelWithdrawal()).rejects.toMatchObject({ code: "MUTATION_RESULT_UNKNOWN" });
+    expect(reloadProfile).not.toHaveBeenCalled();
+
+    vi.mocked(requestCurrentAccountWithdrawal).mockRejectedValueOnce(new Error("unavailable"));
+    await expect(getWithdrawalStatus()).rejects.toMatchObject({ status: 0 });
+    expect(reloadProfile).not.toHaveBeenCalled();
+
+    vi.mocked(requestCurrentAccountWithdrawal).mockResolvedValueOnce(undefined);
+    expect(await getWithdrawalStatus()).toBeNull();
+    expect(reloadProfile).toHaveBeenCalledOnce();
+  });
+
+  it("does not notify account UI for a malformed reservation response", async () => {
+    const target = new EventTarget();
+    vi.stubGlobal("window", target);
+    const reloadProfile = vi.fn();
+    target.addEventListener(ACCOUNT_STATUS_CHANGED_EVENT, reloadProfile);
+    vi.mocked(requestAccountWithdrawal).mockResolvedValueOnce({ userId: "user-1" });
+    await expect(createWithdrawal()).rejects.toMatchObject({ status: 0 });
+    expect(reloadProfile).not.toHaveBeenCalled();
+  });
 
   it("maps the actual withdrawal response and sends the cancel request", async () => {
     vi.mocked(requestAccountWithdrawal).mockResolvedValue(withdrawal);

@@ -1,13 +1,13 @@
 "use client";
 
 import { ApiNotice } from "@/components/api-notice";
+import { LoginLink } from "@/components/auth/login-link";
 
 import {
   ChevronDown,
   Info,
   LoaderCircle,
   LogIn,
-  LogOut,
   Menu,
   RefreshCw,
   Search,
@@ -20,14 +20,12 @@ import { useEditNavigation } from "@/components/member/edit-navigation-guard";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { AllerMealLogo } from "@/components/allermeal-logo";
+import { canShowServiceManagement, isWithdrawalOnly } from "@/shared/account/account-access-policy";
+import { useAccountAccess } from "@/components/account-access-provider";
+import { ProfileMenu } from "@/components/profile-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { logout, shouldTerminateSessionAfterLogout } from "@/lib/auth-api";
-import { ApiClientError } from "@/shared/api/api-client-error";
-import {
-  API_SESSION_EXPIRED_EVENT,
-  API_SESSION_REFRESHED_EVENT,
-  refreshSession,
-} from "@/shared/api/orval-mutator";
+import { API_SESSION_EXPIRED_EVENT } from "@/shared/api/orval-mutator";
 
 const navigationItems = [
   { href: "/schools", label: "학교 검색", icon: Search },
@@ -49,7 +47,9 @@ function isProtectedRoute(pathname: string) {
     pathname === "/children" ||
     pathname.startsWith("/children/") ||
     pathname === "/admin" ||
-    pathname.startsWith("/admin/")
+    pathname.startsWith("/admin/") ||
+    pathname === "/account" ||
+    pathname.startsWith("/account/")
   );
 }
 
@@ -62,7 +62,6 @@ export function AppHeader() {
   const mobileMenuDialogRef = useRef<HTMLDivElement>(null);
   const mobileMenuCloseRef = useRef<HTMLButtonElement>(null);
   const shouldRestoreMobileMenuFocus = useRef(false);
-  const sessionLoadGeneration = useRef(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [serviceMenuOpen, setServiceMenuOpen] = useState(false);
   const [mobileServiceOpen, setMobileServiceOpen] = useState(
@@ -70,13 +69,14 @@ export function AppHeader() {
   );
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState("");
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>();
-  const [sessionCheckFailed, setSessionCheckFailed] = useState(false);
-  const [sessionChecking, setSessionChecking] = useState(false);
-  const [sessionAttempt, setSessionAttempt] = useState(0);
+  const { isAuthenticated, sessionCheckFailed, sessionChecking, profile, profileFailure, access, reloadAccount, clearAccount, hideAccountProfile } = useAccountAccess();
+  const withdrawalOnly = isWithdrawalOnly(access);
+  const showServiceManagement = canShowServiceManagement(isAuthenticated, profile);
+  const visibleNavigationItems = withdrawalOnly ? [] : navigationItems;
   const serviceManagementActive = pathname.startsWith("/admin");
   const protectedRoute = isProtectedRoute(pathname);
   const authRoute = pathname.startsWith("/auth/");
+  const showAccountMenu = !authRoute && !sessionCheckFailed && !sessionChecking && isAuthenticated === true;
   const serviceManagementItems = [
     { href: "/admin", label: "관리자 대시보드" },
     { href: "/admin/users", label: "사용자 관리" },
@@ -88,60 +88,6 @@ export function AppHeader() {
     setMobileMenuOpen(false);
   }
 
-  useEffect(() => {
-    async function loadSession() {
-      const generation = ++sessionLoadGeneration.current;
-      setSessionChecking(true);
-      try {
-        let response = await fetch("/auth/session", {
-          cache: "no-store",
-        });
-        if (!response.ok) throw new Error("Unable to load the session state.");
-        let data = (await response.json()) as { authenticated?: unknown };
-        if (data.authenticated !== true && response.headers.get("X-Session-Restore-Available") === "1" && !pathname.startsWith("/auth/")) {
-          await refreshSession();
-          response = await fetch("/auth/session", { cache: "no-store" });
-          if (!response.ok) throw new Error("Unable to load the session state.");
-          data = (await response.json()) as { authenticated?: unknown };
-        }
-        if (generation !== sessionLoadGeneration.current) return;
-        if (typeof data.authenticated !== "boolean") throw new Error("Invalid session response.");
-        setIsAuthenticated(data.authenticated);
-        setSessionCheckFailed(false);
-      } catch (error) {
-        if (generation !== sessionLoadGeneration.current) return;
-        if (error instanceof ApiClientError && error.status === 401) {
-          setIsAuthenticated(false);
-          setSessionCheckFailed(false);
-        } else {
-          setIsAuthenticated(undefined);
-          setSessionCheckFailed(true);
-        }
-      } finally {
-        if (generation === sessionLoadGeneration.current) setSessionChecking(false);
-      }
-    }
-
-    function clearSession() {
-      sessionLoadGeneration.current += 1;
-      setIsAuthenticated(false);
-      setSessionCheckFailed(false);
-      setSessionChecking(false);
-    }
-
-    function reloadSession() {
-      void loadSession();
-    }
-
-    void loadSession();
-    window.addEventListener(API_SESSION_EXPIRED_EVENT, clearSession);
-    window.addEventListener(API_SESSION_REFRESHED_EVENT, reloadSession);
-    return () => {
-      sessionLoadGeneration.current += 1;
-      window.removeEventListener(API_SESSION_EXPIRED_EVENT, clearSession);
-      window.removeEventListener(API_SESSION_REFRESHED_EVENT, reloadSession);
-    };
-  }, [pathname, sessionAttempt]);
 
   useEffect(() => {
     if (!mobileMenuOpen) return;
@@ -200,6 +146,11 @@ export function AppHeader() {
   }, [mobileMenuOpen]);
 
   useEffect(() => {
+    if (!showServiceManagement) { setServiceMenuOpen(false); setMobileServiceOpen(false); }
+    if (withdrawalOnly) setMobileMenuOpen(false);
+  }, [showServiceManagement, withdrawalOnly]);
+
+  useEffect(() => {
     if (!serviceMenuOpen) return;
     function closeOnOutsideClick(event: PointerEvent) {
       if (!serviceMenuRef.current?.contains(event.target as Node))
@@ -222,16 +173,18 @@ export function AppHeader() {
     closeMobileMenu();
     setLogoutError("");
     setIsLoggingOut(true);
+    hideAccountProfile();
     try {
       await logout();
-      setIsAuthenticated(false);
+      clearAccount();
       navigation.runTerminalExit(() => window.dispatchEvent(new Event(API_SESSION_EXPIRED_EVENT)));
     } catch (error) {
       if (shouldTerminateSessionAfterLogout(error)) {
-        setIsAuthenticated(false);
+        clearAccount();
         navigation.runTerminalExit(() => window.dispatchEvent(new Event(API_SESSION_EXPIRED_EVENT)));
       } else {
-        setLogoutError("로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        setLogoutError("로그아웃 처리 여부를 확인하지 못했습니다.");
+        reloadAccount();
       }
     } finally {
       logoutPendingRef.current = false;
@@ -251,15 +204,15 @@ export function AppHeader() {
         aria-label="주요 메뉴"
       >
         <div className="flex h-full min-w-0 items-center gap-8">
-          <Link
+          {withdrawalOnly ? <span className="flex shrink-0 items-center"><AllerMealLogo variant="full" className="-translate-y-px" /></span> : <Link
             href="/schools"
             aria-label="AllerMeal 홈"
             className="flex shrink-0 items-center transition-opacity hover:opacity-90 active:opacity-80"
           >
             <AllerMealLogo variant="full" className="-translate-y-px" />
-          </Link>
-          <div className="hidden h-full items-center gap-6 md:flex">
-            {navigationItems.map((item) => {
+          </Link>}
+          <div className="hidden h-full items-center gap-6 lg:flex">
+            {visibleNavigationItems.map((item) => {
               const active = isNavigationItemActive(pathname, item.href);
               return (
                 <Link
@@ -272,7 +225,7 @@ export function AppHeader() {
                 </Link>
               );
             })}
-            <div
+            {showServiceManagement && <div
               ref={serviceMenuRef}
               className="relative flex h-full items-center"
             >
@@ -306,50 +259,44 @@ export function AppHeader() {
                   })}
                 </div>
               ) : null}
-            </div>
+            </div>}
           </div>
         </div>
-        <div className="hidden shrink-0 items-center gap-2 md:flex">
-          {!authRoute && !sessionCheckFailed && isAuthenticated === true ? (
-            <button
-              type="button"
-              onClick={requestLogout}
-              disabled={isLoggingOut}
-              className="inline-flex h-9 items-center gap-1.5 rounded-[10px] px-2.5 text-sm font-semibold text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 disabled:opacity-50 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white dark:focus-visible:ring-zinc-700"
-            >
-              <LogOut className="h-4 w-4" />
-              {isLoggingOut ? "로그아웃 중" : "로그아웃"}
-            </button>
+        <div className="flex shrink-0 items-center gap-2">
+          {showAccountMenu && !mobileMenuOpen ? (
+            <ProfileMenu displayName={profile?.displayName} email={profile?.email} profileFailure={profileFailure} withdrawalPending={withdrawalOnly} isLoggingOut={isLoggingOut} onLogout={requestLogout} />
           ) : null}
+          <div className="hidden items-center gap-2 lg:flex">
           {!authRoute && !sessionCheckFailed && isAuthenticated === false ? (
-            <Link
-              href="/auth/login"
+            <LoginLink
+              preserveDestination={protectedRoute}
               className="inline-flex h-9 items-center gap-1.5 rounded-[10px] px-2.5 text-sm font-semibold text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white dark:focus-visible:ring-zinc-700"
             >
               <LogIn className="h-4 w-4" />
               로그인
-            </Link>
+            </LoginLink>
           ) : null}
-          <ThemeToggle />
+          {(authRoute || sessionCheckFailed || sessionChecking || isAuthenticated !== true) && <ThemeToggle />}
         </div>
-        <button
+        {!withdrawalOnly && <button
           ref={mobileMenuTriggerRef}
           type="button"
           onClick={() => {
             shouldRestoreMobileMenuFocus.current = false;
             setMobileMenuOpen(true);
           }}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-[10px] text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 dark:text-zinc-200 dark:focus-visible:ring-zinc-700 md:hidden"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-[10px] text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 dark:text-zinc-200 dark:focus-visible:ring-zinc-700 lg:hidden"
           aria-label="메뉴 열기"
           aria-expanded={mobileMenuOpen}
           aria-controls="mobile-menu"
           aria-haspopup="dialog"
         >
           <Menu className="h-6 w-6" />
-        </button>
+        </button>}
+        </div>
       </nav>
       <div
-        className={`fixed inset-0 z-50 overflow-hidden transition-[background-color,opacity] duration-200 md:hidden ${mobileMenuOpen ? "pointer-events-auto bg-black/20 opacity-100 dark:bg-black/35" : "pointer-events-none bg-transparent opacity-0"}`}
+        className={`fixed inset-0 z-50 overflow-hidden transition-[background-color,opacity] duration-200 lg:hidden ${mobileMenuOpen ? "pointer-events-auto bg-black/20 opacity-100 dark:bg-black/35" : "pointer-events-none bg-transparent opacity-0"}`}
         aria-hidden={!mobileMenuOpen}
         inert={!mobileMenuOpen}
       >
@@ -384,7 +331,7 @@ export function AppHeader() {
           </div>
           <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3" aria-label="주요 메뉴">
             <div className="flex flex-col gap-1">
-              {navigationItems.map((item) => {
+              {visibleNavigationItems.map((item) => {
                 const Icon = item.icon;
                 const active = isNavigationItemActive(pathname, item.href);
                 return (
@@ -400,7 +347,7 @@ export function AppHeader() {
                   </Link>
                 );
               })}
-              <div className="pt-1">
+              {showServiceManagement && <div className="pt-1">
                 <button
                   type="button"
                   onClick={() => setMobileServiceOpen((current) => !current)}
@@ -435,36 +382,21 @@ export function AppHeader() {
                     })}
                   </div>
                 ) : null}
-              </div>
+              </div>}
             </div>
-            <div className="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-              {!authRoute && !sessionCheckFailed && isAuthenticated === true ? (
-                <button
-                  type="button"
-                  onClick={requestLogout}
-                  disabled={isLoggingOut}
-                  className="flex h-[52px] w-full items-center gap-3 rounded-[10px] px-3 text-[16px] font-bold text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 dark:text-zinc-300 dark:hover:bg-zinc-900"
-                >
-                  {isLoggingOut ? (
-                    <LoaderCircle className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <LogOut className="h-5 w-5" />
-                  )}
-                  {isLoggingOut ? "로그아웃 중" : "로그아웃"}
-                </button>
-              ) : null}
+            {!showAccountMenu && <div className="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
               {!authRoute && !sessionCheckFailed && isAuthenticated === false ? (
-                <Link
-                  href="/auth/login"
+                <LoginLink
+                  preserveDestination={protectedRoute}
                   onClick={() => closeMobileMenu(false)}
                   className="flex h-[52px] items-center gap-3 rounded-[10px] px-3 text-[16px] font-bold text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-900"
                 >
                   <LogIn className="h-5 w-5" />
                   로그인
-                </Link>
+                </LoginLink>
               ) : null}
-              <ThemeToggle variant="menu" />
-            </div>
+              {(authRoute || sessionCheckFailed || sessionChecking || isAuthenticated !== true) && <ThemeToggle variant="menu" />}
+            </div>}
           </nav>
         </div>
       </div>
@@ -472,7 +404,7 @@ export function AppHeader() {
         <div className="mx-auto w-full max-w-[1220px] px-5 pb-3">
           <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[10px] bg-zinc-50 px-4 py-2 text-xs text-zinc-500 dark:bg-zinc-900/60 dark:text-zinc-400">
             <span className="inline-flex items-center gap-2"><Info aria-hidden="true" className="h-4 w-4" />로그인 상태 확인 불가</span>
-            <button type="button" aria-label="로그인 상태 다시 확인" disabled={sessionChecking} onClick={() => setSessionAttempt((value) => value + 1)} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-600 transition-colors hover:bg-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 disabled:opacity-50 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-300 dark:hover:bg-zinc-800">{sessionChecking ? <LoaderCircle aria-hidden="true" className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw aria-hidden="true" className="h-3.5 w-3.5" />}{sessionChecking ? "확인 중" : "다시 확인"}</button>
+            <button type="button" aria-label="로그인 상태 다시 확인" disabled={sessionChecking} onClick={reloadAccount} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-600 transition-colors hover:bg-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 disabled:opacity-50 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-300 dark:hover:bg-zinc-800">{sessionChecking ? <LoaderCircle aria-hidden="true" className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw aria-hidden="true" className="h-3.5 w-3.5" />}{sessionChecking ? "확인 중" : "다시 확인"}</button>
           </div>
         </div>
       ) : null}

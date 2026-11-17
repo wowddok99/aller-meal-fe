@@ -1,3 +1,4 @@
+import { notifyAccountStatusChanged } from "@/shared/account/account-status-event";
 import type {
   AccountWithdrawalResponse as GeneratedAccountWithdrawal,
   ChildAllergenResponse as GeneratedChildAllergen,
@@ -290,21 +291,32 @@ export async function getNotificationHistory(childId: string, page = 1, pageSize
   catch (error) { throw asMemberApiError(error, "알림 이력을 불러오지 못했습니다."); }
 }
 export async function requestAccountWithdrawal(options?: { mutationErrorDisplay: "local" }): Promise<AccountWithdrawal> {
-  try { return requiredAccountWithdrawal(await (options ? requestWithdrawal(options) : requestWithdrawal())); }
+  try {
+    const withdrawal = requiredAccountWithdrawal(await (options ? requestWithdrawal(options) : requestWithdrawal()));
+    notifyAccountStatusChanged();
+    return withdrawal;
+  }
   catch (error) { throw asMemberApiError(error, "회원 탈퇴를 예약하지 못했습니다."); }
 }
 export async function getAccountWithdrawal(): Promise<AccountWithdrawal | null> {
   try {
     const response = await requestCurrentAccountWithdrawal();
-    if (!response) return null;
+    if (!response) {
+      notifyAccountStatusChanged();
+      return null;
+    }
     const withdrawal = toAccountWithdrawal(response);
     if (!withdrawal) {
       throw new MemberApiError(0, "회원 탈퇴 상태 응답이 올바르지 않습니다.");
     }
+    notifyAccountStatusChanged();
     return withdrawal;
   } catch (error) { throw asMemberApiError(error, "회원 탈퇴 상태를 불러오지 못했습니다."); }
 }
 export async function cancelAccountWithdrawal(options?: { mutationErrorDisplay: "local" }): Promise<void> {
-  try { if (options) await requestCancelAccountWithdrawal(options); else await requestCancelAccountWithdrawal(); }
+  try {
+    if (options) await requestCancelAccountWithdrawal(options); else await requestCancelAccountWithdrawal();
+    notifyAccountStatusChanged();
+  }
   catch (error) { throw asMemberApiError(error, "회원 탈퇴 예약을 취소하지 못했습니다."); }
 }

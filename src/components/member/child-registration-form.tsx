@@ -1,11 +1,12 @@
 "use client";
 
+import { LoginLink } from "@/components/auth/login-link";
+
 import { ApiNotice } from "@/components/api-notice";
 
 import { PageHeading } from "@/components/page-heading";
 
 import { Check, Info, LoaderCircle, School as SchoolIcon, Search } from "lucide-react";
-import { GuardedLink as Link } from "./guarded-link";
 import { useRouter } from "next/navigation";
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
 import { createChild, MemberApiError, School, searchSchools } from "@/lib/member-api";
@@ -148,7 +149,7 @@ export function ChildRegistrationForm() {
         <div><StepTitle step={3}>저장</StepTitle><p className="mt-2 grid grid-cols-[1.5rem_minmax(0,1fr)] items-center gap-x-1 text-sm font-medium text-zinc-500"><Info className="h-4 w-4 justify-self-center" /><span>저장 후 알레르기 설정으로 이어서 진행할 수 있어요.</span></p></div>
         <div className="grid w-full grid-cols-2 gap-3 sm:flex sm:w-auto"><button type="button" onClick={requestLeave} disabled={saving} className="inline-flex h-12 w-full items-center justify-center rounded-[10px] border border-zinc-300 bg-white px-5 font-bold text-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-28 dark:border-zinc-700 dark:bg-[#101419] dark:text-zinc-200">취소</button><button type="submit" disabled={saving || recovery.unknown || !name.trim() || !selected} className="h-12 w-full rounded-[10px] bg-mint-500 px-5 font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50 sm:w-28">{saving ? "저장 중" : "저장"}</button></div>
       </section>
-      {formError && <div className="mt-3 rounded-[10px] bg-zinc-50 px-4 py-3 dark:bg-zinc-900/60"><ApiNotice title={formError} action={!recovery.unknown && (formError === "로그인이 필요합니다." || formError.includes("인증")) && <Link href="/auth/login" className="ml-3 underline">로그인</Link>} /></div>}
+      {formError && <div className="mt-3 rounded-[10px] bg-zinc-50 px-4 py-3 dark:bg-zinc-900/60"><ApiNotice title={formError} action={!recovery.unknown && (formError === "로그인이 필요합니다." || formError.includes("인증")) && <LoginLink className="ml-3 underline">로그인</LoginLink>} /></div>}
     </form>
   );
 }

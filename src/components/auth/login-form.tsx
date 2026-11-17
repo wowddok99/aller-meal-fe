@@ -14,6 +14,7 @@ import { FormEvent, useRef, useState } from "react";
 import { AuthApiError, getAuthErrorMessage, login, requestEmailVerification } from "@/lib/auth-api";
 import { ApiNotice } from "@/components/api-notice";
 import { PageHeading } from "@/components/page-heading";
+import { getLoginSuccessDestination } from "@/shared/api/session-expired-redirect";
 
 type FieldErrors = { email?: string; password?: string };
 
@@ -79,16 +80,9 @@ export function LoginForm() {
 
     setIsSubmitting(true);
     try {
-      await login({ email: normalizedEmail, password, rememberMe });
+      const response = await login({ email: normalizedEmail, password, rememberMe });
       const next = new URLSearchParams(window.location.search).get("next");
-      let destination = "/children";
-      if (next?.startsWith("/") && !next.startsWith("//")) {
-        const url = new URL(next, window.location.origin);
-        if (url.origin === window.location.origin) {
-          destination = `${url.pathname}${url.search}${url.hash}`;
-        }
-      }
-      router.push(destination);
+      router.push(getLoginSuccessDestination(response, next, window.location.origin));
       router.refresh();
     } catch (error) {
       setErrorMessage(getLoginError(error));
