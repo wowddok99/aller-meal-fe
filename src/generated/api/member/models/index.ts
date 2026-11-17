@@ -6,6 +6,9 @@
  * OpenAPI spec version: 1.0.0
  */
 
+export * from "./accountProfileResponse";
+export * from "./accountProfileResponseRole";
+export * from "./accountProfileResponseUserStatus";
 export * from "./accountWithdrawalResponse";
 export * from "./apiErrorResponse";
 export * from "./apiErrorResponseError";

@@ -5,6 +5,7 @@
  * Aller Meal Release 1 public, member, and admin API contract.
  * OpenAPI spec version: 1.0.0
  */
+import type { LoginResponseUserStatus } from "./loginResponseUserStatus";
 
 export interface LoginResponse {
   userId?: string;
@@ -12,4 +13,5 @@ export interface LoginResponse {
   accessTokenExpiresAt?: string;
   refreshTokenExpiresAt?: string;
   sessionId?: string;
+  userStatus?: LoginResponseUserStatus;
 }
