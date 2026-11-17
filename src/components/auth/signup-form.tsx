@@ -10,36 +10,17 @@ import { FormEvent, useState } from "react";
 import { getAuthErrorMessage, requestEmailVerification, signup } from "@/lib/auth-api";
 import { ApiClientError } from "@/shared/api/api-client-error";
 import { PageHeading } from "@/components/page-heading";
-
-type FieldErrors = {
-  email?: string;
-  password?: string;
-};
-
-function validate(email: string, password: string): FieldErrors {
-  const errors: FieldErrors = {};
-
-  if (!email) {
-    errors.email = "이메일을 입력해 주세요.";
-  } else if (email.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    errors.email = "올바른 이메일 형식으로 입력해 주세요.";
-  }
-
-  if (!password) {
-    errors.password = "비밀번호를 입력해 주세요.";
-  } else if (password.length < 8) {
-    errors.password = "비밀번호는 8자 이상이어야 합니다.";
-  }
-
-  return errors;
-}
+import { SignupProfileFields } from "./signup-profile-fields";
+import { prepareSignup, type SignupFieldErrors, type SignupInput } from "./signup-validation";
 
 export function SignupForm() {
   const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [usageType, setUsageType] = useState<SignupInput["usageType"]>("");
   const { notice, notify } = useSuccessToast();
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [fieldErrors, setFieldErrors] = useState<SignupFieldErrors>({});
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState("");
@@ -49,22 +30,21 @@ export function SignupForm() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const normalizedEmail = email.trim().toLowerCase();
-    const errors = validate(normalizedEmail, password);
+    const { errors, request } = prepareSignup({ email, password, displayName, usageType });
 
     setFieldErrors(errors);
     setErrorMessage("");
     setResendMessage("");
-    if (Object.keys(errors).length > 0) {
+    if (!request) {
       return;
     }
 
     notify("");
     setIsSubmitting(true);
     try {
-      await signup({ email: normalizedEmail, password });
-      setEmail(normalizedEmail);
-      setRegisteredEmail(normalizedEmail);
+      await signup(request);
+      setEmail(request.email ?? "");
+      setRegisteredEmail(request.email ?? "");
       notify("회원가입이 완료되었습니다.");
     } catch (error) {
       const message = getAuthErrorMessage(error, "signup");
@@ -137,9 +117,10 @@ export function SignupForm() {
     <section className="mx-auto w-full max-w-[640px] overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-[#101419]">
       <SuccessToast notice={notice} />
       <div className="p-5 md:p-8">
-        <PageHeading title="회원가입" description="이메일과 비밀번호로 계정을 만들어 주세요." />
+        <PageHeading title="회원가입" description="가입 정보를 입력해 계정을 만들어 주세요." />
 
         <form className="mt-6 flex flex-col gap-5" noValidate onSubmit={handleSubmit}>
+          <SignupProfileFields displayName={displayName} usageType={usageType} onDisplayNameChange={setDisplayName} onUsageTypeChange={setUsageType} disabled={isSubmitting} displayNameError={fieldErrors.displayName} usageTypeError={fieldErrors.usageType} />
           <label className="flex flex-col gap-2" htmlFor="signup-email">
             <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">이메일</span>
             <span className={`flex h-12 items-center gap-3 rounded-[10px] border bg-white px-4 focus-within:border-mint-500 dark:bg-[#0b0f13] dark:focus-within:border-mint-400 ${fieldErrors.email ? "border-red-500 dark:border-red-500" : "border-zinc-200 dark:border-zinc-700"}`}>
