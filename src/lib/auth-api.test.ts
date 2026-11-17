@@ -46,11 +46,13 @@ describe("auth-api public adapters", () => {
     expect(publicApi.signUp).toHaveBeenCalledWith({ email: "user@example.com", password: "password123" });
   });
 
-  it("forwards login input and preserves the cookie-session response", async () => {
+  it.each(["ACTIVE", "WITHDRAWAL_PENDING", undefined] as const)("forwards login input and preserves the cookie-session response with status %s", async (userStatus) => {
     const response = {
       userId: "user-1",
       emailVerificationStatus: "VERIFIED",
       accessTokenExpiresAt: "2026-09-19T12:00:00+09:00",
+      sessionId: "session-1",
+      ...(userStatus === undefined ? {} : { userStatus }),
     };
     publicApi.login.mockResolvedValue(response);
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { ApiNotice } from "@/components/api-notice";
+import { LoginLink } from "@/components/auth/login-link";
 
 import {
   ChevronDown,
@@ -267,13 +268,13 @@ export function AppHeader() {
           ) : null}
           <div className="hidden items-center gap-2 lg:flex">
           {!authRoute && !sessionCheckFailed && isAuthenticated === false ? (
-            <Link
-              href="/auth/login"
+            <LoginLink
+              preserveDestination={protectedRoute}
               className="inline-flex h-9 items-center gap-1.5 rounded-[10px] px-2.5 text-sm font-semibold text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white dark:focus-visible:ring-zinc-700"
             >
               <LogIn className="h-4 w-4" />
               로그인
-            </Link>
+            </LoginLink>
           ) : null}
           {(authRoute || sessionCheckFailed || sessionChecking || isAuthenticated !== true) && <ThemeToggle />}
         </div>
@@ -385,14 +386,14 @@ export function AppHeader() {
             </div>
             {!showAccountMenu && <div className="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
               {!authRoute && !sessionCheckFailed && isAuthenticated === false ? (
-                <Link
-                  href="/auth/login"
+                <LoginLink
+                  preserveDestination={protectedRoute}
                   onClick={() => closeMobileMenu(false)}
                   className="flex h-[52px] items-center gap-3 rounded-[10px] px-3 text-[16px] font-bold text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-900"
                 >
                   <LogIn className="h-5 w-5" />
                   로그인
-                </Link>
+                </LoginLink>
               ) : null}
               {(authRoute || sessionCheckFailed || sessionChecking || isAuthenticated !== true) && <ThemeToggle variant="menu" />}
             </div>}

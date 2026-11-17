@@ -1,5 +1,7 @@
 "use client";
 
+import { LoginLink } from "@/components/auth/login-link";
+
 import { ApiNotice } from "@/components/api-notice";
 
 import { PageHeading } from "@/components/page-heading";
@@ -10,13 +12,14 @@ import {
   RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { getSeoulToday } from "@/components/public/school-meals/school-meals-date";
+import { getChildMealQuery, getChildMealUrl } from "./child-meal-query";
 import {
   ChildProfile, getAllergens, getChild, getPersonalizedMeals, getSchool, MealOrigin, MemberApiError, PersonalizedMeal,
   PersonalizedMealItem, PersonalizedMealMode, PersonalizedMealQuery,
 } from "@/lib/member-api";
-
-const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
 
 function message(error: MemberApiError) {
   if (error.status === 401) return "로그인이 필요합니다.";
@@ -111,21 +114,30 @@ function MealRow({ item, index, allergenNames }: { item: PersonalizedMealItem; i
 }
 
 export function ChildPersonalizedMeals({ childId }: { childId?: string }) {
+  return <Suspense fallback={<div className="mx-auto w-full max-w-[1220px] px-5 pb-12 pt-5"><PageHeading title="자녀 급식" description="자녀의 알레르기 기준으로 급식 위험 여부를 확인하세요." parents={[{ label: "자녀 관리", href: "/children" }]} /><p role="status" className="flex items-center justify-center py-8 text-sm font-bold text-zinc-500"><LoaderCircle aria-hidden="true" className="mr-2 h-5 w-5 animate-spin" />급식 정보를 불러오고 있습니다.</p></div>}><ChildPersonalizedMealsContent childId={childId} /></Suspense>;
+}
+
+function ChildPersonalizedMealsContent({ childId }: { childId?: string }) {
   const hasChild = Boolean(childId);
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const router = useRouter();
+  const { mode, date } = getChildMealQuery(params, getSeoulToday());
   const [child, setChild] = useState<ChildProfile | null>(null);
   const [schoolName, setSchoolName] = useState("");
   const [allergenNames, setAllergenNames] = useState<ReadonlyMap<number, string>>(() => new Map());
   const [data, setData] = useState<PersonalizedMealQuery | null>(null);
-  const [mode, setMode] = useState<PersonalizedMealMode>("today");
-  const [date, setDate] = useState(today);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<MemberApiError | null>(null);
   const requestSequence = useRef(0);
 
-  const selectMode = (nextMode: PersonalizedMealMode) => {
-    setMode(nextMode);
-    if (nextMode === "today") setDate(today);
-  };
+  function changeQuery(nextMode: PersonalizedMealMode, nextDate: string) {
+    const href = getChildMealUrl({ pathname, search: window.location.search, hash: window.location.hash }, { mode: nextMode, date: nextDate });
+    if (href !== `${pathname}${window.location.search}${window.location.hash}`) router.replace(href, { scroll: false });
+  }
+
+  const selectMode = (nextMode: PersonalizedMealMode) => changeQuery(nextMode, nextMode === "today" ? getSeoulToday() : date);
+  const setDate = (nextDate: string) => changeQuery(mode, nextDate);
 
   const load = useCallback(async () => {
     const requestId = ++requestSequence.current;
@@ -174,7 +186,7 @@ export function ChildPersonalizedMeals({ childId }: { childId?: string }) {
       {heading}
       <section className="rounded-2xl border border-zinc-200 bg-white px-6 py-5 md:px-8 md:py-6 dark:border-zinc-800 dark:bg-[#101419]"><div className="grid gap-5 lg:grid-cols-[minmax(220px,0.7fr)_minmax(460px,1.3fr)] lg:items-center"><h2 className="text-xl font-extrabold">급식 조회</h2>{queryControls}</div></section>
       <section className="rounded-2xl border border-zinc-200 bg-white px-6 py-6 md:px-8 dark:border-zinc-800 dark:bg-[#101419]"><h2 className="text-lg font-extrabold">{mode === "weekly" ? "주간 위험 요약" : "위험 요약"}</h2><div className="mt-5 grid divide-y divide-zinc-200 sm:grid-cols-3 sm:divide-x sm:divide-y-0 dark:divide-zinc-800"><Summary label="주의" description="알레르기 확인이 필요한 메뉴" tone="amber" /><Summary label="안전" description="등록된 알레르기 성분이 없는 메뉴" tone="mint" /><Summary label="확인 필요" description="정보 확인 또는 판별이 필요한 메뉴" tone="zinc" /></div></section>
-      <section aria-busy={loading} className="rounded-2xl border border-zinc-200 bg-white px-6 py-6 md:px-8 dark:border-zinc-800 dark:bg-[#101419]"><h2 className="text-lg font-extrabold">급식 정보</h2><div className="py-8">{error ? <ApiNotice centered title={auth ? "로그인이 필요합니다" : "자녀 급식을 불러오지 못했습니다"} action={auth ? <Link href="/auth/login" className="inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 font-bold text-white">로그인</Link> : <button type="button" onClick={() => void load()} className="inline-flex h-8 items-center gap-1.5 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:border-zinc-700"><RefreshCw aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /> 다시 시도</button>}>{error.status === 0 ? "잠시 후 다시 시도해 주세요." : message(error)}</ApiNotice> : <p role="status" className="flex items-center justify-center text-sm font-bold text-zinc-500"><LoaderCircle aria-hidden="true" className="mr-2 h-5 w-5 animate-spin" />자녀 급식을 불러오고 있습니다.</p>}</div></section>
+      <section aria-busy={loading} className="rounded-2xl border border-zinc-200 bg-white px-6 py-6 md:px-8 dark:border-zinc-800 dark:bg-[#101419]"><h2 className="text-lg font-extrabold">급식 정보</h2><div className="py-8">{error ? <ApiNotice centered title={auth ? "로그인이 필요합니다" : "자녀 급식을 불러오지 못했습니다"} action={auth ? <LoginLink className="inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 font-bold text-white">로그인</LoginLink> : <button type="button" onClick={() => void load()} className="inline-flex h-8 items-center gap-1.5 rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-mint-500 dark:border-zinc-700"><RefreshCw aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /> 다시 시도</button>}>{error.status === 0 ? "잠시 후 다시 시도해 주세요." : message(error)}</ApiNotice> : <p role="status" className="flex items-center justify-center text-sm font-bold text-zinc-500"><LoaderCircle aria-hidden="true" className="mr-2 h-5 w-5 animate-spin" />자녀 급식을 불러오고 있습니다.</p>}</div></section>
     </div>;
   }
   if (!hasChild) return <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">{heading}<section className="w-full rounded-2xl border border-dashed border-zinc-300 bg-white p-10 text-center dark:border-zinc-700 dark:bg-[#101419]"><Utensils className="mx-auto h-9 w-9 text-zinc-400" /><h2 className="mt-3 text-xl font-extrabold">등록된 자녀를 먼저 선택해 주세요</h2><p className="mt-2 text-sm font-medium text-zinc-500">자녀를 등록하면 알레르기 기준에 맞춘 급식을 확인할 수 있어요.</p><Link href="/children" className="mt-5 inline-flex h-11 items-center rounded-[10px] bg-mint-500 px-5 text-sm font-extrabold text-white">자녀 관리로 이동</Link></section></div>;
