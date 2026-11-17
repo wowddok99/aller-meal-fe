@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "pretendard/dist/web/variable/pretendardvariable.css";
+import { AccountAccessProvider } from "@/components/account-access-provider";
 import { ApiClientProvider } from "@/shared/api/api-client-provider";
 import "@daypicker/react/style.css";
 import "./globals.css";
@@ -40,7 +41,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body suppressHydrationWarning>
-        <ApiClientProvider>{children}</ApiClientProvider>
+        <ApiClientProvider><AccountAccessProvider>{children}</AccountAccessProvider></ApiClientProvider>
       </body>
     </html>
   );

@@ -95,6 +95,10 @@ function getErrorMessage(error: Error | null) {
 }
 
 export function PublicSchoolSearchPage() {
+  return <PublicPageShell><PublicSchoolSearchPageContent /></PublicPageShell>;
+}
+
+function PublicSchoolSearchPageContent() {
   const [inputKeyword, setInputKeyword] = useState("");
   const [keyword, setKeyword] = useState("");
   const [page, setPage] = useState(1);
@@ -155,7 +159,7 @@ export function PublicSchoolSearchPage() {
   };
 
   return (
-    <PublicPageShell>
+    <>
       <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-3 px-5 pb-12 pt-5">
         <PageHeading title="학교 검색" description="학교 급식 메뉴와 알레르기 유발 성분을 쉽고 빠르게 확인하세요." />
 
@@ -384,6 +388,6 @@ export function PublicSchoolSearchPage() {
           </div>
         </Card>
       </div>
-    </PublicPageShell>
+    </>
   );
 }

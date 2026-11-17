@@ -160,7 +160,11 @@ function MealDetailRow({
   );
 }
 
-export function PublicSchoolMealsPage({
+export function PublicSchoolMealsPage(props: PublicSchoolMealsPageProps) {
+  return <PublicPageShell><PublicSchoolMealsPageContent {...props} /></PublicPageShell>;
+}
+
+function PublicSchoolMealsPageContent({
   schoolId,
 }: PublicSchoolMealsPageProps) {
   const [mode, setMode] = useState<MealMode>("daily");
@@ -266,19 +270,19 @@ export function PublicSchoolMealsPage({
 
   if (isNotFoundError(schoolQuery.error)) {
     return (
-      <PublicPageShell>
+      <>
         <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">
           {heading}
           <Card className="px-5 py-10 text-center md:px-7">
             <ApiNotice centered title="학교를 찾을 수 없습니다." action={<Link href="/schools" className="inline-flex h-8 items-center rounded-[10px] border border-zinc-300 px-3 text-xs font-semibold dark:border-zinc-700">학교 검색으로 돌아가기</Link>}>학교 검색에서 다시 선택해 주세요.</ApiNotice>
           </Card>
         </div>
-      </PublicPageShell>
+      </>
     );
   }
 
   return (
-    <PublicPageShell>
+    <>
       <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">
         {heading}
         <Card className={schoolQuery.isError ? "px-5 py-8 sm:py-10" : "p-5 md:p-7"} aria-busy={schoolQuery.isLoading}>
@@ -532,6 +536,6 @@ export function PublicSchoolMealsPage({
           ) : null}
         </Card>
       </div>
-    </PublicPageShell>
+    </>
   );
 }

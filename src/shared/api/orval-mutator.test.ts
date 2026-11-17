@@ -153,6 +153,36 @@ describe("orvalFetch", () => {
     },
   );
 
+  it("keeps a withdrawal-pending session usable after profile access is forbidden", async () => {
+    const reservation = { withdrawalDueAt: "2030-01-08T00:00:00Z" };
+    const expired = vi.fn();
+    const refreshed = vi.fn();
+    events.addEventListener(API_SESSION_EXPIRED_EVENT, expired);
+    events.addEventListener(API_SESSION_REFRESHED_EVENT, refreshed);
+    const fetchMock = vi.fn(async (url: string, options: RequestInit) => {
+      expect(new Headers(options.headers).get("X-Expected-Session-Id")).toBe(identity.sessionId);
+      if (url === "/api/v1/account/profile") return error("ACCOUNT_WITHDRAWAL_PENDING", 403);
+      if (url === "/api/v1/account/withdrawal") {
+        return options.method === "DELETE" ? json(null, 204) : json(reservation);
+      }
+      throw new Error("Profile restriction must not trigger a refresh request");
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(orvalFetch("/api/v1/account/profile")).rejects.toMatchObject({
+      status: 403, code: "ACCOUNT_WITHDRAWAL_PENDING", sessionExpired: false,
+    });
+    await expect(orvalFetch("/api/v1/account/withdrawal")).resolves.toEqual(reservation);
+    await expect(orvalFetch("/api/v1/account/withdrawal", { method: "DELETE" })).resolves.toBeUndefined();
+
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      "/api/v1/account/profile", "/api/v1/account/withdrawal", "/api/v1/account/withdrawal",
+    ]);
+    expect(JSON.parse(values.get(markerKey) ?? "{}")).toEqual(marker);
+    expect(expired).not.toHaveBeenCalled();
+    expect(refreshed).not.toHaveBeenCalled();
+  });
+
   it("coalesces concurrent expired access requests through one server reservation and execute", async () => {
     let protectedCount = 0;
     const refreshed = vi.fn(); events.addEventListener(API_SESSION_REFRESHED_EVENT, refreshed);

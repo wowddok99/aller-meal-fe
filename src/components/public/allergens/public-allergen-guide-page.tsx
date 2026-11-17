@@ -62,6 +62,10 @@ function AllergenRow({
 }
 
 export function PublicAllergenGuidePage() {
+  return <PublicPageShell><PublicAllergenGuidePageContent /></PublicPageShell>;
+}
+
+function PublicAllergenGuidePageContent() {
   const [query, setQuery] = useState("");
   const [activeQuery, setActiveQuery] = useState("");
   const allergensQuery = useListAllergens({ query: { retry: false } });
@@ -112,7 +116,7 @@ export function PublicAllergenGuidePage() {
   };
 
   return (
-    <PublicPageShell>
+    <>
       <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-5 pb-12 pt-5">
         <PageHeading title="알레르기 안내" description="급식 메뉴에 표시되는 알레르기 코드를 확인하세요." />
 
@@ -226,6 +230,6 @@ export function PublicAllergenGuidePage() {
           </ol>
         </Card>
       </div>
-    </PublicPageShell>
+    </>
   );
 }
